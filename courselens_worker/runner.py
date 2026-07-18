@@ -51,7 +51,13 @@ def process_job(
             job,
             sensevoice_dir=Path(_required("SENSEVOICE_MODEL_DIR")),
             firered_dir=Path(_required("FIRERED_MODEL_DIR")),
-            proofread=(lambda sense, fire: proofread_segments(api_key, sense, fire)),
+            proofread=(lambda sense, fire, prior, write: proofread_segments(
+                api_key,
+                sense,
+                fire,
+                prior_checkpoint=prior,
+                checkpoint=write,
+            )),
             progress=_progress,
             checkpoint=checkpoint_writer,
         )
@@ -70,12 +76,29 @@ def process_job(
         payload = dict(job.get("payload") or {})
         transcript = list(payload.get("transcript") or [])
         slides = list(payload.get("slides") or [])
-        pages = process_slides(slides, progress=_progress) if slides else []
+        prior = dict(payload.get("checkpoint") or {})
+        pages = process_slides(
+            slides,
+            progress=_progress,
+            prior_checkpoint=prior,
+            checkpoint=checkpoint_writer,
+        ) if slides else list(prior.get("ppt_pages") or [])
+
+        def summary_checkpoint(value: dict[str, Any]) -> None:
+            if checkpoint_writer is not None:
+                checkpoint_writer({
+                    "ocr_completed_items": len(slides),
+                    "ppt_pages": pages,
+                    **value,
+                })
+
         summary = create_summary(
             str(dict(job.get("secrets") or {}).get("deepseek_api_key") or ""),
             title=str(payload.get("title") or ""),
             transcript=transcript,
             ppt_pages=pages,
+            prior_checkpoint=prior,
+            checkpoint=summary_checkpoint,
         )
         outputs = {"ppt_pages": pages, "summary": summary}
         metrics = {
@@ -131,7 +154,14 @@ def run() -> int:
             _required("WORKER_SIGNING_PRIVATE_KEY"),
         )
         checkpoint_root.mkdir(parents=True, exist_ok=True)
-        destination = checkpoint_root / f"checkpoint-{int(value.get('completed_chunks') or 0):04d}.box.json"
+        stage = "".join(
+            character for character in str(value.get("stage") or "work")
+            if character.isascii() and (character.isalnum() or character == "-")
+        ) or "work"
+        destination = checkpoint_root / (
+            f"checkpoint-{time.time_ns():020d}-{stage}-"
+            f"{int(value.get('completed_chunks') or 0):04d}.box.json"
+        )
         temporary_checkpoint = destination.with_suffix(destination.suffix + ".tmp")
         temporary_checkpoint.write_text(
             json.dumps(sealed_checkpoint, sort_keys=True, separators=(",", ":")),

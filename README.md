@@ -32,6 +32,8 @@ This boundary follows the same responsible-use principle documented by
 All inputs and outputs use the versioned `job.v1` / `result.v1` protocol.
 Inputs are encrypted to the worker's X25519 public key. Results are encrypted
 to a per-job local public key and signed with the worker's Ed25519 key.
+ASR, OCR, proofreading, and summary-map windows emit encrypted checkpoints;
+a replacement workflow resumes only after the last fully verified window.
 
 ## Repository secrets
 
