@@ -9,11 +9,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .asr import transcribe
-from .formats import to_srt, to_vtt
-from .llm import create_summary, proofread_segments
 from .mailbox import IssueMailbox
-from .ocr import process_slides
 from .protocol import PROTOCOL_VERSION, RESULT_SCHEMA, open_job, seal_result, validate_task_id
 
 
@@ -45,6 +41,10 @@ def process_job(
         outputs = {"echo": {"ok": True, "protocol_version": PROTOCOL_VERSION}}
         metrics = {"elapsed_seconds": round(time.monotonic() - started, 3)}
     elif kind == "subtitle":
+        from .asr import transcribe
+        from .formats import to_srt, to_vtt
+        from .llm import proofread_segments
+
         secrets = dict(job.get("secrets") or {})
         api_key = str(secrets.get("deepseek_api_key") or "")
         value = transcribe(
@@ -73,6 +73,9 @@ def process_job(
         }
         metrics = value["metrics"]
     elif kind == "summary":
+        from .llm import create_summary
+        from .ocr import process_slides
+
         payload = dict(job.get("payload") or {})
         transcript = list(payload.get("transcript") or [])
         slides = list(payload.get("slides") or [])
