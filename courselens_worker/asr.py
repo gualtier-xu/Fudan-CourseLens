@@ -113,7 +113,7 @@ def transcribe(
     *,
     sensevoice_dir: Path,
     firered_dir: Path,
-    proofread: Callable[[list[dict[str, Any]], list[dict[str, Any]]], list[dict[str, Any]]] | None,
+    proofread: Callable[..., list[dict[str, Any]]] | None,
     progress: Callable[[str, int, int], None],
     checkpoint: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
@@ -162,7 +162,24 @@ def transcribe(
     else:
         if proofread is None:
             raise ASRError("standard mode requires a proofreading provider")
-        final = proofread(sense_segments, firered_segments)
+        def proofread_checkpoint(value: dict[str, Any]) -> None:
+            if checkpoint is not None:
+                checkpoint({
+                    "stage": "proofread",
+                    "completed_chunks": total_chunks,
+                    "total_chunks": total_chunks,
+                    "mode": mode,
+                    "raw_sensevoice": normalize_segments(sense_segments),
+                    "raw_firered": normalize_segments(firered_segments),
+                    **value,
+                })
+
+        final = proofread(
+            sense_segments,
+            firered_segments,
+            prior,
+            proofread_checkpoint,
+        )
     return {
         "mode": mode,
         "segments": normalize_segments(final),

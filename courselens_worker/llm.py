@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Any
+from typing import Any, Callable
 
 import requests
 
@@ -62,10 +62,19 @@ def proofread_segments(
     api_key: str,
     sensevoice: list[dict[str, Any]],
     firered: list[dict[str, Any]],
+    *,
+    prior_checkpoint: dict[str, Any] | None = None,
+    checkpoint: Callable[[dict[str, Any]], None] | None = None,
 ) -> list[dict[str, Any]]:
     count = max(len(sensevoice), len(firered))
-    output: list[dict[str, Any]] = []
-    for start in range(0, count, 20):
+    prior = dict(prior_checkpoint or {})
+    output: list[dict[str, Any]] = list(prior.get("proofread_segments") or [])
+    total_windows = (count + 19) // 20
+    completed_windows = max(
+        0, min(total_windows, int(prior.get("proofread_completed_windows") or 0))
+    )
+    for window_index in range(completed_windows, total_windows):
+        start = window_index * 20
         pairs = []
         for index in range(start, min(count, start + 20)):
             sense = sensevoice[index] if index < len(sensevoice) else {}
@@ -88,6 +97,12 @@ def proofread_segments(
         for pair in pairs:
             text = by_index.get(pair["index"]) or pair["firered"] or pair["sensevoice"]
             output.append({"start_ms": pair["start_ms"], "end_ms": pair["end_ms"], "text": text})
+        if checkpoint is not None:
+            checkpoint({
+                "proofread_completed_windows": window_index + 1,
+                "proofread_total_windows": total_windows,
+                "proofread_segments": normalize_segments(output),
+            })
     return normalize_segments(output)
 
 
@@ -97,15 +112,53 @@ def create_summary(
     title: str,
     transcript: list[dict[str, Any]],
     ppt_pages: list[dict[str, Any]],
+    prior_checkpoint: dict[str, Any] | None = None,
+    checkpoint: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict[str, Any]:
-    source = {
-        "title": title,
-        "transcript": transcript,
-        "ppt_pages": ppt_pages,
-    }
+    transcript_windows = [
+        transcript[start:start + 120] for start in range(0, len(transcript), 120)
+    ]
+    if not transcript_windows:
+        transcript_windows = [[] for _ in range(max(1, (len(ppt_pages) + 19) // 20))]
+    sources = []
+    for index, transcript_window in enumerate(transcript_windows):
+        if transcript_window:
+            lower = int(transcript_window[0].get("start_ms") or 0)
+            upper = int(transcript_window[-1].get("end_ms") or lower)
+            page_window = [
+                page for page in ppt_pages
+                if lower <= int(page.get("created_sec") or 0) * 1000 <= upper
+            ]
+        else:
+            page_window = ppt_pages[index * 20:(index + 1) * 20]
+        sources.append({"transcript": transcript_window, "ppt_pages": page_window})
+
+    prior = dict(prior_checkpoint or {})
+    parts: list[dict[str, Any]] = list(prior.get("summary_parts") or [])
+    completed_windows = max(
+        0, min(len(sources), int(prior.get("summary_completed_windows") or 0))
+    )
+    for index in range(completed_windows, len(sources)):
+        raw_part = _chat(api_key, [
+            {"role": "system", "content": "你是严谨的课程学习助理。仅依据输入整理当前窗口，输出 JSON 对象，字段为 markdown 和 chapters；chapters 每项包含 title、start_ms、summary，start_ms 必须来自输入。"},
+            {"role": "user", "content": json.dumps(sources[index], ensure_ascii=False)},
+        ])
+        part = _json_content(raw_part)
+        if not isinstance(part, dict) or not isinstance(part.get("markdown"), str) or not isinstance(part.get("chapters"), list):
+            raise LLMError("summary window response has an invalid shape")
+        parts.append(part)
+        if checkpoint is not None:
+            checkpoint({
+                "stage": "summary",
+                "completed_chunks": index + 1,
+                "total_chunks": len(sources) + 1,
+                "summary_completed_windows": index + 1,
+                "summary_parts": parts,
+            })
+
     raw = _chat(api_key, [
-        {"role": "system", "content": "你是课程学习助理。仅依据输入内容生成中文学习笔记。输出 JSON 对象，字段为 markdown 和 chapters；chapters 是数组，每项含 title、start_ms、summary，start_ms 必须来自已有字幕或 PPT 时间。"},
-        {"role": "user", "content": json.dumps(source, ensure_ascii=False)},
+        {"role": "system", "content": "合并各窗口笔记为完整中文学习笔记。不得增加输入外事实。输出 JSON 对象，字段为 markdown 和 chapters；保留原有合法 start_ms。"},
+        {"role": "user", "content": json.dumps({"title": title, "parts": parts}, ensure_ascii=False)},
     ], max_tokens=12_000)
     value = _json_content(raw)
     if not isinstance(value, dict) or not isinstance(value.get("markdown"), str) or not isinstance(value.get("chapters"), list):
