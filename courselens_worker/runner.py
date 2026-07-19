@@ -97,9 +97,9 @@ def process_job(
     *,
     checkpoint_writer=None,
 ) -> dict[str, Any]:
-    from .platform_session import materialize_job_sources
-
-    job = materialize_job_sources(job)
+    if dict(job.get("payload") or {}).get("source_session"):
+        from .platform_session import materialize_job_sources
+        job = materialize_job_sources(job)
     kind = str(job["job_kind"])
     started = time.monotonic()
     if kind == "echo":
