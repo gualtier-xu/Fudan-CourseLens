@@ -16,6 +16,7 @@
 - `no-proofread`：FireRedASR2 CTC INT8，四线程。
 - `standard`：SenseVoice → FireRedASR2 CTC → 用户授权的 DeepSeek 校对，严格串行。
 - `summary`：可选 RapidOCR、摘要和章节生成。
+- `learning_pack + answer`：只依据调用方密封传入的最小证据生成回答，并原样保留受控 citation ID；Worker 不知道复旦课程、登录或上游 URL。
 
 协议为 `job.v2` / `control.v2` / `result.v2`，输入使用 X25519 加密，结果使用一次性公钥加密并由 Ed25519 签名。模型权重从上游下载并按版本校验，不提交到 Git。
 

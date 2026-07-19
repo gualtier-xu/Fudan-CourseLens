@@ -259,7 +259,7 @@ def process_job(
     elif kind == "learning_pack":
         from .asr import transcribe
         from .formats import to_srt, to_vtt
-        from .llm import create_summary, proofread_segments
+        from .llm import answer_question, create_summary, proofread_segments
         from .ocr import process_slides
 
         payload = dict(job.get("payload") or {})
@@ -291,6 +291,13 @@ def process_job(
                 "raw_firered": value["raw_firered"],
             }
             metrics["subtitle"] = value["metrics"]
+        if "answer" in requested:
+            outputs["answer"] = answer_question(
+                api_key,
+                query=str(payload.get("query") or ""),
+                evidence=list(payload.get("evidence") or []),
+            )
+            metrics["evidence_count"] = len(payload.get("evidence") or [])
         slides = list(payload.get("slides") or [])
         pages = process_slides(
             slides,
