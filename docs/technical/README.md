@@ -41,6 +41,17 @@
 
 ## Workflow
 
+### Canonical no-content process canary
+
+`process_canary` is accepted only through the existing `process.yml` workflow.
+It has an exact empty payload and secrets object, no requested outputs, and a
+fixed pipeline identifier. The runner requires the `process-v1` workflow
+profile and generates a fixed numeric fixture internally. Neither fixture nor
+request/result content is printed. The encrypted signed result is a closed
+digest/count/commit proof; schema extras and wrong workflow profiles fail
+closed. This path does not accept accounts, cookies, URLs, media, arbitrary
+text, or user files.
+
 | Workflow | 用途 | 主要边界 |
 | --- | --- | --- |
 | `ci.yml` | 单元测试、编译和公共边界检查 | 不读取生产 Secrets |

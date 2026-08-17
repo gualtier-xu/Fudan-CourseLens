@@ -18,6 +18,7 @@ class WorkflowTests(unittest.TestCase):
         install = workflow.index("sudo apt-get install --no-install-recommends --yes curl ffmpeg")
         process = workflow.index("name: Process encrypted job")
         self.assertLess(install, process)
+        self.assertIn("COURSELENS_WORKFLOW_PROFILE: process-v1", workflow)
 
     def test_all_actions_are_pinned_to_full_commit_sha(self):
         for path in sorted((ROOT / ".github" / "workflows").glob("*.yml")):
