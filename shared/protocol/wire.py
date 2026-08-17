@@ -26,6 +26,11 @@ JOB_SCHEMA = "job.v2"
 RESULT_SCHEMA = "result.v2"
 CONTROL_SCHEMA = "control.v2"
 ENVELOPE_SCHEMA = "sealed.v2"
+PROCESS_CANARY_SCHEMA = "process-canary.v1"
+PROCESS_CANARY_PIPELINE = "actions-process-canary-v1"
+PROCESS_CANARY_FIXTURE_SHA256 = "7793fbb749d3486d26acefe6ac726359b4e2f14078f1e44020638c6140323acb"
+PROCESS_CANARY_FIXTURE_BYTES = 68
+PROCESS_CANARY_FIXTURE_RECORDS = 3
 MAX_CLOCK_SKEW_SECONDS = 120
 MAX_JOB_LIFETIME_SECONDS = 30 * 60
 _TASK_ID_RE = re.compile(r"^[0-9a-f]{32}$")
@@ -90,7 +95,9 @@ def validate_job(job: dict[str, Any], *, now: float | None = None) -> dict[str, 
     validate_task_id(str(job.get("task_id") or ""))
     if str(job.get("protocol_version") or "") != PROTOCOL_VERSION:
         raise ProtocolError("unsupported protocol version")
-    if job.get("job_kind") not in {"echo", "subtitle", "summary", "chapters", "learning_pack"}:
+    if job.get("job_kind") not in {
+        "echo", "process_canary", "subtitle", "summary", "chapters", "learning_pack",
+    }:
         raise ProtocolError("unsupported job kind")
     created_at = float(job.get("created_at") or 0)
     expires_at = float(job.get("expires_at") or 0)
@@ -109,6 +116,22 @@ def validate_job(job: dict[str, Any], *, now: float | None = None) -> dict[str, 
     payload = job.get("payload") or {}
     if not isinstance(payload, dict):
         raise ProtocolError("job payload must be an object")
+    if job.get("job_kind") == "process_canary":
+        expected_keys = {
+            "schema", "protocol_version", "task_id", "job_kind", "created_at",
+            "expires_at", "result_public_key", "pipeline", "payload", "secrets",
+            "requested_outputs", "input_hash",
+        }
+        if set(job) != expected_keys:
+            raise ProtocolError("process canary job fields are not canonical")
+        if job.get("payload") != {}:
+            raise ProtocolError("process canary payload fields are not canonical")
+        if job.get("pipeline") != {"version": PROCESS_CANARY_PIPELINE}:
+            raise ProtocolError("process canary pipeline is invalid")
+        if job.get("secrets") != {}:
+            raise ProtocolError("process canary secrets must be empty")
+        if job.get("requested_outputs") != []:
+            raise ProtocolError("process canary requested outputs must be empty")
     requested_outputs = job.get("requested_outputs") or []
     if not isinstance(requested_outputs, list) or any(not isinstance(item, str) for item in requested_outputs):
         raise ProtocolError("requested_outputs must be a string list")
@@ -213,6 +236,8 @@ def seal_result(
     if not isinstance(result, dict) or result.get("schema") != RESULT_SCHEMA:
         raise ProtocolError(f"result schema must be {RESULT_SCHEMA}")
     validate_task_id(str(result.get("task_id") or ""))
+    if result.get("job_kind") == "process_canary":
+        validate_process_canary_result(result)
     envelope = _seal_payload(result, result_public_key)
     ciphertext = _b64d(envelope["ciphertext"], field="ciphertext")
     signing_bytes = _b64d(worker_signing_private_key, field="worker_signing_private_key")
@@ -271,9 +296,61 @@ def open_result(
         raise ProtocolError("result task_id mismatch")
     if str(value.get("input_hash") or "") != str(expected_input_hash):
         raise ProtocolError("result input_hash mismatch")
-    if value.get("job_kind") not in {"echo", "subtitle", "summary", "chapters", "learning_pack"}:
+    if value.get("job_kind") not in {
+        "echo", "process_canary", "subtitle", "summary", "chapters", "learning_pack",
+    }:
         raise ProtocolError("result job kind is invalid")
+    if value.get("job_kind") == "process_canary":
+        validate_process_canary_result(value)
     return value
+
+
+def validate_process_canary_result(result: dict[str, Any]) -> dict[str, Any]:
+    """Accept only the closed synthetic process-canary result vocabulary."""
+    expected_keys = {
+        "schema", "protocol_version", "task_id", "job_kind", "input_hash",
+        "pipeline_fingerprint", "status", "outputs", "metrics", "warnings",
+    }
+    if not isinstance(result, dict) or set(result) != expected_keys:
+        raise ProtocolError("process canary result fields are not canonical")
+    if result.get("schema") != RESULT_SCHEMA or result.get("protocol_version") != PROTOCOL_VERSION:
+        raise ProtocolError("process canary result protocol is invalid")
+    if result.get("job_kind") != "process_canary":
+        raise ProtocolError("process canary result kind is invalid")
+    validate_task_id(str(result.get("task_id") or ""))
+    if not re.fullmatch(r"^[0-9a-f]{64}$", str(result.get("input_hash") or "")):
+        raise ProtocolError("process canary input hash is invalid")
+    if result.get("pipeline_fingerprint") != PROCESS_CANARY_PIPELINE:
+        raise ProtocolError("process canary pipeline fingerprint is invalid")
+    if result.get("status") != "completed" or result.get("warnings") != []:
+        raise ProtocolError("process canary completion state is invalid")
+    outputs = result.get("outputs")
+    if not isinstance(outputs, dict) or set(outputs) != {"process_canary"}:
+        raise ProtocolError("process canary outputs are not canonical")
+    canary = outputs.get("process_canary")
+    if not isinstance(canary, dict) or set(canary) != {
+        "schema", "fixture_sha256", "fixture_bytes", "fixture_records", "worker_commit",
+        "workflow_profile",
+    }:
+        raise ProtocolError("process canary output fields are not canonical")
+    if canary.get("schema") != PROCESS_CANARY_SCHEMA:
+        raise ProtocolError("process canary output schema is invalid")
+    if canary.get("fixture_sha256") != PROCESS_CANARY_FIXTURE_SHA256:
+        raise ProtocolError("process canary fixture digest is invalid")
+    if canary.get("fixture_bytes") != PROCESS_CANARY_FIXTURE_BYTES:
+        raise ProtocolError("process canary fixture size is invalid")
+    if canary.get("fixture_records") != PROCESS_CANARY_FIXTURE_RECORDS:
+        raise ProtocolError("process canary fixture record count is invalid")
+    if not re.fullmatch(r"^[0-9a-f]{40}$", str(canary.get("worker_commit") or "")):
+        raise ProtocolError("process canary worker commit is invalid")
+    if canary.get("workflow_profile") != "process-v1":
+        raise ProtocolError("process canary workflow profile is invalid")
+    if result.get("metrics") != {
+        "synthetic_bytes": PROCESS_CANARY_FIXTURE_BYTES,
+        "synthetic_records": PROCESS_CANARY_FIXTURE_RECORDS,
+    }:
+        raise ProtocolError("process canary metrics are not canonical")
+    return result
 
 
 def open_control(

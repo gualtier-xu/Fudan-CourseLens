@@ -50,8 +50,8 @@
       {
         "mode": "100644",
         "path": ".github/workflows/process.yml",
-        "sha256": "39eb0fbb699917a9757173960aa2f486aed3bd0efe0cd1a4c57b95abd7470610",
-        "size": 3272
+        "sha256": "a6e089dcbd317dde44fe45e4ec40a8c0f171a50a137b3a8c8cb4cfc0485704af",
+        "size": 3318
       },
       {
         "mode": "100644",
@@ -146,8 +146,8 @@
       {
         "mode": "100644",
         "path": "courselens_worker/runner.py",
-        "sha256": "0da59ac0a2f417786ad18d8e2621f338a5ff4435b7cad7f200b274528531e66d",
-        "size": 19968
+        "sha256": "8ced3ec0d7e7e77395d5e10ba2b7270c1258707bab8250cdd91a88d8dcbf54aa",
+        "size": 21577
       },
       {
         "mode": "100644",
@@ -158,8 +158,8 @@
       {
         "mode": "100644",
         "path": "docs/technical/README.md",
-        "sha256": "97fb9262d9b330c093ccfb4c56e9c82e9d21808311b46e19649810ffcaaba549",
-        "size": 6991
+        "sha256": "328132d9551e8508530077b7970d47ad911b2b876f214892c88542c6cac195fa",
+        "size": 7587
       },
       {
         "mode": "100644",
@@ -236,8 +236,8 @@
       {
         "mode": "100644",
         "path": "shared/protocol/wire.py",
-        "sha256": "90deedef6f80216ae0f43189174146c8597da12d1e787f2e0e050da4e0cd1357",
-        "size": 14392
+        "sha256": "d743a164f0e960360fea8ff54f22c970e58bd3712a1f72020f391e6c030a3506",
+        "size": 18677
       },
       {
         "mode": "100644",
@@ -266,8 +266,8 @@
       {
         "mode": "100644",
         "path": "tests/test_platform_session.py",
-        "sha256": "d72df8f5777ce97f2abb469ef180b29cf91b0ff6c784a303e92afe85a0874908",
-        "size": 26316
+        "sha256": "8413033727d54c7aafc5271498f3bd95faf66d72b604171da8ddc1446116a9ff",
+        "size": 26315
       },
       {
         "mode": "100644",
@@ -278,8 +278,8 @@
       {
         "mode": "100644",
         "path": "tests/test_runner_echo.py",
-        "sha256": "9c1cdfc3b0133191aa1332c9f4b252d435e04bd652f60cd90bdd9e7c1fa2044e",
-        "size": 1810
+        "sha256": "eeea6855a1d07480f26c0a624351111dda7420bc9c4d026dbbe38bfe26f91099",
+        "size": 3803
       },
       {
         "mode": "100644",
@@ -296,12 +296,12 @@
       {
         "mode": "100644",
         "path": "tests/test_workflows.py",
-        "sha256": "db5c8819958f7e14a5e6f6c818b1fcae0794dae365e9460ac9e400931d6a2c24",
-        "size": 2967
+        "sha256": "af00ff9b7009c5f32436de98deb8f2fffc853e2ba4715401c15e76eadbdba9c5",
+        "size": 3042
       }
     ],
-    "git_tree": "6722365f9a56989bc97c2891152c3d1d9b0cfdd5",
-    "tree_sha256": "1de7ea6af7074ffd72896dae3d99da3c53252a93b43f304b03e68211ecd8b61a"
+    "git_tree": "8815a6ba2f4e3953c9f7cf51fe5f4667fa24c025",
+    "tree_sha256": "23e8f63154ffc1c9f967db750a627ea8fcc479538d1b5a1fac047035acf5e076"
   },
   "protocol": {
     "supported_versions": [
@@ -310,8 +310,8 @@
   },
   "schema": "courselens.worker-mirror.manifest.v1",
   "source": {
-    "commit": "9dd33c67a9ac451ea8cc780d5670bf4b5914dfca",
+    "commit": "520e4f662ecc42f6cd000d7b95b67bdc9b02c44b",
     "repository": "Fudan-CourseLens-Private",
-    "worker_tree": "a9c0b9aa03de6b5aa6b5595f87b6083f38a22bf8"
+    "worker_tree": "cc0cd8ae1110aa39c4f2504b9c2f273cab5eaf2b"
   }
 }
