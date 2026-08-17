@@ -563,7 +563,6 @@ class PlatformSessionTests(unittest.TestCase):
         self.assertEqual(FlakyConnector.attempts, 3)
         self.assertEqual(FlakyConnector.transport_values, ["curl", "requests", "requests"])
         self.assertEqual(sleep.call_count, 2)
-
     def test_connection_failure_retains_only_a_closed_set_stage(self):
         connector = PlatformSession()
         connector.session.request = Mock(

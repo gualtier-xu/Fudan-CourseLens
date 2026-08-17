@@ -28,6 +28,7 @@ jobs:
     env:
       COURSELENS_TASK_ID: ${{ inputs.task_id }}
       COURSELENS_PROTOCOL_VERSION: ${{ inputs.protocol_version }}
+      COURSELENS_WORKFLOW_PROFILE: process-v1
       PRIVATE_JOB_REPO: ${{ vars.COURSELENS_MAILBOX_REPO }}
       PRIVATE_JOB_REPO_TOKEN: ${{ secrets.COURSELENS_JOB_TOKEN || secrets.PRIVATE_JOB_REPO_TOKEN }}
       WORKER_INPUT_PRIVATE_KEY: ${{ secrets.WORKER_INPUT_PRIVATE_KEY }}

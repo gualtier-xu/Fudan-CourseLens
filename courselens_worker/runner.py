@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
@@ -15,6 +16,11 @@ from .protocol import (
     CONTROL_SCHEMA,
     PROTOCOL_VERSION,
     RESULT_SCHEMA,
+    PROCESS_CANARY_FIXTURE_BYTES,
+    PROCESS_CANARY_FIXTURE_RECORDS,
+    PROCESS_CANARY_FIXTURE_SHA256,
+    PROCESS_CANARY_PIPELINE,
+    PROCESS_CANARY_SCHEMA,
     open_job,
     seal_control,
     seal_result,
@@ -188,6 +194,36 @@ def _process_materialized_job(
     if kind == "echo":
         outputs = {"echo": {"ok": True, "protocol_version": PROTOCOL_VERSION}}
         metrics = {"elapsed_seconds": round(time.monotonic() - started, 3)}
+    elif kind == "process_canary":
+        # This fixture is deliberately runner-owned and constant.  Neither the
+        # encrypted request nor any user/account/course value can influence it.
+        workflow_profile = _required("COURSELENS_WORKFLOW_PROFILE")
+        if workflow_profile != "process-v1":
+            raise WorkerError("process canary workflow profile is invalid")
+        fixture = (
+            b'{"records":[[0,1,0,-1],[1,0,-1,0],[0,-1,0,1]],'
+            b'"schema":"fixture.v1"}'
+        )
+        fixture_sha256 = hashlib.sha256(fixture).hexdigest()
+        if (
+            len(fixture) != PROCESS_CANARY_FIXTURE_BYTES
+            or fixture_sha256 != PROCESS_CANARY_FIXTURE_SHA256
+        ):
+            raise WorkerError("process canary fixture integrity failed")
+        outputs = {
+            "process_canary": {
+                "schema": PROCESS_CANARY_SCHEMA,
+                "fixture_sha256": fixture_sha256,
+                "fixture_bytes": len(fixture),
+                "fixture_records": PROCESS_CANARY_FIXTURE_RECORDS,
+                "worker_commit": _required("GITHUB_SHA").lower(),
+                "workflow_profile": workflow_profile,
+            }
+        }
+        metrics = {
+            "synthetic_bytes": len(fixture),
+            "synthetic_records": PROCESS_CANARY_FIXTURE_RECORDS,
+        }
     elif kind == "subtitle":
         from .asr import transcribe
         from .formats import to_srt, to_vtt
@@ -334,7 +370,10 @@ def _process_materialized_job(
         "task_id": job["task_id"],
         "job_kind": kind,
         "input_hash": job["input_hash"],
-        "pipeline_fingerprint": str(dict(job.get("pipeline") or {}).get("version") or "v2"),
+        "pipeline_fingerprint": (
+            PROCESS_CANARY_PIPELINE if kind == "process_canary"
+            else str(dict(job.get("pipeline") or {}).get("version") or "v2")
+        ),
         "status": "completed",
         "outputs": outputs,
         "metrics": metrics,
