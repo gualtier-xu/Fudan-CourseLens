@@ -37,7 +37,7 @@ class _FakeConnector:
     def login(self, account, password):
         type(self).login_values = (account, password)
 
-    def media_source(self, course_id, sub_id):
+    def media_source(self, course_id, sub_id, *, relogin=None):
         return {"url": "https://example.org/stream.mp4", "headers": {"Cookie": "sealed"}}
 
     def slide_sources(self, course_id, sub_id):
@@ -283,7 +283,7 @@ class PlatformSessionTests(unittest.TestCase):
             def close(self):
                 closed.append(True)
 
-            def media_source(self, course_id, sub_id):
+            def media_source(self, course_id, sub_id, *, relogin=None):
                 return {
                     "url": "https://example.org/stream.mp4",
                     "_refresh_source": lambda: {
@@ -533,6 +533,88 @@ class PlatformSessionTests(unittest.TestCase):
             with self.assertRaises(PlatformSessionError):
                 materialize_job_sources(rejected)
         self.assertEqual(RejectedConnector.attempts, 1)
+
+    def test_media_refresh_relogins_after_session_error_and_retries(self):
+        from courselens_worker.platform_session import _bounded_session_refresh
+
+        refreshes = {"count": 0}
+        relogins = {"count": 0}
+
+        def refresh():
+            refreshes["count"] += 1
+            if refreshes["count"] == 1:
+                raise PlatformSessionError("platform_course_request_failed")
+            return {"url": "https://example.org/fresh.mp4"}
+
+        with patch("courselens_worker.platform_session.time.sleep") as sleep:
+            source = _bounded_session_refresh(refresh, lambda: relogins.__setitem__("count", relogins["count"] + 1))
+        self.assertEqual(source["url"], "https://example.org/fresh.mp4")
+        self.assertEqual(refreshes["count"], 2)
+        self.assertEqual(relogins["count"], 1)
+        sleep.assert_called_once_with(2.0)
+
+    def test_media_refresh_exhausts_and_raises_after_bounded_relogins(self):
+        from courselens_worker.platform_session import _bounded_session_refresh
+
+        calls = {"refresh": 0, "relogin": 0}
+
+        def refresh():
+            calls["refresh"] += 1
+            raise PlatformSessionError("platform_connection_failed")
+
+        with patch("courselens_worker.platform_session.time.sleep"), \
+             self.assertRaises(PlatformSessionError):
+            _bounded_session_refresh(refresh, lambda: calls.__setitem__("relogin", calls["relogin"] + 1))
+        self.assertEqual(calls["refresh"], 3)
+        self.assertEqual(calls["relogin"], 2)
+
+    def test_media_refresh_without_relogin_tries_once(self):
+        from courselens_worker.platform_session import _bounded_session_refresh
+
+        calls = {"refresh": 0}
+
+        def refresh():
+            calls["refresh"] += 1
+            raise PlatformSessionError("platform_course_request_failed")
+
+        with self.assertRaises(PlatformSessionError):
+            _bounded_session_refresh(refresh)
+        self.assertEqual(calls["refresh"], 1)
+
+    def test_media_refresh_non_session_error_is_neither_retried_nor_relogged(self):
+        from courselens_worker.platform_session import _bounded_session_refresh
+
+        calls = {"refresh": 0, "relogin": 0}
+
+        def refresh():
+            calls["refresh"] += 1
+            raise PlatformSessionError("platform_media_missing")
+
+        with self.assertRaises(PlatformSessionError):
+            _bounded_session_refresh(refresh, lambda: calls.__setitem__("relogin", calls["relogin"] + 1))
+        self.assertEqual(calls, {"refresh": 1, "relogin": 0})
+
+    def test_materialize_media_source_receives_relogin_callback(self):
+        captured = {}
+
+        class CapturingConnector(_FakeConnector):
+            def media_source(self, course_id, sub_id, *, relogin=None):
+                captured["relogin_callable"] = callable(relogin)
+                return {"url": "https://example.org/stream.mp4", "headers": {"Cookie": "sealed"}}
+
+        job = {
+            "payload": {
+                "media": {},
+                "source_session": {
+                    "provider": "runner-session-v1", "course_id": "1", "sub_id": "2",
+                    "media": True, "slides": False,
+                },
+            },
+            "secrets": {"source_credentials": {"account": "a", "password": "p"}},
+        }
+        with patch("courselens_worker.platform_session.PlatformSession", CapturingConnector):
+            materialize_job_sources(job)
+        self.assertTrue(captured["relogin_callable"])
 
     def test_persistent_connection_failure_backs_off_through_all_five_attempts(self):
         class DownConnector(_FakeConnector):
