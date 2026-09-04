@@ -191,6 +191,7 @@ def _process_materialized_job(
     progress = progress_callback or _progress
     kind = str(job["job_kind"])
     started = time.monotonic()
+    warnings: list[str] = []
     if kind == "echo":
         outputs = {"echo": {"ok": True, "protocol_version": PROTOCOL_VERSION}}
         metrics = {"elapsed_seconds": round(time.monotonic() - started, 3)}
@@ -264,18 +265,19 @@ def _process_materialized_job(
         transcript = list(payload.get("transcript") or [])
         slides = list(payload.get("slides") or [])
         prior = dict(payload.get("checkpoint") or {})
-        pages = process_slides(
+        pages, slides_skipped = process_slides(
             slides,
             progress=progress,
             prior_checkpoint=prior,
             checkpoint=checkpoint_writer,
-        ) if slides else list(prior.get("ppt_pages") or [])
+        ) if slides else (list(prior.get("ppt_pages") or []), dict(prior.get("ppt_skipped") or {}))
 
         def summary_checkpoint(value: dict[str, Any]) -> None:
             if checkpoint_writer is not None:
                 checkpoint_writer({
                     "ocr_completed_items": len(slides),
                     "ppt_pages": pages,
+                    "ppt_skipped": slides_skipped,
                     **value,
                 })
 
@@ -297,6 +299,9 @@ def _process_materialized_job(
             "transcript_segments": len(transcript),
             "ppt_pages": len(pages),
         }
+        if slides_skipped:
+            metrics["slides_skipped"] = slides_skipped
+            warnings.append("slides_skipped")
     elif kind == "learning_pack":
         from .asr import transcribe
         from .formats import to_srt, to_vtt
@@ -340,14 +345,19 @@ def _process_materialized_job(
             )
             metrics["evidence_count"] = len(payload.get("evidence") or [])
         slides = list(payload.get("slides") or [])
-        pages = process_slides(
+        pages, slides_skipped = process_slides(
             slides,
             progress=progress,
             prior_checkpoint=prior,
             checkpoint=checkpoint_writer,
-        ) if slides and requested.intersection({"ocr", "summary", "chapters"}) else list(prior.get("ppt_pages") or [])
+        ) if slides and requested.intersection({"ocr", "summary", "chapters"}) else (
+            list(prior.get("ppt_pages") or []), dict(prior.get("ppt_skipped") or {})
+        )
         if "ocr" in requested:
             outputs["ppt_pages"] = pages
+        if slides_skipped:
+            metrics["slides_skipped"] = slides_skipped
+            warnings.append("slides_skipped")
         if requested.intersection({"summary", "chapters"}):
             summary = create_summary(
                 api_key,
@@ -377,7 +387,7 @@ def _process_materialized_job(
         "status": "completed",
         "outputs": outputs,
         "metrics": metrics,
-        "warnings": [],
+        "warnings": warnings,
     }
 
 

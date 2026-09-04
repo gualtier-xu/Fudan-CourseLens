@@ -280,6 +280,12 @@ def open_result(
     expected_task_id: str,
     expected_input_hash: str,
 ) -> dict[str, Any]:
+    if not isinstance(envelope, dict) or envelope.get("encoding") != "zstd+sealedbox+base64":
+        raise ProtocolError("unsupported encrypted envelope encoding")
+    if validate_task_id(str(envelope.get("task_id") or "")) != validate_task_id(expected_task_id):
+        raise ProtocolError("result envelope task_id mismatch")
+    if str(envelope.get("protocol_version") or "") != PROTOCOL_VERSION:
+        raise ProtocolError("result envelope protocol is invalid")
     ciphertext = _b64d(str(envelope.get("ciphertext") or ""), field="ciphertext")
     verify_bytes = _b64d(worker_signing_public_key, field="worker_signing_public_key")
     if len(verify_bytes) != 32:
@@ -292,6 +298,8 @@ def open_result(
     value = _open_payload(envelope, result_private_key)
     if value.get("schema") != RESULT_SCHEMA:
         raise ProtocolError(f"result schema must be {RESULT_SCHEMA}")
+    if str(value.get("protocol_version") or "") != PROTOCOL_VERSION:
+        raise ProtocolError("result protocol is invalid")
     if validate_task_id(str(value.get("task_id") or "")) != validate_task_id(expected_task_id):
         raise ProtocolError("result task_id mismatch")
     if str(value.get("input_hash") or "") != str(expected_input_hash):
