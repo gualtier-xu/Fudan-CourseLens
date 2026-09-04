@@ -10,10 +10,10 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable
 
 import numpy as np
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from rapidocr_onnxruntime import RapidOCR
 
-from .source import fetch_bytes
+from .source import fetch_bytes, safe_source_error_code
 
 _OCR_LOCAL = threading.local()
 
@@ -36,13 +36,35 @@ def _engine() -> RapidOCR:
     return value
 
 
-def _ocr_page(index: int, item: dict[str, Any], raw: bytes) -> dict[str, Any] | None:
+def _fetch_page(source: dict[str, Any]) -> tuple[bytes, str]:
+    """Fetch one slide; a failure is a closed-set skip reason, never fatal."""
+    try:
+        return fetch_bytes(dict(source or {})), ""
+    except Exception as exc:  # the URL, headers, and body must stay private
+        return b"", safe_source_error_code(exc) or "fetch_failed"
+
+
+def _ocr_page(index: int, item: dict[str, Any], raw: bytes) -> tuple[dict[str, Any] | None, str]:
+    """Recognize one slide; a bad page degrades to a closed-set skip reason.
+
+    A platform slide URL can serve a non-image body (for example an
+    authorization page) or a format this Pillow build cannot identify.  One
+    such page must skip quietly instead of failing the whole summary job.
+    """
     if not raw:
-        return None
-    with Image.open(io.BytesIO(raw)) as opened:
-        image = opened.convert("RGB")
-    fingerprint = _dhash(image)
-    result, _elapsed = _engine()(np.asarray(image))
+        return None, "empty"
+    try:
+        with Image.open(io.BytesIO(raw)) as opened:
+            image = opened.convert("RGB")
+    except UnidentifiedImageError:
+        return None, "unidentified_image"
+    except Exception:
+        return None, "decode_failed"
+    try:
+        fingerprint = _dhash(image)
+        result, _elapsed = _engine()(np.asarray(image))
+    except Exception:
+        return None, "ocr_failed"
     lines = []
     for row in result or []:
         if len(row) >= 2 and str(row[1]).strip():
@@ -53,7 +75,7 @@ def _ocr_page(index: int, item: dict[str, Any], raw: bytes) -> dict[str, Any] | 
         "text": "\n".join(lines),
         "dhash": fingerprint,
         "source_sha256": hashlib.sha256(raw).hexdigest(),
-    }
+    }, ""
 
 
 def process_slides(
@@ -62,9 +84,11 @@ def process_slides(
     progress: Callable[[str, int, int], None],
     prior_checkpoint: dict[str, Any] | None = None,
     checkpoint: Callable[[dict[str, Any]], None] | None = None,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """Return (recognized pages, skip counts by closed-set reason)."""
     prior = dict(prior_checkpoint or {})
     output: list[dict[str, Any]] = list(prior.get("ppt_pages") or [])
+    skipped: dict[str, int] = dict(prior.get("ppt_skipped") or {})
     seen: set[str] = {
         str(item.get("dhash") or "") for item in output if item.get("dhash")
     }
@@ -77,18 +101,25 @@ def process_slides(
         indices = list(range(batch_start, batch_end))
         with ThreadPoolExecutor(max_workers=min(prefetch, len(indices)), thread_name_prefix="image-fetch") as fetch_pool:
             fetched = {
-                index: fetch_pool.submit(fetch_bytes, dict(slides[index].get("source") or {}))
+                index: fetch_pool.submit(_fetch_page, dict(slides[index].get("source") or {}))
                 for index in indices
             }
             raw_pages = {index: fetched[index].result() for index in indices}
         with ThreadPoolExecutor(max_workers=concurrency, thread_name_prefix="ocr") as ocr_pool:
             recognized = {
-                index: ocr_pool.submit(_ocr_page, index, slides[index], raw_pages[index])
+                index: ocr_pool.submit(_ocr_page, index, slides[index], raw_pages[index][0])
                 for index in indices
             }
             for index in indices:
-                page = recognized[index].result()
-                if page and str(page.get("dhash") or "") not in seen:
+                fetch_reason = raw_pages[index][1]
+                page, ocr_reason = recognized[index].result()
+                reason = fetch_reason or ocr_reason
+                if page is None:
+                    if reason:
+                        skipped[reason] = int(skipped.get(reason) or 0) + 1
+                elif str(page.get("dhash") or "") in seen:
+                    skipped["duplicate"] = int(skipped.get("duplicate") or 0) + 1
+                else:
                     seen.add(str(page["dhash"]))
                     output.append(page)
                 progress("ocr", index + 1, total)
@@ -100,6 +131,7 @@ def process_slides(
                         "total_chunks": total,
                         "ocr_completed_items": index + 1,
                         "ppt_pages": output,
+                        "ppt_skipped": skipped,
                     })
         raw_pages.clear()
-    return output
+    return output, {name: count for name, count in skipped.items() if count > 0}

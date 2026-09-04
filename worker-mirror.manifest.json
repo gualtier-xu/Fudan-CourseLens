@@ -1,6 +1,6 @@
 {
   "exporter": {
-    "allowlist_sha256": "2342d81ac9bc08a9659a68544fe0b258b26b4f848ad96ce6c5c8b40fbf9738cf",
+    "allowlist_sha256": "295e9152055b5839d0288667c4b3c88a1b1089458210a53234176e61228deea9",
     "version": "1.0.0"
   },
   "payload": {
@@ -128,8 +128,8 @@
       {
         "mode": "100644",
         "path": "courselens_worker/ocr.py",
-        "sha256": "ad14239eaed8a0dc24f4b87d12e2d2aca8556a3355c3eaa29100896557fa2f24",
-        "size": 3854
+        "sha256": "0e71773a2f127f58b6c48825625550c145005b144ab6acb3915aacdbc4ba7dd8",
+        "size": 5426
       },
       {
         "mode": "100644",
@@ -146,8 +146,8 @@
       {
         "mode": "100644",
         "path": "courselens_worker/runner.py",
-        "sha256": "8ced3ec0d7e7e77395d5e10ba2b7270c1258707bab8250cdd91a88d8dcbf54aa",
-        "size": 21577
+        "sha256": "d397dd2dc507141f03b5440061f291b79ede900bdd304c709de57c106f91e3f2",
+        "size": 22053
       },
       {
         "mode": "100644",
@@ -236,8 +236,8 @@
       {
         "mode": "100644",
         "path": "shared/protocol/wire.py",
-        "sha256": "d743a164f0e960360fea8ff54f22c970e58bd3712a1f72020f391e6c030a3506",
-        "size": 18677
+        "sha256": "8e03fbafe209b09b130b0e43821edfd19b4eb3d708b1e9e37a460b7201d0e556",
+        "size": 19271
       },
       {
         "mode": "100644",
@@ -262,6 +262,12 @@
         "path": "tests/test_llm_checkpoints.py",
         "sha256": "2b6961c05c813d0eff831523c2e05d3d684553041c1e5a8b9a38d60cd4b23d48",
         "size": 3328
+      },
+      {
+        "mode": "100644",
+        "path": "tests/test_ocr.py",
+        "sha256": "ee8dc26f9e84b23fde41d05bc835ebcab1716b28b20214ae75247c2a931b81ab",
+        "size": 6197
       },
       {
         "mode": "100644",
@@ -300,8 +306,8 @@
         "size": 3042
       }
     ],
-    "git_tree": "8815a6ba2f4e3953c9f7cf51fe5f4667fa24c025",
-    "tree_sha256": "23e8f63154ffc1c9f967db750a627ea8fcc479538d1b5a1fac047035acf5e076"
+    "git_tree": "813f715e7a7e9df53db19da65a7b468eb64f572f",
+    "tree_sha256": "0939c66f6256b9292e3cb30f184677b45e1494e388bde6cbc85e8da692f39ee5"
   },
   "protocol": {
     "supported_versions": [
@@ -310,8 +316,8 @@
   },
   "schema": "courselens.worker-mirror.manifest.v1",
   "source": {
-    "commit": "520e4f662ecc42f6cd000d7b95b67bdc9b02c44b",
+    "commit": "eb61a9d69a7e5ff2ce310b2984385aa5a06b1860",
     "repository": "Fudan-CourseLens-Private",
-    "worker_tree": "cc0cd8ae1110aa39c4f2504b9c2f273cab5eaf2b"
+    "worker_tree": "6d24eb151999d0e6d6375f820dbc2623c4f9a58f"
   }
 }
