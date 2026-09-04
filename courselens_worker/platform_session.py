@@ -18,7 +18,7 @@ import time
 import uuid
 from binascii import hexlify
 from datetime import date
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import quote, unquote, urljoin, urlparse
 
 import requests
@@ -368,7 +368,9 @@ class PlatformSession:
         except PlatformSessionError as exc:
             # The portal can set its cookie before a streamed ticket response
             # times out. Never replay the single-use ticket; verify instead.
-            if str(exc) != "platform_connection_failed" or not self._verify_webvpn():
+            # Cross-border runner routes drop connections intermittently, so
+            # re-verify a few times before declaring the session rejected.
+            if str(exc) != "platform_connection_failed" or not self._verify_webvpn_bounded():
                 raise
         else:
             try:
@@ -378,6 +380,21 @@ class PlatformSession:
                 response.close()
         if not self._verify_webvpn():
             raise _fail("platform_session_rejected", connection_stage="webvpn_verify")
+
+    @staticmethod
+    def _bounded_reverify(verify: Callable[[], bool], attempts: int = 3, delay: float = 2.0) -> bool:
+        for attempt in range(attempts):
+            if attempt:
+                time.sleep(delay)
+            try:
+                if verify():
+                    return True
+            except Exception:
+                pass
+        return False
+
+    def _verify_webvpn_bounded(self) -> bool:
+        return self._bounded_reverify(self._verify_webvpn)
 
     def _verify_webvpn(self) -> bool:
         response = None
@@ -605,7 +622,7 @@ class PlatformSession:
                 connection_stage="course_ticket_follow",
             )
         except PlatformSessionError as exc:
-            if str(exc) != "platform_connection_failed" or not self._verify_course():
+            if str(exc) != "platform_connection_failed" or not self._bounded_reverify(self._verify_course):
                 raise
         else:
             try:
@@ -1046,7 +1063,10 @@ def materialize_job_sources(job: dict[str, Any]) -> dict[str, Any]:
     retained_connector = False
     retain_for_media_refresh = False
     try:
-        for attempt in range(3):
+        # Cross-border runner routes to the platform drop connections in
+        # bursts; a login attempt takes seconds, so back off between tries
+        # instead of burning all attempts inside one outage window.
+        for attempt in range(5):
             connector = PlatformSession()
             try:
                 connector.login(account, password)
@@ -1054,9 +1074,9 @@ def materialize_job_sources(job: dict[str, Any]) -> dict[str, Any]:
             except PlatformSessionError as exc:
                 connector.close()
                 connector = None
-                if str(exc) not in _RETRYABLE_LOGIN_ERRORS or attempt == 2:
+                if str(exc) not in _RETRYABLE_LOGIN_ERRORS or attempt == 4:
                     raise
-                time.sleep(1.5 * (attempt + 1))
+                time.sleep(2.0 * (2 ** attempt))
         if connector is None:
             raise _fail("platform_connection_failed")
         course_id = str(request.get("course_id") or "")

@@ -534,6 +534,50 @@ class PlatformSessionTests(unittest.TestCase):
                 materialize_job_sources(rejected)
         self.assertEqual(RejectedConnector.attempts, 1)
 
+    def test_persistent_connection_failure_backs_off_through_all_five_attempts(self):
+        class DownConnector(_FakeConnector):
+            attempts = 0
+
+            def login(self, account, password):
+                type(self).attempts += 1
+                raise PlatformSessionError("platform_connection_failed")
+
+        job = {
+            "payload": {
+                "media": {},
+                "source_session": {
+                    "provider": "runner-session-v1", "course_id": "1", "sub_id": "2",
+                    "media": True, "slides": False,
+                },
+            },
+            "secrets": {"source_credentials": {"account": "a", "password": "p"}},
+        }
+        with patch("courselens_worker.platform_session.PlatformSession", DownConnector), patch(
+            "courselens_worker.platform_session.time.sleep"
+        ) as sleep:
+            with self.assertRaises(PlatformSessionError):
+                materialize_job_sources(job)
+        self.assertEqual(DownConnector.attempts, 5)
+        self.assertEqual(
+            [item.args[0] for item in sleep.call_args_list], [2.0, 4.0, 8.0, 16.0]
+        )
+
+    def test_bounded_reverify_recovers_after_transient_verify_failures(self):
+        checks = {"calls": 0}
+
+        def flaky_verify():
+            checks["calls"] += 1
+            return checks["calls"] >= 3
+
+        with patch("courselens_worker.platform_session.time.sleep") as sleep:
+            self.assertTrue(PlatformSession._bounded_reverify(flaky_verify))
+        self.assertEqual(checks["calls"], 3)
+        self.assertEqual(sleep.call_count, 2)
+
+    def test_bounded_reverify_reports_persistent_failure(self):
+        with patch("courselens_worker.platform_session.time.sleep"):
+            self.assertFalse(PlatformSession._bounded_reverify(lambda: False, attempts=2))
+
     def test_cloud_login_rebuilds_transient_rejected_sessions(self):
         class FlakyConnector(_FakeConnector):
             attempts = 0
