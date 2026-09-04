@@ -51,6 +51,31 @@ _RETRYABLE_LOGIN_ERRORS = frozenset({
     "platform_ticket_rejected",
     "platform_session_rejected",
 })
+_RETRYABLE_SESSION_ERRORS = frozenset({
+    "platform_connection_failed",
+    "platform_course_request_failed",
+    "platform_session_rejected",
+})
+
+
+def _bounded_session_refresh(refresh, relogin=None, *, attempts: int = 3):
+    """Retry one media-source refresh, re-authenticating between tries.
+
+    A long decode can outlive the WebVPN/iCourse session, so the runner's
+    periodic media re-authorization may fail with a closed-set session error.
+    When a relogin callback is supplied, back off, re-authenticate, and retry
+    the refresh; single-use URL and signed-timestamp rules are unaffected.
+    """
+    total = attempts if callable(relogin) else 1
+    for attempt in range(total):
+        try:
+            return refresh()
+        except PlatformSessionError as exc:
+            if str(exc) not in _RETRYABLE_SESSION_ERRORS or attempt == total - 1:
+                raise
+            time.sleep(2.0 * (attempt + 1))
+            relogin()
+    raise AssertionError("unreachable")
 
 
 _CONNECTION_STAGES = frozenset({
@@ -898,7 +923,7 @@ class PlatformSession:
             raise _fail("platform_media_missing")
         return base, int(info.get("now") or 0)
 
-    def media_source(self, course_id: str, sub_id: str) -> dict[str, Any]:
+    def media_source(self, course_id: str, sub_id: str, *, relogin=None) -> dict[str, Any]:
         # A signed CDN URL may authorize only one media request. The desktop
         # client already obtains a new URL per browser Range; expose the same
         # behavior to the runner's in-memory proxy without retaining account
@@ -966,7 +991,7 @@ class PlatformSession:
             return {**fallback_source(), "_refresh_source": fallback_source}
         output = {
             **source,
-            "_refresh_source": refresh_source,
+            "_refresh_source": lambda: _bounded_session_refresh(refresh_source, relogin),
         }
         if self._webvpn_ready:
             output["_fallback_source"] = fallback_source
@@ -1083,7 +1108,10 @@ def materialize_job_sources(job: dict[str, Any]) -> dict[str, Any]:
         sub_id = str(request.get("sub_id") or "")
         if request.get("media"):
             media = dict(payload.get("media") or {})
-            media.update(connector.media_source(course_id, sub_id))
+            media.update(connector.media_source(
+                course_id, sub_id,
+                relogin=(lambda a=account, p=password: connector.login(a, p)) if account else None,
+            ))
             payload["media"] = media
             retain_for_media_refresh = callable(media.get("_refresh_source"))
         if request.get("slides"):
