@@ -128,14 +128,14 @@
       {
         "mode": "100644",
         "path": "courselens_worker/ocr.py",
-        "sha256": "0e71773a2f127f58b6c48825625550c145005b144ab6acb3915aacdbc4ba7dd8",
-        "size": 5426
+        "sha256": "91ff79b76698dd46151734a02f2324a2d3fa689fa0c4593e44e4e67bca82c70a",
+        "size": 7114
       },
       {
         "mode": "100644",
         "path": "courselens_worker/platform_session.py",
-        "sha256": "88bedf64b79389712bac51a52f2c100b1d978bbf50a680b0f53f46d7e37c8919",
-        "size": 47684
+        "sha256": "f9376b6ca6b483dd8f80dda5993c410153b3198a65addcfb1369d97343f7c0f7",
+        "size": 48261
       },
       {
         "mode": "100644",
@@ -266,14 +266,14 @@
       {
         "mode": "100644",
         "path": "tests/test_ocr.py",
-        "sha256": "71e19815b02966d4fd67ab751cd3775ec492b8956b5fa4e0585a9fd7f385ec1e",
-        "size": 6864
+        "sha256": "4b2c627153ffb5fc0b5f418241074f4c12eeeae9e5e60dbc9328d403f49d7e52",
+        "size": 11195
       },
       {
         "mode": "100644",
         "path": "tests/test_platform_session.py",
-        "sha256": "2671eb2376b90fad60fae370c240f9b4a19c89c0fd0a61ff11090decfbea88c5",
-        "size": 31643
+        "sha256": "3117a3474094bf759c1e4b82e53c68cfbf76cc30b59a7089e1c5f716e78c1030",
+        "size": 33974
       },
       {
         "mode": "100644",
@@ -306,8 +306,8 @@
         "size": 3042
       }
     ],
-    "git_tree": "f46bdcedc17c51f1cecd0a870b219dd4a72107bc",
-    "tree_sha256": "b7c0deff991191dfb9df09eeedb751b16f508aae51f1ccbadbcaac63bc0183a0"
+    "git_tree": "c10089b240bc9ec14b26fdf023af5ae3ee97cb10",
+    "tree_sha256": "6d4716e75196109122a0a702e6a673942fbf32b00eaa77ff63e21a56e818b6ce"
   },
   "protocol": {
     "supported_versions": [
@@ -316,8 +316,8 @@
   },
   "schema": "courselens.worker-mirror.manifest.v1",
   "source": {
-    "commit": "01295a1f2aacfcfd27543cbcafa885661c8dce4f",
+    "commit": "03fa449911750ae07ff97146d62710a78eb3aa6e",
     "repository": "Fudan-CourseLens-Private",
-    "worker_tree": "69d9d1922e8351733290aec9dafe56289082beeb"
+    "worker_tree": "9840a5c8224e40f7992ea9c02d923562bb55b64c"
   }
 }

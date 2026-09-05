@@ -997,6 +997,32 @@ class PlatformSession:
             output["_fallback_source"] = fallback_source
         return output
 
+    def _slide_source(self, image: str) -> dict[str, Any]:
+        """One slide source plus the opposite transport for one bounded retry.
+
+        Direct and WebVPN-wrapped slide hosts fail on different networks (the
+        2026-09-05 real-sample diagnosis), so every candidate carries the
+        other route in ``_alternate_source``. Validation and the header rules
+        mirror the media source's fallback semantics exactly.
+        """
+        headers = self._source_headers()
+        direct_headers = {
+            name: value
+            for name, value in headers.items()
+            if name.casefold() not in {"cookie", "origin", "referer"}
+        }
+        if self._course_direct:
+            return {
+                "url": _validate_upstream_url(image),
+                "headers": direct_headers,
+                "_alternate_source": {"url": _vpn_url(image), "headers": headers},
+            }
+        return {
+            "url": _vpn_url(image),
+            "headers": headers,
+            "_alternate_source": {"url": _validate_upstream_url(image), "headers": direct_headers},
+        }
+
     def slide_sources(self, course_id: str, sub_id: str) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []
         page = 1
@@ -1016,22 +1042,10 @@ class PlatformSession:
                 image = str(content.get("pptimgurl") or "")
                 if not image:
                     continue
-                source = (
-                    {
-                        "url": _validate_upstream_url(image),
-                        "headers": {
-                            name: value
-                            for name, value in self._source_headers().items()
-                            if name.casefold() not in {"cookie", "origin", "referer"}
-                        },
-                    }
-                    if self._course_direct
-                    else {"url": _vpn_url(image), "headers": self._source_headers()}
-                )
                 items.append({
                     "page_num": len(items) + 1,
                     "created_sec": int(row.get("created_sec") or 0),
-                    "source": source,
+                    "source": self._slide_source(image),
                 })
             if len(rows) < 100:
                 break

@@ -390,6 +390,60 @@ class PlatformSessionTests(unittest.TestCase):
 
         self.assertEqual(sources[0]["source"]["url"], "https://media.example.edu/slide.jpg")
         self.assertNotIn("Cookie", sources[0]["source"]["headers"])
+        alternate = sources[0]["source"]["_alternate_source"]
+        self.assertEqual(urlsplit(alternate["url"]).hostname, "webvpn.fudan.edu.cn")
+        self.assertEqual(alternate["headers"]["Cookie"], "not-forwarded")
+
+    def test_webvpn_slide_sources_wrap_upstream_with_session_cookie(self):
+        connector = object.__new__(PlatformSession)
+        connector._course_direct = False
+        connector._webvpn_ready = True
+        connector._source_headers = lambda: {
+            "Cookie": "session-scoped", "User-Agent": "CourseLens", "Accept": "*/*"
+        }
+        connector._course_json = Mock(side_effect=[{
+            "list": [{
+                "created_sec": 3,
+                "content": '{"pptimgurl":"https://media.example.edu/slide.jpg"}',
+            }]
+        }])
+
+        sources = connector.slide_sources("1", "2")
+
+        parsed = urlsplit(sources[0]["source"]["url"])
+        self.assertEqual(parsed.hostname, "webvpn.fudan.edu.cn")
+        self.assertEqual(parsed.scheme, "https")
+        self.assertIn("/https/", sources[0]["source"]["url"])
+        self.assertEqual(sources[0]["source"]["headers"]["Cookie"], "session-scoped")
+        self.assertEqual(sources[0]["page_num"], 1)
+        alternate = sources[0]["source"]["_alternate_source"]
+        self.assertEqual(alternate["url"], "https://media.example.edu/slide.jpg")
+        self.assertNotIn("Cookie", alternate["headers"])
+
+    def test_slide_only_materialization_closes_the_connector_after_enumeration(self):
+        closed = []
+
+        class SlidesConnector(_FakeConnector):
+            def close(self):
+                closed.append(True)
+
+        job = {
+            "payload": {
+                "source_session": {
+                    "provider": "runner-session-v1", "course_id": "1",
+                    "sub_id": "2", "media": False, "slides": True,
+                },
+            },
+            "secrets": {
+                "source_credentials": {"account": "account", "password": "password"}
+            },
+        }
+        with patch("courselens_worker.platform_session.PlatformSession", SlidesConnector):
+            result = materialize_job_sources(job)
+
+        self.assertEqual(len(result["payload"]["slides"]), 1)
+        self.assertNotIn("_close_source_session", result["payload"])
+        self.assertEqual(closed, [True])
 
     def test_media_source_refreshes_the_signed_url_for_each_proxy_request(self):
         connector = self._media_connector()
