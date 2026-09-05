@@ -78,12 +78,107 @@ class SlideOcrToleranceTests(unittest.TestCase):
         pages, skipped = self._run([PNG, HTML])
         self.assertEqual(len(pages), 1)
         self.assertEqual(pages[0]["text"], "text")
-        self.assertEqual(skipped, {"unidentified_image": 1})
+        self.assertEqual(skipped, {"html_body": 1})
 
     def test_all_slides_unavailable_still_returns_without_raising(self):
         pages, skipped = self._run([HTML, HTML])
         self.assertEqual(pages, [])
-        self.assertEqual(skipped, {"unidentified_image": 2})
+        self.assertEqual(skipped, {"html_body": 2})
+
+    def test_empty_body_is_classified_as_empty(self):
+        pages, skipped = self._run([b"", PNG])
+        self.assertEqual(len(pages), 1)
+        self.assertEqual(skipped, {"empty": 1})
+
+    def test_bom_and_whitespace_prefixed_html_is_classified(self):
+        pages, skipped = self._run([b"\xef\xbb\xbf  \r\n" + HTML, b"  \t" + HTML])
+        self.assertEqual(pages, [])
+        self.assertEqual(skipped, {"html_body": 2})
+
+    def test_json_bodies_are_classified_without_guessing_upstream_errors(self):
+        pages, skipped = self._run([b'{"error": "synthetic"}', b'[{"status": "synthetic"}]'])
+        self.assertEqual(pages, [])
+        self.assertEqual(skipped, {"json_body": 2})
+
+    def test_unsupported_binary_stays_unidentified(self):
+        pages, skipped = self._run([b"\x00\xff\xfe\x10\x20" * 6])
+        self.assertEqual(pages, [])
+        self.assertEqual(skipped, {"unidentified_image": 1})
+
+    def test_text_bodies_never_reach_the_ocr_engine(self):
+        from courselens_worker.ocr import process_slides
+
+        with patch("courselens_worker.ocr.fetch_bytes", side_effect=lambda source: HTML), \
+             patch(
+                 "courselens_worker.ocr._engine",
+                 side_effect=AssertionError("engine must not run on text bodies"),
+             ):
+            pages, skipped = process_slides(
+                _slides(1), progress=lambda *_args: None
+            )
+        self.assertEqual(pages, [])
+        self.assertEqual(skipped, {"html_body": 1})
+
+    def _run_sources(self, slides: list[dict], fetch_handler):
+        from courselens_worker.ocr import process_slides
+
+        with patch("courselens_worker.ocr.fetch_bytes", side_effect=fetch_handler), \
+             patch("courselens_worker.ocr._dhash", return_value="ab01ef01ab01ef01"), \
+             patch("courselens_worker.ocr._engine", return_value=lambda image: ([["box", "text"]], 0.1)):
+            pages, skipped = process_slides(slides, progress=lambda *_args: None)
+        return pages, skipped
+
+    def test_alternate_route_rescues_a_connection_failure(self):
+        def handler(source):
+            if "webvpn" in str(source.get("url")):
+                return PNG
+            raise SourceSecurityError("source request failed: OSError")
+
+        slides = [{"page_num": 1, "created_sec": 0, "source": {
+            "url": "https://media.example.edu/slide.jpg", "headers": {},
+            "_alternate_source": {"url": "https://webvpn.fudan.edu.cn/https/slide.jpg", "headers": {}},
+        }}]
+        pages, skipped = self._run_sources(slides, handler)
+        self.assertEqual(len(pages), 1)
+        self.assertEqual(skipped, {})
+
+    def test_alternate_route_rescues_an_html_body(self):
+        def handler(source):
+            if "webvpn" in str(source.get("url")):
+                return PNG
+            return HTML
+
+        slides = [{"page_num": 1, "created_sec": 0, "source": {
+            "url": "https://media.example.edu/slide.jpg", "headers": {},
+            "_alternate_source": {"url": "https://webvpn.fudan.edu.cn/https/slide.jpg", "headers": {}},
+        }}]
+        pages, skipped = self._run_sources(slides, handler)
+        self.assertEqual(len(pages), 1)
+        self.assertEqual(skipped, {})
+
+    def test_double_failure_keeps_the_primary_closed_set_reason(self):
+        def handler(source):
+            raise SourceSecurityError("source image returned HTTP 403")
+
+        slides = [{"page_num": 1, "created_sec": 0, "source": {
+            "url": "https://media.example.edu/slide.jpg", "headers": {},
+            "_alternate_source": {"url": "https://webvpn.fudan.edu.cn/https/slide.jpg", "headers": {}},
+        }}]
+        pages, skipped = self._run_sources(slides, handler)
+        self.assertEqual(pages, [])
+        self.assertEqual(skipped, {"image_http_error": 1})
+
+    def test_alternate_text_body_still_skips_as_text(self):
+        def handler(source):
+            return HTML
+
+        slides = [{"page_num": 1, "created_sec": 0, "source": {
+            "url": "https://media.example.edu/slide.jpg", "headers": {},
+            "_alternate_source": {"url": "https://webvpn.fudan.edu.cn/https/slide.jpg", "headers": {}},
+        }}]
+        pages, skipped = self._run_sources(slides, handler)
+        self.assertEqual(pages, [])
+        self.assertEqual(skipped, {"html_body": 1})
 
     def test_fetch_failure_maps_to_closed_set_reason(self):
         pages, skipped = self._run([
@@ -101,11 +196,11 @@ class SlideOcrToleranceTests(unittest.TestCase):
         prior = {
             "ocr_completed_items": 1,
             "ppt_pages": [],
-            "ppt_skipped": {"unidentified_image": 1},
+            "ppt_skipped": {"unidentified_image": 1, "html_body": 1},
         }
         pages, skipped = self._run([HTML, HTML], prior=prior)
         self.assertEqual(pages, [])
-        self.assertEqual(skipped, {"unidentified_image": 2})
+        self.assertEqual(skipped, {"unidentified_image": 1, "html_body": 2})
 
     def test_checkpoint_payload_carries_skip_counts(self):
         from courselens_worker.ocr import process_slides
@@ -121,7 +216,7 @@ class SlideOcrToleranceTests(unittest.TestCase):
                 checkpoint=checkpoints.append,
             )
         self.assertTrue(checkpoints)
-        self.assertEqual(checkpoints[-1]["ppt_skipped"], {"unidentified_image": 1})
+        self.assertEqual(checkpoints[-1]["ppt_skipped"], {"html_body": 1})
 
 
 class RunnerSlideWarningTests(unittest.TestCase):

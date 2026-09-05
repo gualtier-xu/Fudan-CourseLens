@@ -37,11 +37,50 @@ def _engine() -> RapidOCR:
 
 
 def _fetch_page(source: dict[str, Any]) -> tuple[bytes, str]:
-    """Fetch one slide; a failure is a closed-set skip reason, never fatal."""
+    """Fetch one slide; a failure is a closed-set skip reason, never fatal.
+
+    Slide hosts intermittently reject the session's primary transport while
+    serving the other one, so a source may carry an ``_alternate_source``
+    used for one bounded retry — for connection failures and for text
+    bodies (an authorization page is a transport failure in disguise).
+    When both attempts fail, the primary closed-set reason is kept.
+    """
+    primary = dict(source or {})
+    alternate = primary.pop("_alternate_source", None)
+    has_alternate = isinstance(alternate, dict) and bool(alternate)
     try:
-        return fetch_bytes(dict(source or {})), ""
+        raw = fetch_bytes(primary)
     except Exception as exc:  # the URL, headers, and body must stay private
-        return b"", safe_source_error_code(exc) or "fetch_failed"
+        if not has_alternate:
+            return b"", safe_source_error_code(exc) or "fetch_failed"
+        try:
+            return fetch_bytes(dict(alternate)), ""
+        except Exception:
+            return b"", safe_source_error_code(exc) or "fetch_failed"
+    if has_alternate and _text_body_kind(raw):
+        try:
+            alternate_raw = fetch_bytes(dict(alternate))
+        except Exception:
+            return raw, ""
+        if not _text_body_kind(alternate_raw):
+            return alternate_raw, ""
+    return raw, ""
+
+
+def _text_body_kind(raw: bytes) -> str:
+    """Classify a short in-memory prefix as a non-image text body.
+
+    The check is deliberately conservative: only an explicit HTML doctype or
+    ``<html`` tag, or a leading JSON object/array marker, is classified; any
+    other body stays ``None`` so Pillow decides, and no upstream error kind is
+    ever guessed from the content.
+    """
+    prefix = raw[:512].lstrip(b"\xef\xbb\xbf \t\r\n").lower()
+    if prefix.startswith(b"<!doctype html") or prefix.startswith(b"<html"):
+        return "html_body"
+    if prefix[:1] in (b"{", b"["):
+        return "json_body"
+    return ""
 
 
 def _ocr_page(index: int, item: dict[str, Any], raw: bytes) -> tuple[dict[str, Any] | None, str]:
@@ -53,6 +92,9 @@ def _ocr_page(index: int, item: dict[str, Any], raw: bytes) -> tuple[dict[str, A
     """
     if not raw:
         return None, "empty"
+    text_kind = _text_body_kind(raw)
+    if text_kind:
+        return None, text_kind
     try:
         with Image.open(io.BytesIO(raw)) as opened:
             image = opened.convert("RGB")
