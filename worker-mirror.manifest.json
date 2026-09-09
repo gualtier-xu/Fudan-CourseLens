@@ -50,8 +50,8 @@
       {
         "mode": "100644",
         "path": ".github/workflows/process.yml",
-        "sha256": "a6e089dcbd317dde44fe45e4ec40a8c0f171a50a137b3a8c8cb4cfc0485704af",
-        "size": 3318
+        "sha256": "96281a88c6e5e76230427bac0e0fb169ab13df9ffa54986a01cc1563790c5231",
+        "size": 3424
       },
       {
         "mode": "100644",
@@ -302,12 +302,12 @@
       {
         "mode": "100644",
         "path": "tests/test_workflows.py",
-        "sha256": "af00ff9b7009c5f32436de98deb8f2fffc853e2ba4715401c15e76eadbdba9c5",
-        "size": 3042
+        "sha256": "2272f4a4466365fd4a81270d356a13a320c3097486974e1da06683fe907f17b8",
+        "size": 3258
       }
     ],
-    "git_tree": "c10089b240bc9ec14b26fdf023af5ae3ee97cb10",
-    "tree_sha256": "6d4716e75196109122a0a702e6a673942fbf32b00eaa77ff63e21a56e818b6ce"
+    "git_tree": "8e2c27d6c126494c0ef3aa5c9bc2c0458b179c0b",
+    "tree_sha256": "c9b2e9f42eadebe07f27a9010dcc673fcdfbef6de5396fc7f6b8412478c3ea59"
   },
   "protocol": {
     "supported_versions": [
@@ -316,8 +316,8 @@
   },
   "schema": "courselens.worker-mirror.manifest.v1",
   "source": {
-    "commit": "91e56a7e12e9c2426500cfac96beed4eff195be0",
+    "commit": "9890a76440f3c0298b10bfe3dbb66d8a8e7a7297",
     "repository": "Fudan-CourseLens-Private",
-    "worker_tree": "9840a5c8224e40f7992ea9c02d923562bb55b64c"
+    "worker_tree": "0945c42f0c320fcee003fd05ecb6054ffd18afac"
   }
 }

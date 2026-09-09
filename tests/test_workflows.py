@@ -15,6 +15,11 @@ class WorkflowTests(unittest.TestCase):
 
     def test_production_process_installs_media_tools_before_worker(self):
         workflow = (ROOT / ".github" / "workflows" / "process.yml").read_text(encoding="utf-8")
+        self.assertRegex(workflow, r"sed -i '/dl\\.google\\.com/d'")
+        self.assertLess(
+            workflow.index("sed -i '/dl\\.google\\.com/d'"),
+            workflow.index("sudo apt-get update"),
+        )
         install = workflow.index("sudo apt-get install --no-install-recommends --yes curl ffmpeg")
         process = workflow.index("name: Process encrypted job")
         self.assertLess(install, process)
