@@ -48,3 +48,66 @@ jobs:
         run: |
           rm -rf .work
           find "${RUNNER_TEMP}" -maxdepth 1 -type d -name 'courselens-synthetic-*' -exec rm -rf {} +
+
+  # Benchmark-only measurement job: never gates merges and never changes any
+  # repository variable or product setting.  It measures the accepted
+  # Standard ASR/OCR stack (sherpa-onnx FireRed + SenseVoice, RapidOCR) on a
+  # runner-generated synthetic fixture; Paraformer and Faster-Whisper are
+  # deliberately not benchmarked, and no AI API key is used anywhere.
+  standard-runner-benchmark:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      COURSELENS_MODEL_ROOT: ${{ github.workspace }}/.models
+      COURSELENS_OCR_CONCURRENCY: "1"
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMEXPR_NUM_THREADS: "1"
+      VECLIB_MAXIMUM_THREADS: "1"
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.10"
+          cache: pip
+      - name: Install espeak-ng and ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends espeak-ng ffmpeg
+      - name: Require the Mandarin espeak-ng voice
+        run: |
+          espeak-ng --voices | awk '$2 == "cmn" { found = 1 } END { exit found ? 0 : 1 }' \
+            || { echo "espeak-ng Mandarin voice 'cmn' is unavailable" >&2; exit 1; }
+      - name: Install pinned Worker runtime
+        run: python -m pip install --requirement requirements.txt
+      - name: Restore checksum-pinned ASR model cache
+        id: model-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .models
+          key: asr-models-v1-sensevoice-7d1efa21-firered-1da8b737
+      - name: Restore or download the two pinned ASR models
+        run: |
+          start=$(date +%s)
+          python scripts/install_models.py
+          end=$(date +%s)
+          echo "COURSELENS_MODEL_RESTORE_SECONDS=$((end - start))" >> "$GITHUB_ENV"
+      - name: Run standard runner benchmark
+        run: |
+          python scripts/standard_runner_benchmark.py run \
+            --out runtime/reports/standard-runner-benchmark.json \
+            --cache-hit "${{ steps.model-cache.outputs.cache-hit }}" \
+            --model-restore-seconds "${COURSELENS_MODEL_RESTORE_SECONDS:-0}"
+      - name: Upload sanitized benchmark report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: standard-runner-benchmark
+          path: runtime/reports/standard-runner-benchmark.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Remove generated benchmark scratch
+        if: always()
+        run: rm -rf "${RUNNER_TEMP:-/tmp}/standard-runner-benchmark-scratch"
