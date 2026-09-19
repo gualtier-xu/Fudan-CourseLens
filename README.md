@@ -36,9 +36,7 @@ CourseLens 客户端
 
 ## 它会做什么
 
-- `fast`：SenseVoice 快速字幕。
-- `no-proofread`：FireRedASR2 CTC 字幕。
-- `standard`：SenseVoice 粗识别、FireRedASR2 CTC 和用户授权的 DeepSeek 校对。
+- 字幕执行只有一个内部 `automatic` 策略：配置 DeepSeek Key 时做 SenseVoice 粗识别、FireRedASR2 CTC 与用户授权的 AI 校对；未配置时自动走非 AI 回退（仅 FireRedASR2 CTC）。
 - 可选 OCR、摘要、章节、证据问答和云端每日检查。
 - 用签名控制消息报告真实阶段；没有可靠总量时不伪造百分比或剩余时间。
 
@@ -54,7 +52,7 @@ CourseLens 客户端
 
 客户端主动提交的任务只通过用户私有 Mailbox 传递密文。结果使用客户端公钥加密并由 Worker 签名；客户端验签、解密、校验哈希并成功导入后，才确认删除临时 Artifact、Mailbox 内容和任务令牌。
 
-云端无人值守默认关闭。启用后，凭据只进入个人 Worker 的 GitHub Environment Secrets；是否已配置、是否已验证和是否允许调度是三个不同状态。
+云端无人值守（自动学习材料）默认关闭。启用后，凭据只进入个人 Worker 的 GitHub Environment Secrets；是否已配置、是否已验证和是否允许调度是三个不同状态。计划固定为每天 13:00 与 22:00（北京时间）两个 cron 入口，配置哈希绑定 Worker 树、账号与课程规则；凭据被拒立即熔断，结果 Artifact 加密并保留最多 90 天。
 
 ## 许可
 

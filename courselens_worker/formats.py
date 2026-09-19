@@ -13,17 +13,42 @@ def _stamp(milliseconds: int, separator: str) -> str:
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}{separator}{millis:03d}"
 
 
+# Additive evidence.v1 fields carried through normalization instead of being
+# dropped.  Anchors, text, and these keys are the accepted segment envelope;
+# identity/secret validation stays with shared/evidence_contract.py and the
+# client compatibility seam.  "correction" is the bounded proofread status
+# emitted by llm.py (applied / rejected-* / unpaired); it records how the
+# text was produced and is not part of any evidence identity.
+_EVIDENCE_KEYS = (
+    "segment_id",
+    "evidence_id",
+    "source_hash",
+    "provenance",
+    "tokens",
+    "lang",
+    "correction",
+)
+
+
 def normalize_segments(segments: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Sort, drop empty text, and repair missing or nonpositive durations.
+
+    Valid overlaps between segments are preserved (evidence.v1 §4): one
+    segment is never clamped to the previous segment's end.
+    """
     output: list[dict[str, Any]] = []
-    previous_end = 0
     for item in sorted(segments, key=lambda value: int(value.get("start_ms") or 0)):
         text = " ".join(str(item.get("text") or "").split()).strip()
         if not text:
             continue
-        start = max(previous_end, int(item.get("start_ms") or 0))
+        start = max(0, int(item.get("start_ms") or 0))
         end = max(start + 200, int(item.get("end_ms") or start + 1000))
-        output.append({"start_ms": start, "end_ms": end, "text": text})
-        previous_end = end
+        cleaned = {"start_ms": start, "end_ms": end, "text": text}
+        for key in _EVIDENCE_KEYS:
+            value = item.get(key)
+            if value is not None:
+                cleaned[key] = value
+        output.append(cleaned)
     return output
 
 

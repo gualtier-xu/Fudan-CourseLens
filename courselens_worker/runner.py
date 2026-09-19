@@ -64,6 +64,26 @@ _ASR_ERROR_CODES = {
 }
 
 
+# Checkpoint keys owned by the subtitle stage (ASR chunks and proofread
+# windows).  Learning-pack OCR checkpoints re-emit them when a resumed run
+# recognizes slides before subtitles, so the reordered stages never discard
+# subtitle progress.  The carried counters win the shared completed_chunks /
+# total_chunks keys, whose OCR-side copies are informational only:
+# process_slides resumes from ocr_completed_items alone.
+_SUBTITLE_RESUME_KEYS = (
+    "completed_chunks",
+    "total_chunks",
+    "mode",
+    "raw_sensevoice",
+    "raw_firered",
+    "pcm_fingerprint",
+    "proofread_pairing",
+    "proofread_completed_windows",
+    "proofread_total_windows",
+    "proofread_segments",
+)
+
+
 def safe_worker_error_detail(error: BaseException) -> str:
     """Return an optional closed-set reason without importing compute deps."""
     from .source import SourceSecurityError, safe_source_error_code
@@ -232,17 +252,21 @@ def _process_materialized_job(
 
         secrets = dict(job.get("secrets") or {})
         api_key = str(secrets.get("deepseek_api_key") or "")
+        # automatic 策略：仅在配置了 DeepSeek Key 时提供校对提供方；
+        # 缺 Key 即走非 AI 回退，由 asr.transcribe 依据 proofread 是否为 None 分派。
         value = transcribe(
             job,
             sensevoice_dir=Path(_required("SENSEVOICE_MODEL_DIR")),
             firered_dir=Path(_required("FIRERED_MODEL_DIR")),
-            proofread=(lambda sense, fire, prior, write: proofread_segments(
-                api_key,
-                sense,
-                fire,
-                prior_checkpoint=prior,
-                checkpoint=write,
-            )),
+            proofread=(
+                (lambda sense, fire, prior, write: proofread_segments(
+                    api_key,
+                    sense,
+                    fire,
+                    prior_checkpoint=prior,
+                    checkpoint=write,
+                )) if api_key else None
+            ),
             progress=progress,
             checkpoint=checkpoint_writer,
         )
@@ -258,6 +282,7 @@ def _process_materialized_job(
         }
         metrics = value["metrics"]
     elif kind in {"summary", "chapters"}:
+        from .lecture_ir import build_lecture_ir
         from .llm import create_summary
         from .ocr import process_slides
 
@@ -294,6 +319,13 @@ def _process_materialized_job(
             outputs["chapters"] = list(summary.get("chapters") or [])
         else:
             outputs["summary"] = summary
+        # Additive, evidence-grounded Lecture IR view over the same
+        # transcript/chapters/pages; it changes no pre-existing output.
+        outputs["lecture_ir"] = build_lecture_ir(
+            transcript=transcript,
+            chapters=list(summary.get("chapters") or []),
+            ppt_pages=pages,
+        )
         metrics = {
             "elapsed_seconds": round(time.monotonic() - started, 3),
             "transcript_segments": len(transcript),
@@ -305,6 +337,7 @@ def _process_materialized_job(
     elif kind == "learning_pack":
         from .asr import transcribe
         from .formats import to_srt, to_vtt
+        from .lecture_ir import build_lecture_ir
         from .llm import answer_question, create_summary, proofread_segments
         from .ocr import process_slides
 
@@ -316,16 +349,60 @@ def _process_materialized_job(
         metrics = {}
         transcript = list(payload.get("transcript") or [])
         prior = dict(payload.get("checkpoint") or {})
+        slides = list(payload.get("slides") or [])
+        # Slides are recognized once, before Standard proofreading, so the
+        # proofreader can use the active slide text as bounded terminology
+        # context; the same pages then serve the requested OCR/summary/chapters
+        # outputs without a second OCR pass.
+        wants_slides = bool(slides) and bool(requested.intersection({"ocr", "summary", "chapters"}))
+        if wants_slides:
+            def ocr_checkpoint(value: dict[str, Any]) -> None:
+                if checkpoint_writer is not None:
+                    subtitle_state = {
+                        key: prior[key] for key in _SUBTITLE_RESUME_KEYS if key in prior
+                    }
+                    checkpoint_writer({**value, **subtitle_state})
+
+            pages, slides_skipped = process_slides(
+                slides,
+                progress=progress,
+                prior_checkpoint=prior,
+                checkpoint=ocr_checkpoint,
+            )
+        else:
+            pages, slides_skipped = (
+                list(prior.get("ppt_pages") or []), dict(prior.get("ppt_skipped") or {})
+            )
+        ocr_fields: dict[str, Any] = {
+            "ocr_completed_items": len(slides),
+            "ppt_pages": pages,
+            "ppt_skipped": slides_skipped,
+        } if wants_slides else {}
         if "subtitle" in requested:
+            def subtitle_checkpoint(value: dict[str, Any]) -> None:
+                if checkpoint_writer is not None:
+                    checkpoint_writer({**ocr_fields, **value})
+
+            def proofread_with_slides(sense, fire, saved, write):
+                def write_with_ocr(proofread_value: dict[str, Any]) -> None:
+                    write({**ocr_fields, **proofread_value})
+
+                return proofread_segments(
+                    api_key,
+                    sense,
+                    fire,
+                    ppt_pages=pages if wants_slides else None,
+                    prior_checkpoint=saved,
+                    checkpoint=write_with_ocr,
+                )
+
             value = transcribe(
                 job,
                 sensevoice_dir=Path(_required("SENSEVOICE_MODEL_DIR")),
                 firered_dir=Path(_required("FIRERED_MODEL_DIR")),
-                proofread=(lambda sense, fire, saved, write: proofread_segments(
-                    api_key, sense, fire, prior_checkpoint=saved, checkpoint=write
-                )),
+                proofread=proofread_with_slides if api_key else None,
                 progress=progress,
-                checkpoint=checkpoint_writer,
+                checkpoint=subtitle_checkpoint,
             )
             transcript = value["segments"]
             outputs["subtitle"] = {
@@ -344,33 +421,42 @@ def _process_materialized_job(
                 evidence=list(payload.get("evidence") or []),
             )
             metrics["evidence_count"] = len(payload.get("evidence") or [])
-        slides = list(payload.get("slides") or [])
-        pages, slides_skipped = process_slides(
-            slides,
-            progress=progress,
-            prior_checkpoint=prior,
-            checkpoint=checkpoint_writer,
-        ) if slides and requested.intersection({"ocr", "summary", "chapters"}) else (
-            list(prior.get("ppt_pages") or []), dict(prior.get("ppt_skipped") or {})
-        )
         if "ocr" in requested:
             outputs["ppt_pages"] = pages
         if slides_skipped:
             metrics["slides_skipped"] = slides_skipped
             warnings.append("slides_skipped")
         if requested.intersection({"summary", "chapters"}):
+            def summary_checkpoint(value: dict[str, Any]) -> None:
+                # Merge the same OCR fields the summary job keeps, so a
+                # learning_pack resume never reprocesses completed slides.
+                if checkpoint_writer is not None:
+                    checkpoint_writer({
+                        "ocr_completed_items": len(slides),
+                        "ppt_pages": pages,
+                        "ppt_skipped": slides_skipped,
+                        **value,
+                    })
+
             summary = create_summary(
                 api_key,
                 title=str(payload.get("title") or ""),
                 transcript=transcript,
                 ppt_pages=pages,
                 prior_checkpoint=prior,
-                checkpoint=checkpoint_writer,
+                checkpoint=summary_checkpoint,
             )
             if "summary" in requested:
                 outputs["summary"] = summary
             if "chapters" in requested:
                 outputs["chapters"] = list(summary.get("chapters") or [])
+            # Same additive Lecture IR view as the summary job, over the
+            # transcript this pack actually produced.
+            outputs["lecture_ir"] = build_lecture_ir(
+                transcript=transcript,
+                chapters=list(summary.get("chapters") or []),
+                ppt_pages=pages,
+            )
         metrics["elapsed_seconds"] = round(time.monotonic() - started, 3)
     else:
         raise WorkerError("unsupported job kind")

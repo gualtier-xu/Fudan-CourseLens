@@ -65,7 +65,7 @@ class ProtocolTests(unittest.TestCase):
             "result_public_key": base64.b64encode(bytes(local.public_key)).decode(),
             "pipeline": {"version": "test"}, "requested_outputs": ["subtitle"],
             "payload": {
-                "mode": "fast", "media": {"start_seconds": 600, "duration_seconds": 300},
+                "mode": "automatic", "media": {"start_seconds": 600, "duration_seconds": 300},
                 "source_session": {
                     "provider": "runner-session-v1", "course_id": "36941",
                     "sub_id": "652577", "media": True, "slides": False,

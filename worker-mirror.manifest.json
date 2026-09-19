@@ -1,6 +1,6 @@
 {
   "exporter": {
-    "allowlist_sha256": "295e9152055b5839d0288667c4b3c88a1b1089458210a53234176e61228deea9",
+    "allowlist_sha256": "9e675e199d5b2be281c22ab5e101cd40d5d1a07faa87b559573afd2134c7de87",
     "version": "1.0.0"
   },
   "payload": {
@@ -20,20 +20,20 @@
       {
         "mode": "100644",
         "path": ".github/workflows/ci.yml",
-        "sha256": "bc934d8c8c631fda6a8eab13e4a84ebd4346f03234eb8b9c46f166417e3f6d7b",
-        "size": 2685
+        "sha256": "37cd5042e961243cd5cf9091fa241508eb1ed85a925eb63b39758913d4c0165a",
+        "size": 2733
       },
       {
         "mode": "100644",
         "path": ".github/workflows/cloud-daily.yml",
-        "sha256": "a97a21a9d2814a737ca0db5877fd8c312d223c23930ce94b01759b7a2ceeefdb",
-        "size": 6565
+        "sha256": "cc9ff618ea3e5ad179fb59d1eba159eadbd464851f114971fce0b6dfa8f5f21d",
+        "size": 4480
       },
       {
         "mode": "100644",
         "path": ".github/workflows/cloud-verify.yml",
-        "sha256": "d568eec1f041dcae31de4401bbb952d8cc0e307bec8ffc46e2ea03ac900b33f5",
-        "size": 2255
+        "sha256": "9c3d10985ff0160722c21da0d1b29f5bf0c637dbce98f3e3c45c18a8318b9b7c",
+        "size": 2663
       },
       {
         "mode": "100644",
@@ -50,13 +50,13 @@
       {
         "mode": "100644",
         "path": ".github/workflows/process.yml",
-        "sha256": "96281a88c6e5e76230427bac0e0fb169ab13df9ffa54986a01cc1563790c5231",
-        "size": 3424
+        "sha256": "aef92acd4e17d5fdbdd45a9adbf44c39832b0510bf323333ef76bd575774a202",
+        "size": 3414
       },
       {
         "mode": "100644",
         "path": ".github/workflows/publish-mirror.yml",
-        "sha256": "dec89a0a30464e9b2e3b0777f42c7bf270e9244450a8cf18e9c818ad93339c3f",
+        "sha256": "3b1186964685f4ee3e8d3d40207a1e7671ee8a1f3d58f2d8985ced59c070751f",
         "size": 3750
       },
       {
@@ -80,8 +80,8 @@
       {
         "mode": "100644",
         "path": "README.md",
-        "sha256": "68152504d1d861bfed9a5c1009ee00da6433afa7ec8cf75140929717e12594fa",
-        "size": 3162
+        "sha256": "136add3d05bcd148f6f77029526b2e5118cc0c49377c7cc29a27c861bfe35a13",
+        "size": 3431
       },
       {
         "mode": "100644",
@@ -98,26 +98,32 @@
       {
         "mode": "100644",
         "path": "courselens_worker/asr.py",
-        "sha256": "88aaf26259c7b55fec50acbaa07f975f92a43112d0e774c0613c6d6c2567c951",
-        "size": 16217
+        "sha256": "7463e65c575cf66d9a47f1aa4ef4038aa3bc6387f8673b519bcde9725eb7308e",
+        "size": 28795
       },
       {
         "mode": "100644",
         "path": "courselens_worker/cloud_automation.py",
-        "sha256": "b909d0ba6f48a9c7342e1937125afc8541efe0f3f724efe34c8e6b82fbdf593a",
-        "size": 22220
+        "sha256": "79403a9347102145e198fbac1273daa673c0a1141e21a5a1827fde703e18384d",
+        "size": 41473
       },
       {
         "mode": "100644",
         "path": "courselens_worker/formats.py",
-        "sha256": "33c2741d07c57bb228ee47867088e959b0f277e276b9916e6d04533f23e7a249",
-        "size": 1637
+        "sha256": "2f14969312ed3ead9afeac654458323143a4d1ffb8a40e80a7af19499c47a422",
+        "size": 2543
+      },
+      {
+        "mode": "100644",
+        "path": "courselens_worker/lecture_ir.py",
+        "sha256": "b9dd529fb73773fbc406f97169a26cddf13a1b43007e3c7aa77e6afd7e020500",
+        "size": 12493
       },
       {
         "mode": "100644",
         "path": "courselens_worker/llm.py",
-        "sha256": "ccde6576ede09d1f07ec5a99f04307890149f9e466beb0edb943b1c41b5b8867",
-        "size": 11706
+        "sha256": "26c764985e62dfbfc5edde5f75dcf666e2cd2693160c5cf6c883844136e90c58",
+        "size": 22156
       },
       {
         "mode": "100644",
@@ -128,14 +134,14 @@
       {
         "mode": "100644",
         "path": "courselens_worker/ocr.py",
-        "sha256": "91ff79b76698dd46151734a02f2324a2d3fa689fa0c4593e44e4e67bca82c70a",
-        "size": 7114
+        "sha256": "46b4c60d0d5280fc09496aa3327532fb41fa3baad17f3f413b544c1fd3794fcc",
+        "size": 8817
       },
       {
         "mode": "100644",
         "path": "courselens_worker/platform_session.py",
-        "sha256": "f9376b6ca6b483dd8f80dda5993c410153b3198a65addcfb1369d97343f7c0f7",
-        "size": 48261
+        "sha256": "bcdcfcb53f9992771537e6a55b189b96458e4b221583af42a92644354f84353d",
+        "size": 53451
       },
       {
         "mode": "100644",
@@ -146,8 +152,8 @@
       {
         "mode": "100644",
         "path": "courselens_worker/runner.py",
-        "sha256": "d397dd2dc507141f03b5440061f291b79ede900bdd304c709de57c106f91e3f2",
-        "size": 22053
+        "sha256": "d26f34604ec0c9ebbd47aa244deaa776a4923f2f287b5bec802625315b3c520b",
+        "size": 25784
       },
       {
         "mode": "100644",
@@ -164,7 +170,7 @@
       {
         "mode": "100644",
         "path": "pyproject.toml",
-        "sha256": "e47bf68ab53026e0634782995fd1a5aa1f59e885a0d4640937a6997ee38022af",
+        "sha256": "50eea1c01c172bba10056dc30e987fd5a2c5d4cbc625468f6ae3f737a38c3c09",
         "size": 563
       },
       {
@@ -223,6 +229,12 @@
       },
       {
         "mode": "100644",
+        "path": "shared/evidence_contract.py",
+        "sha256": "9f64215252e11de902ab284eafa5ba55beb667f9f185bb54e447f0eedbdc4a65",
+        "size": 56292
+      },
+      {
+        "mode": "100644",
         "path": "shared/protocol/__init__.py",
         "sha256": "3a93f850793eab492043eae4b986ae6996ed3bcc92344fee37f80d1d00f491f8",
         "size": 164
@@ -242,8 +254,8 @@
       {
         "mode": "100644",
         "path": "tests/test_asr.py",
-        "sha256": "7a7dadc487e29ac0c789521e6354f4e93ef43d7f5f348f8588efdd4e4fd172b8",
-        "size": 2403
+        "sha256": "0115fbcc59ab88b701a6a1f6ef79ffb30e358a68794b1319e2726994432399b7",
+        "size": 7712
       },
       {
         "mode": "100644",
@@ -253,33 +265,63 @@
       },
       {
         "mode": "100644",
+        "path": "tests/test_asr_timing.py",
+        "sha256": "73f9f13f09a0e6e17ea315e4490bc8afbcec406c979644cb6cd9ffc409dcd311",
+        "size": 15942
+      },
+      {
+        "mode": "100644",
         "path": "tests/test_cloud_automation.py",
-        "sha256": "6a1b2be0da4f29ee211b33decf98d78195001e9c87fde18ca493849080410aa9",
-        "size": 5269
+        "sha256": "fe753dc337b09c549c5d5937ed4e44ed8786c9976ef41b4c1d44e5b9ae0ee0d9",
+        "size": 35074
+      },
+      {
+        "mode": "100644",
+        "path": "tests/test_courseware_plan.py",
+        "sha256": "e8f72fbb9cfe861f4a4f77e3b72d0e17c21761681a8a5d4f75bbe794cab0d1a5",
+        "size": 11359
+      },
+      {
+        "mode": "100644",
+        "path": "tests/test_lecture_ir.py",
+        "sha256": "58731fd06666616db5b8463a9b15e51de0c7e965fd93546f5e1c27361256882a",
+        "size": 16737
       },
       {
         "mode": "100644",
         "path": "tests/test_llm_checkpoints.py",
-        "sha256": "2b6961c05c813d0eff831523c2e05d3d684553041c1e5a8b9a38d60cd4b23d48",
-        "size": 3328
+        "sha256": "dbb410a4441b664ef21ab933a7cc641bc96778ddcd3570e0c875eabc9338b106",
+        "size": 6124
+      },
+      {
+        "mode": "100644",
+        "path": "tests/test_mailbox.py",
+        "sha256": "ebb2e1529bc17f94bd05500c917c059ff24660cad4d93b382bd7cf3bd1d44d5c",
+        "size": 11621
       },
       {
         "mode": "100644",
         "path": "tests/test_ocr.py",
-        "sha256": "4b2c627153ffb5fc0b5f418241074f4c12eeeae9e5e60dbc9328d403f49d7e52",
-        "size": 11195
+        "sha256": "a1385f7bf5a28258b0636fc67665f201d14387d052aa87cb533551e906af05e2",
+        "size": 15016
+      },
+      {
+        "mode": "100644",
+        "path": "tests/test_ocr_terminology_context.py",
+        "sha256": "d57e39ee4c73989fd215c18e6fa88f2a9ef04c7128ca8cecb0d31d6a77871a08",
+        "size": 15642
       },
       {
         "mode": "100644",
         "path": "tests/test_platform_session.py",
-        "sha256": "3117a3474094bf759c1e4b82e53c68cfbf76cc30b59a7089e1c5f716e78c1030",
-        "size": 33974
+        "sha256": "b55c58706880ed0b718566d2f8bc7f139ce196ffc48b709e617f5c7c4ff8125f",
+        "size": 39152
       },
       {
         "mode": "100644",
         "path": "tests/test_protocol.py",
-        "sha256": "a90ede392c1ca670c9b98e4b813dcef1b3c6d78f5e0f7f1dbbcc22000534c533",
-        "size": 3881
+        "sha256": "11c725b15397843491a815fb7d64ac6de5c23183f319df3bcfe8103e32a1073e",
+        "size": 3886
       },
       {
         "mode": "100644",
@@ -301,13 +343,19 @@
       },
       {
         "mode": "100644",
+        "path": "tests/test_subtitle_correction.py",
+        "sha256": "d1d9cdc946cbffd2bfd2daf5398e131a77fef1c059dc91c41e3045cfaaf62c5f",
+        "size": 14369
+      },
+      {
+        "mode": "100644",
         "path": "tests/test_workflows.py",
-        "sha256": "2272f4a4466365fd4a81270d356a13a320c3097486974e1da06683fe907f17b8",
-        "size": 3258
+        "sha256": "8e40e0fcbf3721bd03c463569caae06cf2ad7c9fb3c5bb85f697b94f806c66f4",
+        "size": 3336
       }
     ],
-    "git_tree": "8e2c27d6c126494c0ef3aa5c9bc2c0458b179c0b",
-    "tree_sha256": "c9b2e9f42eadebe07f27a9010dcc673fcdfbef6de5396fc7f6b8412478c3ea59"
+    "git_tree": "9dd243e00baa646f6ba2b1f7c9988252a9be5bbf",
+    "tree_sha256": "47196bf85fe0b91193e7ea3aeee6064d25fa9e46e1446ba0fc848dae4f55c025"
   },
   "protocol": {
     "supported_versions": [
@@ -316,8 +364,8 @@
   },
   "schema": "courselens.worker-mirror.manifest.v1",
   "source": {
-    "commit": "9890a76440f3c0298b10bfe3dbb66d8a8e7a7297",
+    "commit": "ab2578998b03ee44eb51526b3dc45bb74fda1bf6",
     "repository": "Fudan-CourseLens-Private",
-    "worker_tree": "0945c42f0c320fcee003fd05ecb6054ffd18afac"
+    "worker_tree": "9873ed53cd31e1abc93d5bc26e6b06950028e7cc"
   }
 }
