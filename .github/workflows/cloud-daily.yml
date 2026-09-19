@@ -2,31 +2,10 @@ name: Run unattended CourseLens daily automation
 run-name: CourseLens cloud daily ${{ github.run_id }}
 
 on:
+  # Fixed v2 schedule: 13:00 and 22:00 Asia/Shanghai (= 05:00 / 14:00 UTC).
   schedule:
-    - cron: "30 0 * * *"
-    - cron: "30 1 * * *"
-    - cron: "30 2 * * *"
-    - cron: "30 3 * * *"
-    - cron: "30 4 * * *"
-    - cron: "30 5 * * *"
-    - cron: "30 6 * * *"
-    - cron: "30 7 * * *"
-    - cron: "30 8 * * *"
-    - cron: "30 9 * * *"
-    - cron: "30 10 * * *"
-    - cron: "30 11 * * *"
-    - cron: "30 12 * * *"
-    - cron: "30 13 * * *"
-    - cron: "30 14 * * *"
-    - cron: "30 15 * * *"
-    - cron: "30 16 * * *"
-    - cron: "30 17 * * *"
-    - cron: "30 18 * * *"
-    - cron: "30 19 * * *"
-    - cron: "30 20 * * *"
-    - cron: "30 21 * * *"
-    - cron: "30 22 * * *"
-    - cron: "30 23 * * *"
+    - cron: "0 5 * * *"
+    - cron: "0 14 * * *"
   workflow_dispatch:
     inputs:
       trigger_kind:
@@ -52,32 +31,7 @@ jobs:
   daily:
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (vars.COURSELENS_CLOUD_ENABLED == 'true' && (
-        (vars.COURSELENS_CLOUD_CRON == '08:30' && github.event.schedule == '30 0 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '09:30' && github.event.schedule == '30 1 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '10:30' && github.event.schedule == '30 2 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '11:30' && github.event.schedule == '30 3 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '12:30' && github.event.schedule == '30 4 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '13:30' && github.event.schedule == '30 5 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '14:30' && github.event.schedule == '30 6 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '15:30' && github.event.schedule == '30 7 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '16:30' && github.event.schedule == '30 8 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '17:30' && github.event.schedule == '30 9 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '18:30' && github.event.schedule == '30 10 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '19:30' && github.event.schedule == '30 11 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '20:30' && github.event.schedule == '30 12 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '21:30' && github.event.schedule == '30 13 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '22:30' && github.event.schedule == '30 14 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '23:30' && github.event.schedule == '30 15 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '00:30' && github.event.schedule == '30 16 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '01:30' && github.event.schedule == '30 17 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '02:30' && github.event.schedule == '30 18 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '03:30' && github.event.schedule == '30 19 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '04:30' && github.event.schedule == '30 20 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '05:30' && github.event.schedule == '30 21 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '06:30' && github.event.schedule == '30 22 * * *') ||
-        (vars.COURSELENS_CLOUD_CRON == '07:30' && github.event.schedule == '30 23 * * *')
-      ))
+      vars.COURSELENS_CLOUD_ENABLED == 'true'
     runs-on: macos-15
     timeout-minutes: 330
     environment: courselens-worker
@@ -90,8 +44,16 @@ jobs:
       COURSELENS_CLOUD_STATE_KEY: ${{ secrets.COURSELENS_CLOUD_STATE_KEY }}
       COURSELENS_CLOUD_RESULT_PUBLIC_KEY: ${{ vars.COURSELENS_CLOUD_RESULT_PUBLIC_KEY }}
       WORKER_SIGNING_PRIVATE_KEY: ${{ secrets.WORKER_SIGNING_PRIVATE_KEY }}
+      # v3 run binding: the worker rejects protocol/config/dispatch mismatches
+      # before any school login; manual dispatch stays closed while paused.
+      COURSELENS_CLOUD_TRIGGER_KIND: ${{ inputs.trigger_kind || 'schedule' }}
+      COURSELENS_CLOUD_DISPATCH_CONFIG_HASH: ${{ inputs.config_hash }}
+      COURSELENS_CLOUD_MANUAL_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+      COURSELENS_CLOUD_EXPECTED_CONFIG_HASH: ${{ vars.COURSELENS_CLOUD_CONFIG_HASH }}
+      COURSELENS_CLOUD_EXPECTED_PROTOCOL_VERSION: ${{ vars.COURSELENS_CLOUD_PROTOCOL_VERSION }}
+      COURSELENS_CLOUD_ENABLED_FLAG: ${{ vars.COURSELENS_CLOUD_ENABLED }}
       COURSELENS_MODEL_ROOT: ${{ github.workspace }}/.models
-      COURSELENS_STANDARD_STRATEGY: ${{ vars.COURSELENS_STANDARD_STRATEGY || 'sequential' }}
+      COURSELENS_ASR_STRATEGY: ${{ vars.COURSELENS_ASR_STRATEGY || 'sequential' }}
       COURSELENS_OCR_CONCURRENCY: ${{ vars.COURSELENS_OCR_CONCURRENCY || '1' }}
       COURSELENS_IMAGE_PREFETCH: ${{ vars.COURSELENS_IMAGE_PREFETCH || '16' }}
       OMP_NUM_THREADS: "1"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import sys
 import types
 import unittest
@@ -39,10 +40,14 @@ if Image is not None:
         return buffer.getvalue()
 
     PNG = _png_bytes("white")
+    PNG_ALT = _png_bytes("black")
     HTML = b"<!doctype html><html><body>authorization expired</body></html>"
 else:
     PNG = b""
+    PNG_ALT = b""
     HTML = b"<!doctype html><html><body>authorization expired</body></html>"
+
+DECK = {"deck_id": "deck-a1b2c3d4e5f6", "source_id": "src:0123456789ab"}
 
 
 def _slides(count: int) -> list[dict]:
@@ -54,7 +59,7 @@ def _slides(count: int) -> list[dict]:
 
 @unittest.skipIf(Image is None, "Pillow runtime required for slide OCR tests")
 class SlideOcrToleranceTests(unittest.TestCase):
-    def _run(self, bodies: list, *, prior: dict | None = None):
+    def _run(self, bodies: list, *, prior: dict | None = None, deck: dict | None = None):
         from courselens_worker.ocr import process_slides
 
         responses = {f"https://example.invalid/{index}": body for index, body in enumerate(bodies)}
@@ -64,11 +69,20 @@ class SlideOcrToleranceTests(unittest.TestCase):
                 raise value
             return value
 
+        slides = [
+            {
+                "page_num": index + 1,
+                "created_sec": index * 10,
+                "source": {"url": f"https://example.invalid/{index}"},
+                **({"deck": deck} if deck else {}),
+            }
+            for index in range(len(bodies))
+        ]
         with patch("courselens_worker.ocr.fetch_bytes", side_effect=fake_fetch), \
              patch("courselens_worker.ocr._dhash", return_value="ab01ef01ab01ef01"), \
              patch("courselens_worker.ocr._engine", return_value=lambda image: ([["box", "text"]], 0.1)):
             pages, skipped = process_slides(
-                _slides(len(bodies)),
+                slides,
                 progress=lambda *_args: None,
                 prior_checkpoint=prior,
             )
@@ -187,10 +201,84 @@ class SlideOcrToleranceTests(unittest.TestCase):
         self.assertEqual(pages, [])
         self.assertEqual(skipped, {"image_http_error": 1})
 
-    def test_duplicate_slide_is_counted_not_duplicated(self):
+    def test_repeated_content_is_one_entity_with_separate_events(self):
+        pages, skipped = self._run([PNG, PNG], deck=DECK)
+        self.assertEqual(len(pages), 2)
+        self.assertEqual(skipped, {})
+        self.assertEqual(pages[0]["source_sha256"], pages[1]["source_sha256"])
+        self.assertEqual(pages[0]["entity_id"], pages[1]["entity_id"])
+        self.assertNotEqual(pages[0]["event_id"], pages[1]["event_id"])
+        self.assertEqual([page["page_num"] for page in pages], [1, 2])
+        for page in pages:
+            self.assertRegex(page["entity_id"], r"^slent:[0-9a-f]{12}$")
+            self.assertRegex(page["event_id"], r"^slevt:[0-9a-f]{12}$")
+            self.assertEqual(page["deck_id"], DECK["deck_id"])
+            self.assertEqual(page["dhash"], "ab01ef01ab01ef01")
+
+    def test_identical_dhash_with_distinct_content_is_not_merged(self):
+        pages, skipped = self._run([PNG, PNG_ALT], deck=DECK)
+        self.assertEqual(len(pages), 2)
+        self.assertEqual(skipped, {})
+        self.assertNotEqual(pages[0]["source_sha256"], pages[1]["source_sha256"])
+        self.assertNotEqual(pages[0]["entity_id"], pages[1]["entity_id"])
+
+    def test_identity_is_deterministic_across_runs(self):
+        first = self._run([PNG, PNG_ALT], deck=DECK)[0]
+        second = self._run([PNG, PNG_ALT], deck=DECK)[0]
+        self.assertEqual(
+            [(page["entity_id"], page["event_id"]) for page in first],
+            [(page["entity_id"], page["event_id"]) for page in second],
+        )
+
+    def test_unscoped_slides_carry_no_identity(self):
         pages, skipped = self._run([PNG, PNG])
-        self.assertEqual(len(pages), 1)
-        self.assertEqual(skipped, {"duplicate": 1})
+        self.assertEqual(len(pages), 2)
+        self.assertEqual(skipped, {})
+        for page in pages:
+            self.assertNotIn("entity_id", page)
+            self.assertNotIn("event_id", page)
+            self.assertNotIn("deck_id", page)
+
+    def test_checkpoint_resume_keeps_events_without_duplicates(self):
+        expected, _ = self._run([PNG, PNG_ALT], deck=DECK)
+        prior = {
+            "ocr_completed_items": 1,
+            "ppt_pages": [dict(expected[0])],
+            "ppt_skipped": {},
+        }
+        pages, skipped = self._run([PNG, PNG_ALT], deck=DECK, prior=prior)
+        self.assertEqual(pages, expected)
+        self.assertEqual(skipped, {})
+        self.assertEqual([page["page_num"] for page in pages], [1, 2])
+
+    def test_legacy_checkpoint_rows_gain_derivable_identity(self):
+        prior = {
+            "ocr_completed_items": 1,
+            "ppt_pages": [{
+                "page_num": 1,
+                "created_sec": 0,
+                "text": "text",
+                "dhash": "ab01ef01ab01ef01",
+                "source_sha256": hashlib.sha256(PNG).hexdigest(),
+            }],
+            "ppt_skipped": {},
+        }
+        pages, _ = self._run([PNG, PNG_ALT], deck=DECK, prior=prior)
+        self.assertIn("entity_id", pages[0])
+        self.assertIn("event_id", pages[0])
+        fresh, _ = self._run([PNG, PNG_ALT], deck=DECK)
+        self.assertEqual(pages[0]["entity_id"], fresh[0]["entity_id"])
+        self.assertEqual(pages[0]["event_id"], fresh[0]["event_id"])
+
+    def test_legacy_rows_without_content_digest_stay_unidentified(self):
+        prior = {
+            "ocr_completed_items": 1,
+            "ppt_pages": [{"page_num": 1, "created_sec": 0, "text": "text", "dhash": "x"}],
+            "ppt_skipped": {},
+        }
+        pages, _ = self._run([PNG, PNG_ALT], deck=DECK, prior=prior)
+        self.assertNotIn("entity_id", pages[0])
+        self.assertIn("entity_id", pages[1])
 
     def test_skip_counts_survive_checkpoint_resume(self):
         prior = {

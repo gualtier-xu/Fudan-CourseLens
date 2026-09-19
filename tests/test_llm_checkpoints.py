@@ -1,9 +1,8 @@
 import json
 import unittest
 from unittest.mock import patch
-from unittest.mock import patch
 
-from courselens_worker.llm import answer_question, create_summary, proofread_segments
+from courselens_worker.llm import PROOFREAD_PAIRING, answer_question, create_summary, proofread_segments
 
 
 class LLMCheckpointTests(unittest.TestCase):
@@ -18,15 +17,16 @@ class LLMCheckpointTests(unittest.TestCase):
 
     def test_proofread_resumes_after_completed_window(self):
         source = [
-            {"start_ms": index * 1000, "end_ms": (index + 1) * 1000, "text": f"raw-{index}"}
+            {"start_ms": index * 1000, "end_ms": (index + 1) * 1000, "text": f"文本{index}"}
             for index in range(25)
         ]
         prior_segments = [
-            {"start_ms": index * 1000, "end_ms": (index + 1) * 1000, "text": f"done-{index}"}
+            {"start_ms": index * 1000, "end_ms": (index + 1) * 1000, "text": f"已{index}"}
             for index in range(20)
         ]
         response = json.dumps([
-            {"index": index, "text": f"fixed-{index}"} for index in range(20, 25)
+            {"id": f"p{index}", "old": f"文本{index}", "new": f"修正{index}"}
+            for index in range(20, 25)
         ])
         checkpoints = []
         with patch("courselens_worker.llm._chat", return_value=response) as chat:
@@ -35,6 +35,7 @@ class LLMCheckpointTests(unittest.TestCase):
                 source,
                 source,
                 prior_checkpoint={
+                    "proofread_pairing": PROOFREAD_PAIRING,
                     "proofread_completed_windows": 1,
                     "proofread_segments": prior_segments,
                 },
@@ -42,8 +43,69 @@ class LLMCheckpointTests(unittest.TestCase):
             )
         self.assertEqual(chat.call_count, 1)
         self.assertEqual(len(result), 25)
-        self.assertEqual(result[-1]["text"], "fixed-24")
+        self.assertEqual(result[-1]["text"], "修正24")
+        self.assertEqual(result[-1]["correction"], "applied")
+        self.assertEqual(result[0]["text"], "已0")
         self.assertEqual(checkpoints[-1]["proofread_completed_windows"], 2)
+        self.assertEqual(checkpoints[-1]["proofread_pairing"], PROOFREAD_PAIRING)
+
+    def test_proofread_legacy_checkpoint_restarts_without_trusting_old_segments(self):
+        source = [
+            {"start_ms": index * 1000, "end_ms": (index + 1) * 1000, "text": f"文本{index}"}
+            for index in range(5)
+        ]
+        checkpoints = []
+        with patch("courselens_worker.llm._chat", return_value=json.dumps([])) as chat:
+            result = proofread_segments(
+                "secret",
+                source,
+                source,
+                prior_checkpoint={
+                    "proofread_completed_windows": 1,
+                    "proofread_segments": [
+                        {"start_ms": 0, "end_ms": 1000, "text": "stale-legacy-rewrite"}
+                    ],
+                },
+                checkpoint=checkpoints.append,
+            )
+        self.assertEqual(chat.call_count, 1)
+        self.assertEqual([item["text"] for item in result], [f"文本{index}" for index in range(5)])
+        self.assertNotIn("stale-legacy-rewrite", [item["text"] for item in result])
+        self.assertEqual(checkpoints[-1]["proofread_pairing"], PROOFREAD_PAIRING)
+
+    def test_proofread_resume_passes_slide_context_for_remaining_windows(self):
+        source = [
+            {"start_ms": index * 1000, "end_ms": (index + 1) * 1000, "text": f"文本{index}"}
+            for index in range(25)
+        ]
+        prior_segments = [
+            {"start_ms": index * 1000, "end_ms": (index + 1) * 1000, "text": f"已{index}"}
+            for index in range(20)
+        ]
+        payloads = []
+
+        def fake_chat(api_key, messages, **kwargs):
+            payloads.append(json.loads(messages[1]["content"]))
+            return json.dumps([])
+
+        checkpoints = []
+        with patch("courselens_worker.llm._chat", side_effect=fake_chat) as chat:
+            proofread_segments(
+                "secret",
+                source,
+                source,
+                prior_checkpoint={
+                    "proofread_pairing": PROOFREAD_PAIRING,
+                    "proofread_completed_windows": 1,
+                    "proofread_segments": prior_segments,
+                },
+                checkpoint=checkpoints.append,
+                ppt_pages=[{"created_sec": 0, "text": "幻灯片术语"}],
+            )
+        self.assertEqual(chat.call_count, 1)
+        self.assertEqual(payloads[0][0]["id"], "p20")
+        self.assertEqual(payloads[0][0]["slide"], "幻灯片术语")
+        self.assertEqual(checkpoints[-1]["proofread_pairing"], PROOFREAD_PAIRING)
 
     def test_summary_resumes_map_windows_before_final_merge(self):
         transcript = [

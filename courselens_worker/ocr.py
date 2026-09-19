@@ -13,6 +13,12 @@ import numpy as np
 from PIL import Image, UnidentifiedImageError
 from rapidocr_onnxruntime import RapidOCR
 
+from shared.evidence_contract import (
+    NAMESPACE_SLIDE_ENTITY,
+    NAMESPACE_SLIDE_EVENT,
+    compute_id,
+)
+
 from .source import fetch_bytes, safe_source_error_code
 
 _OCR_LOCAL = threading.local()
@@ -127,13 +133,52 @@ def process_slides(
     prior_checkpoint: dict[str, Any] | None = None,
     checkpoint: Callable[[dict[str, Any]], None] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    """Return (recognized pages, skip counts by closed-set reason)."""
+    """Return (recognized pages, skip counts by closed-set reason).
+
+    Every successfully recognized occurrence is kept.  Exact repeated
+    content (equal ``source_sha256``) is one logical slide entity observed
+    at several distinct timeline events, so a repeat is never classified as
+    a skipped or error page and identical-looking perceptual hashes never
+    discard or merge content — ``dhash`` stays a diagnostic field only.
+    Entity/event IDs are deterministic evidence.v1 digests over the deck
+    scope and content; they are attached only when derivable from the deck
+    scope and stored nonsecret fields.
+    """
     prior = dict(prior_checkpoint or {})
     output: list[dict[str, Any]] = list(prior.get("ppt_pages") or [])
     skipped: dict[str, int] = dict(prior.get("ppt_skipped") or {})
-    seen: set[str] = {
-        str(item.get("dhash") or "") for item in output if item.get("dhash")
-    }
+    deck = next(
+        (dict(item.get("deck") or {}) for item in slides if isinstance(item.get("deck"), dict)),
+        {},
+    )
+    entity_by_content: dict[str, str] = {}
+    first_page_by_content: dict[str, int] = {}
+
+    def _attach_identity(page: dict[str, Any]) -> None:
+        content = str(page.get("source_sha256") or "")
+        if not deck or not content:
+            return
+        page_num = max(1, int(page.get("page_num") or 0))
+        first_page = first_page_by_content.setdefault(content, page_num)
+        entity_id = entity_by_content.get(content)
+        if entity_id is None:
+            entity_id = compute_id(NAMESPACE_SLIDE_ENTITY, {
+                "source_id": str(deck.get("source_id") or ""),
+                "deck_id": str(deck.get("deck_id") or ""),
+                "page": first_page,
+                "content_sha256": content,
+            })
+            entity_by_content[content] = entity_id
+        page["entity_id"] = entity_id
+        page["event_id"] = compute_id(NAMESPACE_SLIDE_EVENT, {
+            "entity": entity_id,
+            "start_ms": int(page.get("created_sec") or 0) * 1000,
+            "end_ms": None,
+        })
+        page["deck_id"] = str(deck.get("deck_id") or "")
+
+    for page in output:
+        _attach_identity(page)
     total = len(slides)
     completed = max(0, min(total, int(prior.get("ocr_completed_items") or 0)))
     prefetch = max(1, min(20, int(os.environ.get("COURSELENS_IMAGE_PREFETCH") or 16)))
@@ -159,10 +204,8 @@ def process_slides(
                 if page is None:
                     if reason:
                         skipped[reason] = int(skipped.get(reason) or 0) + 1
-                elif str(page.get("dhash") or "") in seen:
-                    skipped["duplicate"] = int(skipped.get("duplicate") or 0) + 1
                 else:
-                    seen.add(str(page["dhash"]))
+                    _attach_identity(page)
                     output.append(page)
                 progress("ocr", index + 1, total)
                 should_checkpoint = (index + 1) % 5 == 0 or index + 1 == total

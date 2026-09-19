@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 from unittest.mock import Mock, patch
 from urllib.parse import urlsplit
@@ -420,6 +421,40 @@ class PlatformSessionTests(unittest.TestCase):
         self.assertEqual(alternate["url"], "https://media.example.edu/slide.jpg")
         self.assertNotIn("Cookie", alternate["headers"])
 
+    def test_slide_sources_carry_bounded_deterministic_deck_scope(self):
+        connector = object.__new__(PlatformSession)
+        connector._course_direct = True
+        connector._webvpn_ready = False
+        connector._source_headers = lambda: {"User-Agent": "CourseLens", "Accept": "*/*"}
+        connector._course_json = Mock(side_effect=[
+            {"list": [{
+                "created_sec": 3,
+                "content": '{"pptimgurl":"https://media.example.edu/slide.jpg"}',
+            }]},
+            {"list": [{
+                "created_sec": 4,
+                "content": '{"pptimgurl":"https://media.example.edu/slide2.jpg"}',
+            }]},
+            {"list": [{
+                "created_sec": 5,
+                "content": '{"pptimgurl":"https://media.example.edu/slide3.jpg"}',
+            }]},
+        ])
+
+        first = connector.slide_sources("course-1", "sub-2")
+        second = connector.slide_sources("course-1", "sub-2")
+        other = connector.slide_sources("course-1", "sub-3")
+
+        deck = first[0]["deck"]
+        self.assertRegex(deck["deck_id"], r"^deck-[0-9a-f]{12}$")
+        self.assertRegex(deck["source_id"], r"^src:[0-9a-f]{12}$")
+        self.assertEqual(deck, second[0]["deck"])
+        self.assertNotEqual(deck, other[0]["deck"])
+        self.assertEqual([item["page_num"] for item in first], [1])
+        rendered = json.dumps(first)
+        self.assertNotIn("course-1", rendered)
+        self.assertNotIn("sub-2", rendered)
+
     def test_slide_only_materialization_closes_the_connector_after_enumeration(self):
         closed = []
 
@@ -789,6 +824,83 @@ class PlatformSessionTests(unittest.TestCase):
             safe_worker_error_detail(captured.exception),
             "platform_connection_failed_webvpn_ticket_follow",
         )
+
+
+class _SlideRow:
+    @staticmethod
+    def row(row_id, created_sec, image="https://media.example.edu/slide.jpg"):
+        return {"id": str(row_id), "created_sec": created_sec,
+                "content": json.dumps({"pptimgurl": image})}
+
+
+class SlidePaginationGuardTests(unittest.TestCase):
+    """search-ppt 分页护栏：取代旧 50 页上限的大预算熔断。"""
+
+    def _connector(self):
+        connector = object.__new__(PlatformSession)
+        connector._course_direct = True
+        connector._webvpn_ready = False
+        connector._source_headers = lambda: {"User-Agent": "CourseLens", "Accept": "*/*"}
+        return connector
+
+    def test_slide_sources_walk_full_pages_until_the_server_short_page(self):
+        connector = self._connector()
+        connector._course_json = Mock(side_effect=[
+            {"list": [_SlideRow.row("1", 1), _SlideRow.row("2", 2)]},
+            {"list": [_SlideRow.row("3", 3), _SlideRow.row("4", 4)]},
+            {"list": [_SlideRow.row("5", 5)]},
+        ])
+        with patch("courselens_worker.platform_session.SLIDE_PAGE_SIZE", 2):
+            sources = connector.slide_sources("course", "sub")
+        self.assertEqual([item["page_num"] for item in sources], [1, 2, 3, 4, 5])
+        self.assertEqual(connector._course_json.call_count, 3)
+        first_call = connector._course_json.call_args_list[0]
+        self.assertEqual(first_call.kwargs["params"]["per_page"], 2)
+
+    def test_slide_sources_skip_rows_that_fail_shape_validation(self):
+        connector = self._connector()
+        connector._course_json = Mock(return_value={"list": [
+            "not-a-dict",
+            {"id": "2", "created_sec": 2, "content": "{broken"},
+            {"id": "3", "created_sec": "nonsense", "content": json.dumps({"pptimgurl": "https://media.example.edu/3.jpg"})},
+            {"id": "4", "created_sec": 4, "content": json.dumps({"pptthumb": "only"})},
+            _SlideRow.row("5", 5),
+        ]})
+        sources = connector.slide_sources("course", "sub")
+        self.assertEqual([item["page_num"] for item in sources], [1])
+        self.assertEqual(sources[0]["created_sec"], 5)
+
+    def test_slide_sources_fail_closed_on_a_stalled_server_cursor(self):
+        connector = self._connector()
+        stuck = [_SlideRow.row("1", 1), _SlideRow.row("2", 2)]
+        connector._course_json = Mock(side_effect=[
+            {"list": list(stuck)},
+            {"list": list(stuck)},
+        ])
+        with patch("courselens_worker.platform_session.SLIDE_PAGE_SIZE", 2):
+            with self.assertRaisesRegex(PlatformSessionError, "platform_slide_pagination_stalled"):
+                connector.slide_sources("course", "sub")
+
+    def test_slide_sources_fail_closed_on_a_record_storm(self):
+        connector = self._connector()
+        connector._course_json = Mock(return_value={"list": [
+            _SlideRow.row("1", 1), _SlideRow.row("2", 2),
+        ]})
+        with patch("courselens_worker.platform_session.SLIDE_RECORD_STORM_LIMIT", 1):
+            with self.assertRaisesRegex(PlatformSessionError, "platform_slide_record_storm"):
+                connector.slide_sources("course", "sub")
+
+    def test_course_json_rejects_oversized_response_bodies(self):
+        connector = self._connector()
+        connector._course_bearer = "bounded-test-token"
+        response = Mock(status_code=200)
+        response.content = b"x" * 100
+        connector._direct_once = Mock(return_value=response)
+        with self.assertRaisesRegex(PlatformSessionError, "platform_slide_response_too_large"):
+            connector._course_json(
+                "/pptnote/v1/schedule/search-ppt", params={"page": 1}, max_bytes=10,
+            )
+
 
 
 if __name__ == "__main__":

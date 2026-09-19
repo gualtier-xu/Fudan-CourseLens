@@ -35,7 +35,7 @@ jobs:
       WORKER_SIGNING_PRIVATE_KEY: ${{ secrets.WORKER_SIGNING_PRIVATE_KEY }}
       COURSELENS_MODEL_ROOT: ${{ github.workspace }}/.models
       COURSELENS_RESULT_PATH: ${{ github.workspace }}/result.box.json
-      COURSELENS_STANDARD_STRATEGY: ${{ vars.COURSELENS_STANDARD_STRATEGY || 'sequential' }}
+      COURSELENS_ASR_STRATEGY: ${{ vars.COURSELENS_ASR_STRATEGY || 'sequential' }}
       COURSELENS_OCR_CONCURRENCY: ${{ vars.COURSELENS_OCR_CONCURRENCY || '1' }}
       COURSELENS_IMAGE_PREFETCH: ${{ vars.COURSELENS_IMAGE_PREFETCH || '16' }}
       OMP_NUM_THREADS: "1"

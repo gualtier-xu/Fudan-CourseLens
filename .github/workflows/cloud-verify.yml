@@ -37,6 +37,11 @@ jobs:
       COURSELENS_CLOUD_DEEPSEEK_API_KEY: ${{ secrets.COURSELENS_CLOUD_DEEPSEEK_API_KEY }}
       COURSELENS_CLOUD_RULES_JSON: ${{ secrets.COURSELENS_CLOUD_RULES_JSON }}
       COURSELENS_CLOUD_STATE_KEY: ${{ secrets.COURSELENS_CLOUD_STATE_KEY }}
+      WORKER_SIGNING_PRIVATE_KEY: ${{ secrets.WORKER_SIGNING_PRIVATE_KEY }}
+      # v3 verification binding: protocol/config mismatches fail before login.
+      COURSELENS_CLOUD_DISPATCH_CONFIG_HASH: ${{ inputs.config_hash }}
+      COURSELENS_CLOUD_EXPECTED_CONFIG_HASH: ${{ vars.COURSELENS_CLOUD_CONFIG_HASH }}
+      COURSELENS_CLOUD_EXPECTED_PROTOCOL_VERSION: ${{ vars.COURSELENS_CLOUD_PROTOCOL_VERSION }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
