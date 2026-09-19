@@ -55,7 +55,7 @@ jobs:
           test "$(git -C private-source rev-parse HEAD)" = "${EXPECTED_SOURCE}"
           gh auth setup-git
           git -C private-source fetch origin main
-          git -C private-source merge-base --is-ancestor HEAD origin/main
+          git -C private-source merge-base --is-ancestor origin/main HEAD
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: "3.10"
