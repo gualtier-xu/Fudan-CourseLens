@@ -1,10 +1,10 @@
 {
   "epoch": 1,
-  "expires_at": 1820512310,
+  "expires_at": 1821342811,
   "release_keys": [
     {
-      "key_id": "release-2026-09-cleanroom-r2",
-      "public_key": "o7gyJNEJWfXzP7JwrgLMPZvDVr6YgdpYZzj4M+4ab+4=",
+      "key_id": "release-2026-09-cleanroom-r3",
+      "public_key": "NDKf1UidYmP+JHqDtGUyQWUSoTB3fYVw8V2EEHZK/go=",
       "status": "active"
     }
   ],
