@@ -78,6 +78,39 @@ def _bounded_session_refresh(refresh, relogin=None, *, attempts: int = 3):
     raise AssertionError("unreachable")
 
 
+_SLIDE_SCOPE_DOMAIN = "courselens-slide-deck-scope-v1"
+
+# search-ppt 分页资源护栏（大预算熔断，不是页数上限）：单响应体大小、
+# 服务器游标停滞与总事件密度三类闭集守卫取代旧的 50 页有效上限。
+SLIDE_PAGE_SIZE = 100
+SLIDE_RESPONSE_MAX_BYTES = 8 * 1024 * 1024
+SLIDE_RECORD_STORM_LIMIT = 20000
+
+
+def _slide_deck_scope(course_id: str, sub_id: str) -> dict[str, str]:
+    """Bounded nonsecret deck identity minted inside this adapter.
+
+    The scope digest covers only the course/lecture pair, so slide entities
+    and events stay stable across runs of the same lecture while raw
+    account, URL, cookie, and course-title values never enter the job
+    payload.  ``source_id`` follows the evidence.v1 source identity rules
+    (a ``slide_deck`` source whose ``source_sha256`` is the scope digest).
+    """
+    from shared.evidence_contract import NAMESPACE_SOURCE, compute_id
+
+    scope_sha256 = hashlib.sha256(
+        f"{_SLIDE_SCOPE_DOMAIN}\0{course_id}\0{sub_id}".encode("utf-8")
+    ).hexdigest()
+    source_id = compute_id(NAMESPACE_SOURCE, {
+        "kind": "slide_deck",
+        "origin": "live_capture",
+        "title": None,
+        "duration_ms": None,
+        "source_sha256": scope_sha256,
+    })
+    return {"deck_id": f"deck-{scope_sha256[:12]}", "source_id": source_id}
+
+
 _CONNECTION_STAGES = frozenset({
     "webvpn_context",
     "webvpn_auth_methods",
@@ -280,6 +313,41 @@ class PlatformSession:
                 kwargs.pop("json", None)
         raise _fail("platform_redirect_rejected")
 
+    # Retryable WebVPN-leg failures.  Each retry reruns the complete flow —
+    # fresh context, fresh lck, fresh loginToken, and a fresh single-use
+    # ticket — because a consumed or dropped ticket can never be replayed.
+    _RETRYABLE_WEBVPN_LEG_ERRORS = frozenset({
+        "platform_connection_failed",
+        "platform_ticket_rejected",
+        "platform_session_rejected",
+    })
+
+    def _login_webvpn_full(self, account: str, password: str, *, attempts: int = 2) -> None:
+        """Full WebVPN fallback with per-attempt fresh tickets and verification.
+
+        The 2026-09-13 public-runner failure died at ``webvpn_ticket_follow``
+        when a cross-border route dropped the streamed ticket response.  One
+        transient drop must not fail the whole login: each bounded attempt
+        reruns the full WebVPN login plus the course login behind it, ending
+        in post-login session verification.  Tickets are minted per attempt
+        and never replayed.
+        """
+        for attempt in range(max(1, attempts)):
+            try:
+                self._login_webvpn(account, password)
+                self._webvpn_ready = True
+                self._login_course(account, password)
+                return
+            except PlatformSessionError as exc:
+                self._webvpn_ready = False
+                if (
+                    str(exc) not in self._RETRYABLE_WEBVPN_LEG_ERRORS
+                    or attempt == attempts - 1
+                ):
+                    raise
+                time.sleep(2.0 * (attempt + 1))
+        raise AssertionError("unreachable")
+
     def login(
         self, account: str, password: str, *, allow_webvpn_fallback: bool = True
     ) -> None:
@@ -302,9 +370,7 @@ class PlatformSession:
                     raise
                 self._course_direct = False
                 self._course_bearer = ""
-            self._login_webvpn(account, password)
-            self._webvpn_ready = True
-            self._login_course(account, password)
+            self._login_webvpn_full(account, password)
         except PlatformSessionError:
             raise
         except Exception as exc:
@@ -682,6 +748,7 @@ class PlatformSession:
         params: dict[str, Any],
         authorization_required: bool = False,
         timeout: tuple[float, float] | None = None,
+        max_bytes: int | None = None,
     ) -> dict[str, Any]:
         request_timeout = timeout or (10, 60)
         if self._course_direct:
@@ -706,6 +773,8 @@ class PlatformSession:
         try:
             if response.status_code != 200:
                 raise _fail("platform_course_request_failed")
+            if max_bytes is not None and len(response.content) > max_bytes:
+                raise _fail("platform_slide_response_too_large")
             return _json(response, "platform_course_request_failed")
         finally:
             response.close()
@@ -1025,29 +1094,72 @@ class PlatformSession:
 
     def slide_sources(self, course_id: str, sub_id: str) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []
+        scope = _slide_deck_scope(course_id, sub_id)
+        seen_signatures: set[tuple[str, ...]] = set()
         page = 1
-        while page <= 50:
+        while True:
             data = self._course_json(
                 "/pptnote/v1/schedule/search-ppt",
-                params={"course_id": course_id, "sub_id": sub_id, "page": page, "per_page": 100},
+                params={"course_id": course_id, "sub_id": sub_id,
+                        "page": page, "per_page": SLIDE_PAGE_SIZE},
+                max_bytes=SLIDE_RESPONSE_MAX_BYTES,
             )
-            rows = list(data.get("list") or [])
+            rows = data.get("list")
+            if not isinstance(rows, list):
+                raise _fail("platform_slide_payload_invalid")
             if not rows:
                 break
+            # A repeated page row-id signature means the server cursor is
+            # stuck: fail closed instead of looping or silently truncating.
+            signature = tuple(
+                str(row.get("id") if isinstance(row, dict) else "")
+                for row in rows
+            )
+            if signature in seen_signatures:
+                raise _fail("platform_slide_pagination_stalled")
+            seen_signatures.add(signature)
             for row in rows:
+                if not isinstance(row, dict):
+                    continue
                 try:
                     content = json.loads(str(row.get("content") or "{}"))
                 except (TypeError, ValueError):
                     continue
+                if not isinstance(content, dict):
+                    continue
                 image = str(content.get("pptimgurl") or "")
                 if not image:
                     continue
+                try:
+                    created_sec = int(row.get("created_sec") or 0)
+                except (TypeError, ValueError):
+                    continue
+                # The source row's opaque record id survives into the
+                # transient slide source so the courseware plan can reference
+                # captures without any URL, cookie, or title ever leaving
+                # this adapter.  Anything overlong or URL-shaped is dropped.
+                record_id = str(row.get("id") if row.get("id") is not None else "").strip()
+                if (
+                    not record_id
+                    or len(record_id) > 64
+                    or "://" in record_id
+                    or "@" in record_id
+                    or any(char.isspace() for char in record_id)
+                ):
+                    record_id = ""
                 items.append({
                     "page_num": len(items) + 1,
-                    "created_sec": int(row.get("created_sec") or 0),
+                    "created_sec": created_sec,
+                    "record_id": record_id,
                     "source": self._slide_source(image),
+                    "deck": scope,
                 })
-            if len(rows) < 100:
+                if len(items) >= SLIDE_RECORD_STORM_LIMIT:
+                    # Gross event density, not a page-count ceiling: a
+                    # legitimate lecture stays far below this; exceeding it
+                    # fails the job honestly instead of guessing away a tail.
+                    raise _fail("platform_slide_record_storm")
+            if len(rows) < SLIDE_PAGE_SIZE:
                 break
             page += 1
         return items

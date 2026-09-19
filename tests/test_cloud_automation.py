@@ -1,24 +1,36 @@
 from __future__ import annotations
 
 import base64
+import contextlib
 import importlib.util
 import io
 import json
 import os
+import re
 import tarfile
 import tempfile
+import time
 import unittest
+import unittest.mock
 from pathlib import Path
 from nacl.secret import SecretBox
+from nacl.signing import VerifyKey
 
+from courselens_worker import cloud_automation
 from courselens_worker.cloud_automation import (
+    CHECKPOINT_KEEP_LIMIT,
+    OUTPUT_BUNDLE,
+    PENDING_TTL_SECONDS,
+    RULES_SCHEMA,
     STATE_SCHEMA,
+    _dedupe_key,
     _empty_state,
     _open_state,
     _reset_daily_budget,
     _rules_need_ai,
     _seal_state,
 )
+from courselens_worker.platform_session import PlatformSessionError
 
 
 _INSTALL_MODELS_PATH = (
@@ -32,30 +44,230 @@ install_models = importlib.util.module_from_spec(_INSTALL_MODELS_SPEC)
 _INSTALL_MODELS_SPEC.loader.exec_module(install_models)
 
 
-class CloudAutomationTests(unittest.TestCase):
-    @staticmethod
-    def _model_archive(path: Path, member: tarfile.TarInfo, content: bytes = b"") -> None:
-        with tarfile.open(path, "w:bz2") as archive:
-            archive.addfile(member, io.BytesIO(content) if member.isfile() else None)
+def _signing_keypair():
+    from nacl.signing import SigningKey
+    private = SigningKey.generate()
+    return base64.b64encode(bytes(private)).decode(), base64.b64encode(bytes(private.verify_key)).decode()
 
+
+def make_rules(*, rules=None, config_hash="d" * 64, account_id="2020001", budget=None):
+    return {
+        "schema": RULES_SCHEMA,
+        "config_hash": config_hash,
+        "account_id": account_id,
+        "budget": budget or {"max_lectures": 2, "max_runner_minutes": 300, "max_deepseek_tokens": 100000},
+        "rules": rules if rules is not None else [],
+    }
+
+
+def make_course_rule(course_id="36941", *, baseline=None, priority=50):
+    return {
+        "course_id": course_id,
+        "priority": priority,
+        "max_lecture_minutes": 240,
+        "selection_generation": 1,
+        "baseline": list(baseline or []),
+    }
+
+
+class FakeConnector:
+    def __init__(self, courses, slides=None):
+        self.courses = courses
+        self.closed = False
+        self.slides = slides if slides is not None else []
+
+    def discover_authorized_courses(self):
+        return self.courses
+
+    def media_source(self, course_id, sub_id):
+        return {"kind": "synthetic"}
+
+    def slide_sources(self, course_id, sub_id):
+        return list(self.slides)
+
+    def close(self):
+        self.closed = True
+
+
+class FakeResponse:
+    def __init__(self, payload, status_code=200):
+        self.status_code = status_code
+        self._payload = payload
+        self.content = json.dumps(payload).encode("utf-8")
+
+    def json(self):
+        return self._payload
+
+
+class FakeGitHubState:
+    """Replaces the GitHub artifact API with an in-memory store."""
+
+    def __init__(self):
+        self.artifacts = []
+        self.next_id = 1
+        self.deleted = []
+
+    def request(self, method, path, **kwargs):
+        if method == "GET" and path == "/actions/artifacts":
+            return FakeResponse({"artifacts": [item for item in self.artifacts if not item.get("expired")]})
+        if method == "GET" and path.endswith("/zip"):
+            artifact_id = int(path.split("/")[-2])
+            item = next(entry for entry in self.artifacts if entry["id"] == artifact_id)
+            archive = io.BytesIO()
+            import zipfile
+            with zipfile.ZipFile(archive, "w") as bundle:
+                for name, raw in item["files"].items():
+                    bundle.writestr(name, raw)
+            response = FakeResponse({})
+            response.content = archive.getvalue()
+            return response
+        if method == "DELETE" and "/actions/artifacts/" in path:
+            artifact_id = int(path.rstrip("/").split("/")[-1])
+            self.deleted.append(artifact_id)
+            self.artifacts = [item for item in self.artifacts if item["id"] != artifact_id]
+            return FakeResponse({}, status_code=204)
+        raise AssertionError(f"unexpected request {method} {path}")
+
+    def upload_state(self, raw):
+        self.artifacts.append({
+            "id": self.next_id, "name": f"courselens-cloud-state-{self.next_id}-1",
+            "created_at": f"2026-09-11T0{self.next_id}:00:00Z", "expired": False,
+            "files": {"state.box.json": raw.decode("utf-8")},
+        })
+        self.next_id += 1
+
+
+class WorkerEnvTestCase(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._previous_cwd = os.getcwd()
+        os.chdir(self._tmp.name)
+        self.github_state = FakeGitHubState()
+        self.signing_private, self.signing_public = _signing_keypair()
+        self.state_key = base64.b64encode(bytes(range(SecretBox.KEY_SIZE))).decode("ascii")
+        from courselens_worker.protocol import generate_box_keypair
+        result_private, result_public = generate_box_keypair()
+        self.result_private = result_private
+        self._patches = [
+            unittest.mock.patch.object(cloud_automation, "_github_request", self.github_state.request),
+            unittest.mock.patch.dict(os.environ, {
+                "GITHUB_TOKEN": "synthetic-token",
+                "GITHUB_REPOSITORY": "synthetic-owner/courselens-worker-synthetic",
+                "COURSELENS_CLOUD_STATE_KEY": self.state_key,
+                "COURSELENS_CLOUD_RESULT_PUBLIC_KEY": result_public,
+                "WORKER_SIGNING_PRIVATE_KEY": self.signing_private,
+                "COURSELENS_CLOUD_DEEPSEEK_API_KEY": "sk-synthetic",
+                # v3 run binding defaults: verified protocol/config, scheduled run.
+                "COURSELENS_CLOUD_EXPECTED_PROTOCOL_VERSION": RULES_SCHEMA,
+                "COURSELENS_CLOUD_EXPECTED_CONFIG_HASH": "d" * 64,
+                "COURSELENS_CLOUD_MANUAL_DISPATCH": "false",
+                "COURSELENS_CLOUD_DISPATCH_CONFIG_HASH": "",
+                "COURSELENS_CLOUD_ENABLED_FLAG": "true",
+            }),
+        ]
+        for patch in self._patches:
+            patch.start()
+
+    def tearDown(self):
+        for patch in reversed(self._patches):
+            patch.stop()
+        os.chdir(self._previous_cwd)
+        self._tmp.cleanup()
+
+    def set_rules(self, rules):
+        os.environ["COURSELENS_CLOUD_RULES_JSON"] = json.dumps(rules)
+
+    def read_persisted_state(self):
+        path = Path(".work/cloud-state/state.box.json")
+        if not path.exists():
+            return None
+        key = base64.b64decode(self.state_key)
+        return _open_state(path.read_bytes(), key)
+
+
+import unittest.mock  # noqa: F401  (re-exported for WorkerEnvTestCase patches)
+
+
+class WorkflowStaticTests(unittest.TestCase):
+    root = Path(__file__).resolve().parents[1]
+
+    def setUp(self):
+        self.daily = (self.root / ".github" / "workflows" / "cloud-daily.yml").read_text(encoding="utf-8")
+        self.verify = (self.root / ".github" / "workflows" / "cloud-verify.yml").read_text(encoding="utf-8")
+
+    def test_daily_has_exactly_two_fixed_beijing_windows_and_no_fanout(self):
+        crons = re.findall(r'- cron: "([^"]+)"', self.daily)
+        self.assertEqual(crons, ["0 5 * * *", "0 14 * * *"])
+        self.assertNotIn("COURSELENS_CLOUD_CRON", self.daily)
+        self.assertNotIn("github.event.schedule", self.daily)
+
+    def test_workflows_never_expose_secrets_to_pull_requests_and_pin_by_full_sha(self):
+        for text in (self.daily, self.verify):
+            self.assertNotIn("pull_request", text)
+            self.assertIn("environment: courselens-worker", text)
+            self.assertIn("contents: read", text)
+            self.assertIn("actions: write", text)
+            self.assertIn("cancel-in-progress: false", text)
+            for action in re.findall(r"uses:\s*(\S+)", text):
+                self.assertRegex(action, r"@[0-9a-f]{40}$", f"action not pinned by full SHA: {action}")
+        self.assertIn("timeout-minutes:", self.daily)
+        self.assertIn("timeout-minutes:", self.verify)
+
+    def test_result_retention_is_30_days_and_only_state_keeps_the_90_day_ceiling(self):
+        # 结果 artifact = 30 天；只有最新一份加密续跑状态保留 90 天上限
+        self.assertIn("retention-days: 30", self.daily)
+        self.assertEqual(self.daily.count("retention-days: 90"), 1)
+        self.assertEqual(self.daily.count("retention-days: 30"), 1)
+        # 90 天只属于状态 artifact 的上传步骤，不回到结果步骤
+        result_block = self.daily[self.daily.index("courselens-cloud-result"):self.daily.index("courselens-cloud-state")]
+        self.assertIn("retention-days: 30", result_block)
+        self.assertNotIn("retention-days: 90", result_block)
+        state_block = self.daily[self.daily.index("courselens-cloud-state"):]
+        self.assertIn("retention-days: 90", state_block)
+        self.assertIn("rm -rf .work", self.daily)
+        self.assertIn("rm -rf .work", self.verify)
+
+    def test_verify_receives_signing_key_for_signed_evidence(self):
+        self.assertIn("WORKER_SIGNING_PRIVATE_KEY: ${{ secrets.WORKER_SIGNING_PRIVATE_KEY }}", self.verify)
+
+    def test_cloud_workflows_and_runtime_do_not_support_smtp(self):
+        paths = [
+            self.root / "courselens_worker" / "cloud_automation.py",
+            self.root / ".github" / "workflows" / "cloud-daily.yml",
+            self.root / ".github" / "workflows" / "cloud-verify.yml",
+        ]
+        combined = "\n".join(path.read_text(encoding="utf-8").lower() for path in paths)
+        self.assertNotIn("smtp", combined)
+        self.assertNotIn("emailmessage", combined)
+
+    def test_cloud_workflows_use_the_macos_route_and_os_scoped_models(self):
+        self.assertIn("runs-on: macos-15", self.daily)
+        self.assertIn("runs-on: macos-15", self.verify)
+        self.assertIn("${{ runner.os }}-asr-models", self.daily)
+        self.assertIn("brew list ffmpeg", self.daily)
+        self.assertNotIn("apt-get", self.daily)
+
+
+class CloudAutomationTests(WorkerEnvTestCase):
     def test_model_extraction_is_python310_compatible_and_rejects_links(self):
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            archive = root / "model.tar.bz2"
-            member = tarfile.TarInfo("model/tokens.txt")
-            member.size = 6
-            self._model_archive(archive, member, b"token\n")
-            destination = root / "models"
-            install_models._safe_extract(archive, destination)
-            self.assertEqual((destination / "model" / "tokens.txt").read_bytes(), b"token\n")
+        root = Path(self._tmp.name)
+        archive = root / "model.tar.bz2"
+        member = tarfile.TarInfo("model/tokens.txt")
+        member.size = 6
+        with tarfile.open(archive, "w:bz2") as bundle:
+            bundle.addfile(member, io.BytesIO(b"token\n"))
+        destination = root / "models"
+        install_models._safe_extract(archive, destination)
+        self.assertEqual((destination / "model" / "tokens.txt").read_bytes(), b"token\n")
 
-            link_archive = root / "link.tar.bz2"
-            link = tarfile.TarInfo("model/link")
-            link.type = tarfile.SYMTYPE
-            link.linkname = "../outside"
-            self._model_archive(link_archive, link)
-            with self.assertRaisesRegex(RuntimeError, "unsafe member"):
-                install_models._safe_extract(link_archive, destination)
+        link_archive = root / "link.tar.bz2"
+        link = tarfile.TarInfo("model/link")
+        link.type = tarfile.SYMTYPE
+        link.linkname = "../outside"
+        with tarfile.open(link_archive, "w:bz2") as bundle:
+            bundle.addfile(link)
+        with self.assertRaisesRegex(RuntimeError, "unsafe member"):
+            install_models._safe_extract(link_archive, destination)
 
     def test_state_is_encrypted_and_tamper_rejected(self):
         key = os.urandom(SecretBox.KEY_SIZE)
@@ -79,50 +291,457 @@ class CloudAutomationTests(unittest.TestCase):
         self.assertEqual(value["runner_minutes"], 0)
         self.assertEqual(value["deepseek_tokens"], 0)
 
-    def test_ai_key_is_required_only_for_rules_that_need_ai(self):
-        self.assertFalse(_rules_need_ai({"rules": [{"discovery_only": True}]}))
-        self.assertFalse(_rules_need_ai({
-            "rules": [{"discovery_only": False, "subtitle_mode": "fast"}],
-        }))
-        self.assertTrue(_rules_need_ai({
-            "rules": [{"discovery_only": False, "subtitle_mode": "standard"}],
-        }))
-        self.assertTrue(_rules_need_ai({
-            "rules": [{"discovery_only": False, "summary": True}],
-        }))
+    def test_ai_key_is_required_for_any_selected_course(self):
+        # v3 固定包：任何选中课程都含 AI 总结/章节，必须配置 Key。
+        self.assertTrue(_rules_need_ai({"rules": [make_course_rule()]}))
+        self.assertFalse(_rules_need_ai({"rules": []}))
 
-    def test_workflow_has_24_half_hour_schedules_and_no_pull_request_secrets(self):
-        workflow = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "cloud-daily.yml"
-        text = workflow.read_text(encoding="utf-8")
-        self.assertEqual(text.count('- cron: "30 '), 24)
-        self.assertNotIn("pull_request:", text)
-        self.assertIn("COURSELENS_CLOUD_ENABLED == 'true'", text)
-        self.assertIn("actions: write", text)
+    def test_rules_envelope_must_be_v3_with_trusted_config_hash(self):
+        self.set_rules({"schema": "cloud-automation.v2", "config_hash": "d" * 64})
+        with self.assertRaises(cloud_automation.CloudAutomationError) as caught:
+            cloud_automation._rules()
+        self.assertEqual(caught.exception.code, "cloud_rules_invalid")
+        self.set_rules({"schema": RULES_SCHEMA, "config_hash": ""})
+        with self.assertRaises(cloud_automation.CloudAutomationError):
+            cloud_automation._rules()
+        oversize = make_course_rule(baseline=[f"l-{index:04d}" for index in range(401)])
+        self.set_rules(make_rules(rules=[oversize]))
+        with self.assertRaises(cloud_automation.CloudAutomationError) as caught:
+            cloud_automation._rules()
+        self.assertEqual(caught.exception.code, "cloud_rules_invalid")
+        self.set_rules(make_rules())
+        self.assertEqual(cloud_automation._rules()["schema"], RULES_SCHEMA)
 
-    def test_cloud_workflows_and_runtime_do_not_support_smtp(self):
-        root = Path(__file__).resolve().parents[1]
-        paths = [
-            root / "courselens_worker" / "cloud_automation.py",
-            root / ".github" / "workflows" / "cloud-daily.yml",
-            root / ".github" / "workflows" / "cloud-verify.yml",
+    def test_dedupe_key_drops_global_config_and_binds_bundle_and_pipeline(self):
+        rules = make_rules()
+        base = _dedupe_key(rules, "36941", "l-1")
+        self.assertEqual(base, _dedupe_key(rules, "36941", "l-1"))
+        self.assertNotEqual(base, _dedupe_key(rules, "36941", "l-2"))
+        # A pure settings change (new config hash, budgets, priorities) must
+        # never change the completed-work identity.
+        self.assertEqual(base, _dedupe_key(
+            make_rules(config_hash="e" * 64, budget={
+                "max_lectures": 5, "max_runner_minutes": 600, "max_deepseek_tokens": 10,
+            }),
+            "36941", "l-1",
+        ))
+        self.assertNotEqual(base, _dedupe_key(make_rules(account_id="2020002"), "36941", "l-1"))
+
+    def test_verify_seals_signed_matching_evidence_without_processing(self):
+        # Verification with no selected rules runs without an AI key: the
+        # connection check is skipped entirely (no key env in this test).
+        os.environ["COURSELENS_CLOUD_DEEPSEEK_API_KEY"] = ""
+        self.set_rules(make_rules())
+        connector = FakeConnector([])
+        with unittest.mock.patch.object(
+            cloud_automation, "cloud_session_from_environment", return_value=connector,
+        ):
+            self.assertEqual(cloud_automation.verify(), 0)
+        state = self.read_persisted_state()
+        record = state["verification"]
+        self.assertEqual(record["config_hash"], "d" * 64)
+        self.assertEqual(record["protocol"], RULES_SCHEMA)
+        message = json.dumps(
+            {key: record[key] for key in ("config_hash", "protocol", "verified_at")},
+            ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")
+        VerifyKey(base64.b64decode(self.signing_public)).verify(
+            message, bytes.fromhex(record["receipt"]),
+        )
+        self.assertTrue(connector.closed)
+
+    def run_daily_with(self, courses, *, process=None, prefill_state=None, slides=None, env=None):
+        # The runtime pops one-shot secret env vars; restore them per run.
+        os.environ["COURSELENS_CLOUD_STATE_KEY"] = self.state_key
+        os.environ["COURSELENS_CLOUD_DEEPSEEK_API_KEY"] = "sk-synthetic"
+        rules = make_rules(rules=[make_course_rule("36941")])
+        self.set_rules(rules)
+        if prefill_state is not None:
+            key = base64.b64decode(self.state_key)
+            self.github_state.upload_state(_seal_state(prefill_state, key))
+        connector = FakeConnector(courses, slides=slides)
+        processed = []
+        if process is not None:
+            def process_wrapper(job, *, checkpoint_writer=None):
+                processed.append(job)
+                return process(job, checkpoint_writer=checkpoint_writer)
+        else:
+            def process_wrapper(job, *, checkpoint_writer=None):
+                processed.append(job)
+                return {
+                    "outputs": {"subtitle": {"mode": "automatic"}},
+                    "metrics": {"elapsed_seconds": 1.0},
+                }
+        overrides = dict(env or {})
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(unittest.mock.patch.dict(os.environ, overrides))
+            stack.enter_context(unittest.mock.patch.object(
+                cloud_automation, "cloud_session_from_environment", return_value=connector,
+            ))
+            stack.enter_context(unittest.mock.patch.object(cloud_automation, "process_job", process_wrapper))
+            stack.enter_context(unittest.mock.patch.object(
+                cloud_automation, "usage_snapshot", return_value={"total_tokens": 0},
+            ))
+            code = cloud_automation.run_daily()
+        # Simulate the workflow's always() upload of the incremental state.
+        state_path = Path(".work/cloud-state/state.box.json")
+        if state_path.exists():
+            self.github_state.upload_state(state_path.read_bytes())
+        return code, processed, connector
+
+    def test_exact_opt_in_and_playback_availability_gate_candidates(self):
+        courses = [
+            {"course_id": "36941", "lectures": [
+                {"sub_id": "l-1", "has_playback": True},
+                {"sub_id": "l-2", "has_playback": False},
+            ]},
+            {"course_id": "99999", "lectures": [{"sub_id": "l-9", "has_playback": True}]},
         ]
-        combined = "\n".join(path.read_text(encoding="utf-8").lower() for path in paths)
-        self.assertNotIn("smtp", combined)
-        self.assertNotIn("emailmessage", combined)
+        code, processed, _ = self.run_daily_with(courses)
+        self.assertEqual(code, 0)
+        self.assertEqual(len(processed), 1)
+        expected_key = _dedupe_key(make_rules(rules=[make_course_rule("36941")]), "36941", "l-1")
+        unexpected_key = _dedupe_key(make_rules(rules=[make_course_rule("36941")]), "36941", "l-2")
+        other_course_key = _dedupe_key(make_rules(rules=[make_course_rule("36941")]), "99999", "l-9")
+        state = self.read_persisted_state()
+        seen = json.dumps(state["seen"])
+        self.assertIn(expected_key, seen)
+        self.assertNotIn(unexpected_key, seen)
+        self.assertNotIn(other_course_key, seen)
 
-    def test_cloud_workflows_use_the_macos_route_and_os_scoped_models(self):
-        root = Path(__file__).resolve().parents[1]
-        daily = (root / ".github" / "workflows" / "cloud-daily.yml").read_text(
-            encoding="utf-8"
+    def test_selection_baseline_excludes_playable_and_releases_later_lectures(self):
+        """基线语义：选择时刻已可播放的讲次被排除；未列出/新讲次可播即合格。"""
+        def run_with(courses, baseline):
+            os.environ["COURSELENS_CLOUD_STATE_KEY"] = self.state_key
+            os.environ["COURSELENS_CLOUD_DEEPSEEK_API_KEY"] = "sk-synthetic"
+            self.set_rules(make_rules(rules=[make_course_rule("36941", baseline=baseline)]))
+            connector = FakeConnector(courses)
+            processed = []
+            def process(job, *, checkpoint_writer=None):
+                processed.append(job)
+                return {"outputs": {}, "metrics": {}}
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(unittest.mock.patch.object(
+                    cloud_automation, "cloud_session_from_environment", return_value=connector,
+                ))
+                stack.enter_context(unittest.mock.patch.object(cloud_automation, "process_job", process))
+                stack.enter_context(unittest.mock.patch.object(
+                    cloud_automation, "usage_snapshot", return_value={"total_tokens": 0},
+                ))
+                code = cloud_automation.run_daily()
+            state_path = Path(".work/cloud-state/state.box.json")
+            if state_path.exists():
+                self.github_state.upload_state(state_path.read_bytes())
+            return code, processed
+
+        courses = [{"course_id": "36941", "lectures": [
+            {"sub_id": "l-old", "has_playback": True},
+            {"sub_id": "l-new", "has_playback": True},
+            {"sub_id": "l-future", "has_playback": False},
+        ]}]
+        code, processed = run_with(courses, baseline=["l-old"])
+        self.assertEqual(code, 0)
+        # l-old excluded by the baseline; l-new processed; l-future unplayable.
+        self.assertEqual(len(processed), 1)
+
+        # A listed lecture that could not play becomes eligible when it can:
+        # the next window discovers l-future now playable, and it is not in
+        # the baseline, so it runs.
+        courses_later = [{"course_id": "36941", "lectures": [
+            {"sub_id": "l-future", "has_playback": True},
+        ]}]
+        code, processed = run_with(courses_later, baseline=["l-old"])
+        self.assertEqual(code, 0)
+        self.assertEqual(len(processed), 1)
+
+        # A fresh generation that lists everything playable excludes all of it.
+        code, processed = run_with(courses_later, baseline=["l-future"])
+        self.assertEqual(code, 0)
+        self.assertEqual(len(processed), 0)
+
+    def test_fixed_bundle_outputs_and_checkpoint_resume(self):
+        courses = [{"course_id": "36941", "lectures": [{"sub_id": "l-1", "has_playback": True}]}]
+        checkpoint_seen = {}
+
+        def first_attempt(job, *, checkpoint_writer=None):
+            self.assertEqual(job["requested_outputs"], list(OUTPUT_BUNDLE))
+            if checkpoint_writer is not None:
+                checkpoint_writer({
+                    "stage": "ocr", "completed_chunks": 2, "total_chunks": 4,
+                    "ocr_completed_items": 2, "ppt_pages": [{"page_num": 1}],
+                })
+            checkpoint_seen["saved"] = True
+            raise RuntimeError("synthetic timeout after checkpoint")
+
+        code, processed, _ = self.run_daily_with(courses, process=first_attempt)
+        self.assertEqual(code, 1)
+        self.assertEqual(len(processed), 1)
+        state = self.read_persisted_state()
+        saved = dict((state.get("checkpoints") or {}).get(
+            _dedupe_key(make_rules(rules=[make_course_rule("36941")]), "36941", "l-1")
+        ) or {})
+        self.assertTrue(saved, "检查点必须保存在加密状态里")
+        self.assertEqual(saved.get("ocr_completed_items"), 2)
+
+        def resume_attempt(job, *, checkpoint_writer=None):
+            prior = dict((job.get("payload") or {}).get("checkpoint") or {})
+            checkpoint_seen["resumed"] = prior
+            self.assertEqual(prior.get("ocr_completed_items"), 2,
+                             "重试必须携带已保存的阶段检查点")
+            # Media URLs are reacquired fresh for every attempt.
+            self.assertEqual(job["payload"]["media"], {"kind": "synthetic"})
+            return {"outputs": {"subtitle": {"mode": "automatic"}}, "metrics": {}}
+
+        code, processed, _ = self.run_daily_with(courses, process=resume_attempt)
+        self.assertEqual(code, 0)
+        self.assertIn("resumed", checkpoint_seen)
+        state = self.read_persisted_state()
+        self.assertEqual(state.get("checkpoints"), {},
+                         "成功后活动检查点必须清空")
+
+    def test_manual_dispatch_rejected_while_paused_before_login(self):
+        def rejected():
+            raise AssertionError("login attempted despite paused manual dispatch")
+
+        code, processed, _ = self.run_daily_with(
+            [{"course_id": "36941", "lectures": [{"sub_id": "l-1", "has_playback": True}]}],
+            env={
+                "COURSELENS_CLOUD_MANUAL_DISPATCH": "true",
+                "COURSELENS_CLOUD_DISPATCH_CONFIG_HASH": "d" * 64,
+                "COURSELENS_CLOUD_ENABLED_FLAG": "false",
+            },
         )
-        verify = (root / ".github" / "workflows" / "cloud-verify.yml").read_text(
-            encoding="utf-8"
+        self.assertEqual(code, 1)
+        state = self.read_persisted_state()
+        self.assertEqual(state["last_run"]["code"], "cloud_dispatch_paused")
+
+    def test_protocol_or_config_mismatch_rejected_before_login(self):
+        for env, expected_code in (
+            ({"COURSELENS_CLOUD_EXPECTED_PROTOCOL_VERSION": "cloud-automation.v2"},
+             "cloud_protocol_mismatch"),
+            ({"COURSELENS_CLOUD_EXPECTED_CONFIG_HASH": "e" * 64},
+             "cloud_config_mismatch"),
+            ({"COURSELENS_CLOUD_EXPECTED_CONFIG_HASH": ""},
+             "cloud_config_mismatch"),
+        ):
+            with self.subTest(code=expected_code):
+                code, _processed, _ = self.run_daily_with(
+                    [{"course_id": "36941", "lectures": [{"sub_id": "l-1", "has_playback": True}]}],
+                    env=env,
+                )
+                self.assertEqual(code, 1)
+                state = self.read_persisted_state()
+                self.assertEqual(state["last_run"]["code"], expected_code)
+
+    def test_manual_dispatch_requires_matching_config_hash(self):
+        code, _processed, _ = self.run_daily_with(
+            [{"course_id": "36941", "lectures": [{"sub_id": "l-1", "has_playback": True}]}],
+            env={
+                "COURSELENS_CLOUD_MANUAL_DISPATCH": "true",
+                "COURSELENS_CLOUD_DISPATCH_CONFIG_HASH": "0" * 64,
+                "COURSELENS_CLOUD_ENABLED_FLAG": "true",
+            },
         )
-        self.assertIn("runs-on: macos-15", daily)
-        self.assertIn("runs-on: macos-15", verify)
-        self.assertIn("${{ runner.os }}-asr-models", daily)
-        self.assertIn("brew list ffmpeg", daily)
-        self.assertNotIn("apt-get", daily)
+        self.assertEqual(code, 1)
+        state = self.read_persisted_state()
+        self.assertEqual(state["last_run"]["code"], "cloud_config_mismatch")
+
+    def test_completed_lectures_never_run_twice(self):
+        courses = [{"course_id": "36941", "lectures": [{"sub_id": "l-1", "has_playback": True}]}]
+        code, processed, _ = self.run_daily_with(courses)
+        self.assertEqual(len(processed), 1)
+        code, processed, _ = self.run_daily_with(courses)
+        self.assertEqual(code, 0)
+        self.assertEqual(processed, [])
+        state = self.read_persisted_state()
+        self.assertEqual(state["last_run"]["counts"]["skipped_pending"], 1)
+
+    def test_already_pending_item_is_skipped_until_ttl_expires(self):
+        item_key = _dedupe_key(
+            make_rules(rules=[make_course_rule("36941")]), "36941", "l-1",
+        )
+        pending_state = _empty_state()
+        pending_state["pending"] = [{
+            "key": item_key, "course_id": "36941", "sub_id": "l-1",
+            "expires_at": time.time() + PENDING_TTL_SECONDS,
+        }]
+        courses = [{"course_id": "36941", "lectures": [{"sub_id": "l-1", "has_playback": True}]}]
+        code, processed, _ = self.run_daily_with(courses, prefill_state=pending_state)
+        self.assertEqual(code, 0)
+        self.assertEqual(processed, [])
+        state = self.read_persisted_state()
+        self.assertEqual(state["last_run"]["counts"]["skipped_pending"], 1)
+
+        expired_state = _empty_state()
+        expired_state["pending"] = [{
+            "key": item_key, "course_id": "36941", "sub_id": "l-1", "expires_at": 1.0,
+        }]
+        code, processed, _ = self.run_daily_with(courses, prefill_state=expired_state)
+        self.assertEqual(len(processed), 1)
+
+    def test_budget_exhaustion_defers_without_marking_completed(self):
+        os.environ["COURSELENS_CLOUD_RULES_JSON"] = json.dumps(make_rules(
+            budget={"max_lectures": 1, "max_runner_minutes": 300, "max_deepseek_tokens": 100000},
+            rules=[make_course_rule("36941")],
+        ))
+        connector = FakeConnector([{"course_id": "36941", "lectures": [
+            {"sub_id": "l-1", "has_playback": True},
+            {"sub_id": "l-2", "has_playback": True},
+        ]}])
+        processed = []
+
+        def process(job, *, checkpoint_writer=None):
+            processed.append(job)
+            return {"outputs": {"subtitle": {"mode": "automatic"}}, "metrics": {}}
+
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(unittest.mock.patch.object(
+                cloud_automation, "cloud_session_from_environment", return_value=connector,
+            ))
+            stack.enter_context(unittest.mock.patch.object(cloud_automation, "process_job", process))
+            stack.enter_context(unittest.mock.patch.object(
+                cloud_automation, "usage_snapshot", return_value={"total_tokens": 0},
+            ))
+            code = cloud_automation.run_daily()
+        self.assertEqual(code, 0)
+        self.assertEqual(len(processed), 1)
+        state = self.read_persisted_state()
+        self.assertEqual(state["last_run"]["code"], "budget_exhausted")
+        self.assertEqual(state["last_run"]["counts"]["deferred"], 1)
+        self.assertEqual(state["last_run"]["counts"]["processed"], 1)
+        # Deferred item is not in seen: it stays retryable.
+        deferred_key = _dedupe_key(make_rules(
+            budget={"max_lectures": 1, "max_runner_minutes": 300, "max_deepseek_tokens": 100000},
+            rules=[make_course_rule("36941")],
+        ), "36941", "l-2")
+        self.assertNotIn(deferred_key, json.dumps(state["seen"]))
+        self.assertEqual(state["circuits"]["budget"]["state"], "open")
+
+    def test_known_credential_rejection_opens_auth_circuit_immediately(self):
+        self.set_rules(make_rules())
+        os.environ["COURSELENS_CLOUD_STATE_KEY"] = self.state_key
+
+        def rejected():
+            raise PlatformSessionError("platform_ticket_rejected")
+
+        with unittest.mock.patch.object(
+            cloud_automation, "cloud_session_from_environment", side_effect=rejected,
+        ):
+            cloud_automation.run_daily()
+        # Simulate the workflow's always() upload of the incremental state.
+        self.github_state.upload_state(
+            Path(".work/cloud-state/state.box.json").read_bytes()
+        )
+        state = self.read_persisted_state()
+        self.assertEqual(state["circuits"]["authentication"]["state"], "open")
+        # A second run must not even attempt a login while the circuit is open.
+        os.environ["COURSELENS_CLOUD_STATE_KEY"] = self.state_key
+        self.set_rules(make_rules())
+        with unittest.mock.patch.object(
+            cloud_automation, "cloud_session_from_environment",
+            side_effect=AssertionError("login attempted despite open auth circuit"),
+        ):
+            code = cloud_automation.run_daily()
+        self.assertEqual(code, 1)
+        state = self.read_persisted_state()
+        self.assertEqual(state["last_run"]["code"], "authentication_circuit_open")
+
+    def test_transient_processing_failure_keeps_item_retryable_and_opens_only_ai_circuit(self):
+        from courselens_worker.llm import LLMError
+        courses = [{"course_id": "36941", "lectures": [{"sub_id": "l-1", "has_playback": True}]}]
+
+        def transient_fail(job, *, checkpoint_writer=None):
+            raise LLMError("DeepSeek HTTP 503 unavailable")
+
+        code, processed, _ = self.run_daily_with(courses, process=transient_fail)
+        # Transient AI failures degrade honestly: the run reports completion
+        # with a degraded circuit and the item stays retryable.
+        self.assertEqual(code, 0)
+        self.assertEqual(len(processed), 1)
+        state = self.read_persisted_state()
+        self.assertNotIn(_dedupe_key(
+            make_rules(rules=[make_course_rule("36941")]), "36941", "l-1",
+        ), json.dumps(state["seen"]))
+        self.assertEqual(state["circuits"]["deepseek"]["state"], "degraded")
+        self.assertEqual(state["circuits"]["authentication"]["state"], "closed")
+        # The next run retries the same lecture (failure is not completion).
+        code, processed, _ = self.run_daily_with(courses)
+        self.assertEqual(code, 0)
+        self.assertEqual(len(processed), 1)
+
+    def test_cloud_state_and_results_never_touch_transient_paths_after_run(self):
+        courses = [{"course_id": "36941", "lectures": [{"sub_id": "l-1", "has_playback": True}]}]
+        self.run_daily_with(courses)
+        state = self.read_persisted_state()
+        raw = (Path(".work/cloud-state/state.box.json")).read_bytes()
+        self.assertNotIn(b"2020001", raw)
+        self.assertNotIn(b"l-1", raw)
+        self.assertEqual(state["schema"], STATE_SCHEMA)
+
+    def test_success_result_envelope_carries_verified_courseware_plan(self):
+        slides = [
+            {"page_num": 1, "created_sec": 30, "record_id": "101",
+             "source": {"url": "https://slides.invalid/1.img"}},
+            {"page_num": 2, "created_sec": 60, "record_id": "102",
+             "source": {"url": "https://slides.invalid/2.img"}},
+            {"page_num": 3, "created_sec": 90, "record_id": "103",
+             "source": {"url": "https://slides.invalid/3.img"}},
+        ]
+        courses = [{"course_id": "36941", "lectures": [{"sub_id": "l-1", "has_playback": True}]}]
+
+        def process(job, *, checkpoint_writer=None):
+            return {
+                "outputs": {"ppt_pages": [
+                    {"page_num": 1, "created_sec": 30, "source_sha256": "a" * 64,
+                     "dhash": "0" * 16, "text": "第1页 标题"},
+                    {"page_num": 2, "created_sec": 60, "source_sha256": "b" * 64,
+                     "dhash": "1" * 16, "text": "第2页 内容"},
+                    {"page_num": 3, "created_sec": 90, "source_sha256": "b" * 64,
+                     "dhash": "1" * 16, "text": "第2页 内容"},
+                ]},
+                "metrics": {"elapsed_seconds": 1.0, "slides_skipped": {"empty": 1}},
+            }
+
+        code, _processed, _connector = self.run_daily_with(
+            courses, process=process, slides=slides,
+        )
+        self.assertEqual(code, 0)
+        results_dir = Path(".work/cloud-results")
+        envelopes = sorted(results_dir.glob("*.box.json"))
+        self.assertEqual(len(envelopes), 1)
+        envelope = json.loads(envelopes[0].read_text(encoding="utf-8"))
+        from courselens_worker.protocol import open_result
+        result = open_result(
+            envelope, self.result_private, self.signing_public,
+            expected_task_id=str(envelope.get("task_id")),
+            expected_input_hash=str(envelope.get("input_hash")),
+        )
+        outputs = result["outputs"]
+        plan = outputs.get("courseware_plan")
+        self.assertIsInstance(plan, dict)
+        self.assertEqual(plan["schema"], "courseware_plan.v1")
+        self.assertEqual(plan["course_id"], "36941")
+        self.assertEqual(plan["sub_id"], "l-1")
+        # Only exact duplicates collapse; counts stay auditable.
+        self.assertEqual(plan["counts"]["kept"], 2)
+        self.assertEqual(plan["counts"]["exact_duplicates"], 1)
+        self.assertEqual(plan["counts"]["skipped"], 1)
+        # The plan carries no URL, cookie, OCR body, thumbnail, or image bytes.
+        rendered = json.dumps(plan, ensure_ascii=False)
+        self.assertNotIn("slides.invalid", rendered)
+        self.assertNotIn("pptimgurl", rendered)
+        self.assertNotIn("http", rendered)
+        self.assertNotIn("标题", rendered)
+        self.assertNotIn("dhash", rendered)
+        # The recorded digest matches the plan exactly.
+        from courselens_worker.protocol import canonical_json, sha256_hex
+        self.assertEqual(
+            outputs["courseware_plan_digest"],
+            sha256_hex(canonical_json(plan)),
+        )
+        # Record ids survived from the slide inventory (time-guarded).
+        record_ids = {entry["record_id"] for entry in plan["entries"]}
+        self.assertEqual(record_ids, {"101", "102"})
 
 
 if __name__ == "__main__":
