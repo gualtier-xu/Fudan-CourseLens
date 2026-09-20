@@ -137,6 +137,73 @@ class PlatformSessionTests(unittest.TestCase):
         connector._login_webvpn.assert_not_called()
         connector._login_course.assert_not_called()
 
+    def test_webvpn_full_login_retries_three_times_with_backoff_and_fresh_sessions(self):
+        connector = PlatformSession(transport="requests")
+        try:
+            webvpn_calls: list[int] = []
+
+            def flaky_webvpn(account, password):
+                webvpn_calls.append(id(connector.session))
+                if len(webvpn_calls) < 3:
+                    raise PlatformSessionError(
+                        "platform_connection_failed",
+                        connection_stage="webvpn_ticket_follow",
+                    )
+
+            connector._login_webvpn = Mock(side_effect=flaky_webvpn)
+            connector._login_course = Mock()
+            with patch("courselens_worker.platform_session.time.sleep") as sleep:
+                connector._login_webvpn_full("account", "password")
+
+            self.assertEqual(len(webvpn_calls), 3)
+            self.assertEqual(len(set(webvpn_calls)), 3)
+            connector._login_course.assert_called_once_with("account", "password")
+            self.assertTrue(connector._webvpn_ready)
+            self.assertEqual(
+                [call.args for call in sleep.call_args_list], [(2.0,), (4.0,)]
+            )
+        finally:
+            connector.close()
+
+    def test_webvpn_full_login_gives_up_after_three_attempts_without_half_state(self):
+        connector = PlatformSession(transport="requests")
+        try:
+            connector._login_webvpn = Mock(
+                side_effect=PlatformSessionError("platform_connection_failed")
+            )
+            connector._login_course = Mock()
+            with patch("courselens_worker.platform_session.time.sleep") as sleep:
+                with self.assertRaisesRegex(
+                    PlatformSessionError, "platform_connection_failed"
+                ):
+                    connector._login_webvpn_full("account", "password")
+
+            self.assertEqual(connector._login_webvpn.call_count, 3)
+            self.assertEqual(
+                [call.args for call in sleep.call_args_list], [(2.0,), (4.0,)]
+            )
+            self.assertFalse(connector._webvpn_ready)
+            self.assertEqual(connector._course_bearer, "")
+            self.assertIsNone(connector._userinfo)
+        finally:
+            connector.close()
+
+    def test_webvpn_full_login_never_retries_non_retryable_codes(self):
+        connector = PlatformSession(transport="requests")
+        try:
+            connector._login_webvpn = Mock(
+                side_effect=PlatformSessionError("platform_auth_failed")
+            )
+            connector._login_course = Mock()
+            with patch("courselens_worker.platform_session.time.sleep") as sleep:
+                with self.assertRaisesRegex(PlatformSessionError, "platform_auth_failed"):
+                    connector._login_webvpn_full("account", "password")
+
+            self.assertEqual(connector._login_webvpn.call_count, 1)
+            sleep.assert_not_called()
+        finally:
+            connector.close()
+
     def test_cloud_login_allows_webvpn_fallback_only_on_final_attempt(self):
         class DirectOnlyConnector(_FakeConnector):
             attempts = 0
@@ -574,6 +641,71 @@ class PlatformSessionTests(unittest.TestCase):
         self.assertEqual(signed_seconds, sorted(set(signed_seconds)))
         sleep.assert_called_once_with(1)
 
+    def test_m15b_constants_are_pinned_against_drift(self):
+        """夜4 testbench §T5/T8 推荐束以常量+钉落地：att3 外梯、票据读超时 (5,20)。"""
+        from courselens_worker import platform_session as module
+
+        self.assertEqual(module._MATERIALIZE_LOGIN_ATTEMPTS, 3)
+        self.assertEqual(module._TICKET_READ_TIMEOUT, (5, 20))
+        with open(module.__file__, encoding="utf-8") as handle:
+            source = handle.read()
+        self.assertIn("timeout=_TICKET_READ_TIMEOUT", source)
+        self.assertIn("range(_MATERIALIZE_LOGIN_ATTEMPTS)", source)
+        self.assertNotIn("timeout=(5, 12)", source)
+
+    def test_m15b_context_missing_is_now_retried_by_the_login_ladder(self):
+        """B1 核心钉：context 族从单请求硬死变三次全链重试（H1 主力失败类）。"""
+        class ContextMissingConnector(_FakeConnector):
+            attempts = 0
+
+            def login(self, account, password):
+                type(self).attempts += 1
+                if type(self).attempts < 3:
+                    raise PlatformSessionError("platform_auth_context_missing")
+                super().login(account, password)
+
+        job = {
+            "payload": {
+                "media": {},
+                "source_session": {
+                    "provider": "runner-session-v1", "course_id": "1", "sub_id": "2",
+                    "media": True, "slides": False,
+                },
+            },
+            "secrets": {"source_credentials": {"account": "a", "password": "p"}},
+        }
+        with patch("courselens_worker.platform_session.PlatformSession", ContextMissingConnector), patch(
+            "courselens_worker.platform_session.time.sleep"
+        ) as sleep:
+            materialize_job_sources(job)
+        self.assertEqual(ContextMissingConnector.attempts, 3)
+        self.assertEqual(sleep.call_count, 2)
+
+        class AlwaysContextMissingConnector(_FakeConnector):
+            attempts = 0
+
+            def login(self, account, password):
+                type(self).attempts += 1
+                raise PlatformSessionError("platform_auth_context_missing")
+
+        exhausted_job = {
+            "payload": {
+                "media": {},
+                "source_session": {
+                    "provider": "runner-session-v1", "course_id": "1", "sub_id": "2",
+                    "media": True, "slides": False,
+                },
+            },
+            "secrets": {"source_credentials": {"account": "a", "password": "p"}},
+        }
+        with patch("courselens_worker.platform_session.PlatformSession", AlwaysContextMissingConnector), patch(
+            "courselens_worker.platform_session.time.sleep"
+        ) as sleep:
+            with self.assertRaises(PlatformSessionError):
+                materialize_job_sources(exhausted_job)
+        self.assertEqual(AlwaysContextMissingConnector.attempts, 3)
+        self.assertEqual(sleep.call_count, 2)
+
     def test_connection_failure_retries_without_retrying_authentication_errors(self):
         class FlakyConnector(_FakeConnector):
             attempts = 0
@@ -705,7 +837,7 @@ class PlatformSessionTests(unittest.TestCase):
             materialize_job_sources(job)
         self.assertTrue(captured["relogin_callable"])
 
-    def test_persistent_connection_failure_backs_off_through_all_five_attempts(self):
+    def test_persistent_connection_failure_backs_off_through_all_three_attempts(self):
         class DownConnector(_FakeConnector):
             attempts = 0
 
@@ -728,10 +860,8 @@ class PlatformSessionTests(unittest.TestCase):
         ) as sleep:
             with self.assertRaises(PlatformSessionError):
                 materialize_job_sources(job)
-        self.assertEqual(DownConnector.attempts, 5)
-        self.assertEqual(
-            [item.args[0] for item in sleep.call_args_list], [2.0, 4.0, 8.0, 16.0]
-        )
+        self.assertEqual(DownConnector.attempts, 3)
+        self.assertEqual([item.args[0] for item in sleep.call_args_list], [2.0, 4.0])
 
     def test_bounded_reverify_recovers_after_transient_verify_failures(self):
         checks = {"calls": 0}
