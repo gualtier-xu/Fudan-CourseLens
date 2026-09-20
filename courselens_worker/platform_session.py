@@ -46,10 +46,19 @@ _ALLOWED_HOSTS = {
 }
 _REDIRECTS = {301, 302, 303, 307, 308}
 _MAX_REDIRECTS = 8
+# M15b（夜4 login-testbench §T5/T8 推荐束 B1+att3+B4；参数以常量+钉落地防无感漂移）：
+# B1=context 族三码入登录重试闭集（此前「晨单发/日多发失败」主力类单请求硬死，零缓冲）；
+# att3=materialize 外梯 5→3（退避 2·2^k 与实测 cfg30 同形，零改动，最坏登录代价 213-231s→126.6s）；
+# B4=票据跟随读超时 12s→20s（慢 IDP ≥13s 从必死变可活）。
+_MATERIALIZE_LOGIN_ATTEMPTS = 3
+_TICKET_READ_TIMEOUT = (5, 20)
 _RETRYABLE_LOGIN_ERRORS = frozenset({
     "platform_connection_failed",
     "platform_ticket_rejected",
     "platform_session_rejected",
+    "platform_auth_context_missing",
+    "platform_course_context_missing",
+    "platform_ticket_missing",
 })
 _RETRYABLE_SESSION_ERRORS = frozenset({
     "platform_connection_failed",
@@ -237,7 +246,16 @@ class PlatformSession:
     def __init__(self, *, transport: str = "curl") -> None:
         if transport not in {"curl", "requests"}:
             raise ValueError("unsupported platform transport")
-        if transport == "curl":
+        self._transport = transport
+        self._userinfo: dict[str, Any] | None = None
+        self._course_direct = False
+        self._course_bearer = ""
+        self._webvpn_ready = False
+        self._build_sessions()
+
+    def _build_sessions(self) -> None:
+        """Fresh cookie jars; a half-written jar from a failed attempt never survives a retry."""
+        if self._transport == "curl":
             self.session = curl_requests.Session(impersonate="chrome")
             self.course_session = curl_requests.Session(impersonate="chrome")
         else:
@@ -247,11 +265,13 @@ class PlatformSession:
             self.course_session.trust_env = False
         self.session.headers.update({"User-Agent": USER_AGENT})
         self.course_session.headers.update({"User-Agent": USER_AGENT})
-        self._transport = transport
-        self._userinfo: dict[str, Any] | None = None
-        self._course_direct = False
-        self._course_bearer = ""
-        self._webvpn_ready = False
+
+    def _rebuild_sessions(self) -> None:
+        try:
+            self.course_session.close()
+        finally:
+            self.session.close()
+        self._build_sessions()
     @staticmethod
     def _request_once(
         session: Any,
@@ -322,7 +342,7 @@ class PlatformSession:
         "platform_session_rejected",
     })
 
-    def _login_webvpn_full(self, account: str, password: str, *, attempts: int = 2) -> None:
+    def _login_webvpn_full(self, account: str, password: str, *, attempts: int = 3) -> None:
         """Full WebVPN fallback with per-attempt fresh tickets and verification.
 
         The 2026-09-13 public-runner failure died at ``webvpn_ticket_follow``
@@ -330,9 +350,12 @@ class PlatformSession:
         transient drop must not fail the whole login: each bounded attempt
         reruns the full WebVPN login plus the course login behind it, ending
         in post-login session verification.  Tickets are minted per attempt
-        and never replayed.
+        and never replayed; every retry also starts from a freshly rebuilt
+        session pair with exponential backoff, so a half-written cookie jar
+        or a flaky route cannot poison the remaining attempts.
         """
-        for attempt in range(max(1, attempts)):
+        total = max(1, attempts)
+        for attempt in range(total):
             try:
                 self._login_webvpn(account, password)
                 self._webvpn_ready = True
@@ -340,12 +363,15 @@ class PlatformSession:
                 return
             except PlatformSessionError as exc:
                 self._webvpn_ready = False
+                self._course_bearer = ""
+                self._userinfo = None
                 if (
                     str(exc) not in self._RETRYABLE_WEBVPN_LEG_ERRORS
-                    or attempt == attempts - 1
+                    or attempt == total - 1
                 ):
                     raise
-                time.sleep(2.0 * (attempt + 1))
+                self._rebuild_sessions()
+                time.sleep(min(2.0 * (2 ** attempt), 8.0))
         raise AssertionError("unreachable")
 
     def login(
@@ -453,7 +479,7 @@ class PlatformSession:
                 "GET",
                 ticket,
                 stream=True,
-                timeout=(5, 12),
+                timeout=_TICKET_READ_TIMEOUT,
                 connection_stage="webvpn_ticket_follow",
             )
         except PlatformSessionError as exc:
@@ -605,7 +631,7 @@ class PlatformSession:
             raise _fail("platform_ticket_rejected")
         try:
             response, _ = self._follow(
-                "GET", ticket, stream=True, timeout=(5, 12),
+                "GET", ticket, stream=True, timeout=_TICKET_READ_TIMEOUT,
                 connection_stage="course_ticket_follow_direct", direct=True,
             )
         except PlatformSessionError as exc:
@@ -709,7 +735,7 @@ class PlatformSession:
                 "GET",
                 ticket,
                 stream=True,
-                timeout=(5, 12),
+                timeout=_TICKET_READ_TIMEOUT,
                 connection_stage="course_ticket_follow",
             )
         except PlatformSessionError as exc:
@@ -1217,7 +1243,7 @@ def materialize_job_sources(job: dict[str, Any]) -> dict[str, Any]:
         # Cross-border runner routes to the platform drop connections in
         # bursts; a login attempt takes seconds, so back off between tries
         # instead of burning all attempts inside one outage window.
-        for attempt in range(5):
+        for attempt in range(_MATERIALIZE_LOGIN_ATTEMPTS):
             connector = PlatformSession()
             try:
                 connector.login(account, password)
@@ -1225,7 +1251,7 @@ def materialize_job_sources(job: dict[str, Any]) -> dict[str, Any]:
             except PlatformSessionError as exc:
                 connector.close()
                 connector = None
-                if str(exc) not in _RETRYABLE_LOGIN_ERRORS or attempt == 4:
+                if str(exc) not in _RETRYABLE_LOGIN_ERRORS or attempt == _MATERIALIZE_LOGIN_ATTEMPTS - 1:
                     raise
                 time.sleep(2.0 * (2 ** attempt))
         if connector is None:
