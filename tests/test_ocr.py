@@ -34,9 +34,17 @@ from courselens_worker.source import SourceSecurityError  # noqa: E402
 if Image is not None:
     import io
 
+    from PIL import ImageDraw
+
     def _png_bytes(color: str) -> bytes:
+        # V2 四级流水（NIGHT5-U4）后夹具必须带内容：纯色帧会被无特征规则
+        # 当作空白页在 OCR 前落刀。底色保留 color 语义，叠加一块对比色版面。
         buffer = io.BytesIO()
-        Image.new("RGB", (32, 16), color).save(buffer, format="PNG")
+        image = Image.new("RGB", (320, 180), color)
+        draw = ImageDraw.Draw(image)
+        draw.rectangle([20, 20, 220, 70], fill=(20, 90, 160) if color == "white" else (240, 200, 60))
+        draw.rectangle([20, 90, 260, 104], fill=(60, 62, 66))
+        image.save(buffer, format="PNG")
         return buffer.getvalue()
 
     PNG = _png_bytes("white")

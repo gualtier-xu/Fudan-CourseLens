@@ -19,6 +19,14 @@ from shared.evidence_contract import (
     compute_id,
 )
 
+from .junk_filter import (
+    JUNK_PAGE_SKIP_REASON,
+    adjudicate_deck,
+    chrome_verdict,
+    featureless_verdict,
+    frame_features,
+    is_junk_page,
+)
 from .source import fetch_bytes, safe_source_error_code
 
 _OCR_LOCAL = threading.local()
@@ -108,6 +116,19 @@ def _ocr_page(index: int, item: dict[str, Any], raw: bytes) -> tuple[dict[str, A
         return None, "unidentified_image"
     except Exception:
         return None, "decode_failed"
+    features = None
+    try:
+        features = frame_features(image)
+        # V2 四级流水前两级（NIGHT5-U4）：黑名单命中 / 无特征页 / chrome 结构门
+        # 都在 OCR 之前落刀，统一计入 junk_page 闭集原因；过滤器故障绝不致批。
+        if (
+            is_junk_page(image)
+            or featureless_verdict(features)
+            or chrome_verdict(features)
+        ):
+            return None, JUNK_PAGE_SKIP_REASON
+    except Exception:
+        features = None  # a filter fault must not fail the batch; the page stays content
     try:
         fingerprint = _dhash(image)
         result, _elapsed = _engine()(np.asarray(image))
@@ -123,6 +144,7 @@ def _ocr_page(index: int, item: dict[str, Any], raw: bytes) -> tuple[dict[str, A
         "text": "\n".join(lines),
         "dhash": fingerprint,
         "source_sha256": hashlib.sha256(raw).hexdigest(),
+        "_junk": features,
     }, ""
 
 
@@ -140,6 +162,9 @@ def process_slides(
     at several distinct timeline events, so a repeat is never classified as
     a skipped or error page and identical-looking perceptual hashes never
     discard or merge content — ``dhash`` stays a diagnostic field only.
+    The one perceptual skip reason is ``junk_page``: the fixed blacklist
+    plus the V2 featureless/chrome/semantic stages (``junk_filter``) drop
+    junk screenshots there, each counted under the same closed-set reason.
     Entity/event IDs are deterministic evidence.v1 digests over the deck
     scope and content; they are attached only when derivable from the deck
     scope and stored nonsecret fields.
@@ -181,6 +206,8 @@ def process_slides(
         _attach_identity(page)
     total = len(slides)
     completed = max(0, min(total, int(prior.get("ocr_completed_items") or 0)))
+    # V2 后两级（③家族聚簇/④语义裁决）的存活页旗标随行收集；旗标不进检查点。
+    screened: list[tuple[dict[str, Any], dict[str, object] | None]] = []
     prefetch = max(1, min(20, int(os.environ.get("COURSELENS_IMAGE_PREFETCH") or 16)))
     concurrency = max(1, min(2, int(os.environ.get("COURSELENS_OCR_CONCURRENCY") or 1)))
     for batch_start in range(completed, total, prefetch):
@@ -205,6 +232,7 @@ def process_slides(
                     if reason:
                         skipped[reason] = int(skipped.get(reason) or 0) + 1
                 else:
+                    screened.append((page, page.pop("_junk", None)))
                     _attach_identity(page)
                     output.append(page)
                 progress("ocr", index + 1, total)
@@ -219,4 +247,15 @@ def process_slides(
                         "ppt_skipped": skipped,
                     })
         raw_pages.clear()
+    # V2 后两级（NIGHT5-U4）：家族聚簇与语义裁决只作用于本轮新幸存页；
+    # 语义词从不单独落刀，必须伴随聚簇或弱 chrome 形状证据。历史检查点页
+    # 在其所在轮次已完成裁决，不重复进入。
+    flagged = [(page, features) for page, features in screened if features is not None]
+    if flagged:
+        records = [{**features, "text": str(page.get("text") or "")} for page, features in flagged]
+        verdicts = adjudicate_deck(records)
+        killed = {id(page) for (page, _features), kill in zip(flagged, verdicts) if kill}
+        if killed:
+            output[:] = [page for page in output if id(page) not in killed]
+            skipped[JUNK_PAGE_SKIP_REASON] = int(skipped.get(JUNK_PAGE_SKIP_REASON) or 0) + len(killed)
     return output, {name: count for name, count in skipped.items() if count > 0}

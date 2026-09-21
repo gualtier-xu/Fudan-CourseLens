@@ -233,6 +233,33 @@ def _is_login_target(value: str) -> bool:
     return path == "/login" or path.endswith("/login")
 
 
+# B3（夜4 login-testbench §T9 原型，60 样本 100% 分离）：风控挑战页识别器。
+# 保守三特征（meta refresh / challenge 元素 / JS 写 cookie）；规则集对模拟器
+# 页面特征拟合，真实 IDP 挑战页特征待 REALTEST 采样。只读有界前缀做分类，
+# 正文永不进入日志或错误文本。
+_CHALLENGE_SNIFF_BYTES = 65536
+_CHALLENGE_PAGE_MARKERS = (
+    '<meta http-equiv="refresh',
+    "<meta http-equiv=refresh",
+    'id="challenge"',
+    "id=challenge",
+    "document.cookie",
+)
+
+
+def _challenge_page_sniff(response: Any) -> str:
+    """Return a bounded, case-folded body prefix for page classification."""
+    try:
+        content = bytes(response.content[:_CHALLENGE_SNIFF_BYTES])
+    except Exception:
+        return ""
+    return content.decode("utf-8", errors="ignore").casefold()
+
+
+def _looks_like_challenge_page(body: str) -> bool:
+    return any(marker in body for marker in _CHALLENGE_PAGE_MARKERS)
+
+
 class PlatformSession:
     """Narrow session capable only of authorizing one requested lecture."""
 
@@ -424,21 +451,31 @@ class PlatformSession:
         service = f"{WEBVPN_BASE}/login?cas_login=true"
         current = f"{IDP_BASE}/idp/authCenter/authenticate?service={quote(service, safe='')}"
         lck = ""
+        final_body = ""
         for _ in range(_MAX_REDIRECTS + 1):
             response = self._once(
                 "GET", current, connection_stage="webvpn_context"
             )
             location = response.headers.get("Location", "")
             status = response.status_code
-            response.close()
             match = re.search(r"[?&]lck=([^&]+)", location)
             if match:
+                response.close()
                 lck = match.group(1)
                 break
             if status not in _REDIRECTS or not location:
+                # 终止页（通常 200 正文页）：读有界前缀供挑战页分类。
+                final_body = _challenge_page_sniff(response)
+                response.close()
                 break
+            response.close()
             current = _validate_url(urljoin(current, location))
         if not lck:
+            # B3：挑战页与「IDP 未发 lck」塌缩解耦。挑战页需要人工完成一次
+            # 人机确认，独立码且不入任何重试闭集——程序重试只会连续撞上
+            # 同一挑战页；普通无 lck 页维持既有码（外层登录梯会重试）。
+            if _looks_like_challenge_page(final_body):
+                raise _fail("platform_challenge_required", connection_stage="webvpn_context")
             raise _fail("platform_auth_context_missing")
 
         method_data = _json(self._once(

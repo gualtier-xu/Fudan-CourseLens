@@ -706,6 +706,83 @@ class PlatformSessionTests(unittest.TestCase):
         self.assertEqual(AlwaysContextMissingConnector.attempts, 3)
         self.assertEqual(sleep.call_count, 2)
 
+    def _context_page(self, body):
+        """A non-redirect 200 response for the webvpn context stage."""
+        page = Mock(status_code=200)
+        page.headers = {"Location": ""}
+        page.content = body.encode("utf-8")
+        return page
+
+    def test_b3_challenge_page_gets_its_own_code(self):
+        """B3 核心钉：挑战页与「IDP 未发 lck」塌缩解耦为独立码（testbench §T9）。"""
+        connector = object.__new__(PlatformSession)
+        page = self._context_page(
+            "<html><head><meta http-equiv=\"refresh\" content='2'></head>"
+            "<body><div id=\"challenge\">risk-check</div>"
+            "<script>document.cookie='risk=1';</script></body></html>"
+        )
+        connector._once = Mock(return_value=page)
+        with self.assertRaises(PlatformSessionError) as captured:
+            connector._login_webvpn("account", "password")
+        self.assertEqual(str(captured.exception), "platform_challenge_required")
+        self.assertEqual(captured.exception.connection_stage, "webvpn_context")
+
+    def test_b3_plain_no_lck_page_keeps_the_historical_code(self):
+        """普通无 lck 登录页（form/password 词汇、无挑战特征）维持既有码。"""
+        connector = object.__new__(PlatformSession)
+        connector._once = Mock(return_value=self._context_page(
+            "<html><body><form action='/login'><input type='password'>"
+            "login page</form></body></html>"
+        ))
+        with self.assertRaises(PlatformSessionError) as captured:
+            connector._login_webvpn("account", "password")
+        self.assertEqual(str(captured.exception), "platform_auth_context_missing")
+
+    def test_b3_each_conservative_marker_classifies_as_challenge(self):
+        for marker in (
+            '<meta http-equiv="refresh"',
+            '<div id="challenge">',
+            "var value = document.cookie;",
+        ):
+            connector = object.__new__(PlatformSession)
+            connector._once = Mock(return_value=self._context_page(f"<html>{marker}</html>"))
+            with self.assertRaises(PlatformSessionError) as captured:
+                connector._login_webvpn("account", "password")
+            self.assertEqual(str(captured.exception), "platform_challenge_required", marker)
+
+    def test_b3_challenge_code_never_enters_the_retry_closed_sets(self):
+        """挑战页需人工确认：独立码不入任何登录重试闭集（不重试可指引）。"""
+        from courselens_worker.platform_session import (
+            _RETRYABLE_LOGIN_ERRORS,
+            _RETRYABLE_SESSION_ERRORS,
+        )
+
+        self.assertNotIn("platform_challenge_required", _RETRYABLE_LOGIN_ERRORS)
+        self.assertNotIn(
+            "platform_challenge_required", PlatformSession._RETRYABLE_WEBVPN_LEG_ERRORS
+        )
+        self.assertNotIn("platform_challenge_required", _RETRYABLE_SESSION_ERRORS)
+        # 而既有 context 族码保持在登录重试闭集内（B1 行为不回退）。
+        self.assertIn("platform_auth_context_missing", _RETRYABLE_LOGIN_ERRORS)
+
+    def test_b3_challenge_code_survives_runner_reduction_closed_set(self):
+        """码表等集钉：platform 族 14 码逐一过归约且不塌缩；兜底码不收编。"""
+        platform_codes = {
+            "platform_credentials_missing", "platform_connection_failed",
+            "platform_redirect_rejected", "platform_auth_context_missing",
+            "platform_auth_method_missing", "platform_key_rejected",
+            "platform_auth_failed", "platform_ticket_missing",
+            "platform_ticket_rejected", "platform_session_rejected",
+            "platform_course_context_missing", "platform_course_request_failed",
+            "platform_media_missing", "platform_challenge_required",
+        }
+        for code in platform_codes:
+            self.assertEqual(safe_worker_error_detail(PlatformSessionError(code)), code)
+        self.assertEqual(
+            safe_worker_error_detail(PlatformSessionError("platform_unknown_code")),
+            "platform_session_failed",
+        )
+
     def test_connection_failure_retries_without_retrying_authentication_errors(self):
         class FlakyConnector(_FakeConnector):
             attempts = 0

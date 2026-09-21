@@ -746,3 +746,19 @@ class CloudAutomationTests(WorkerEnvTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PlatformCodeCollapseTests(unittest.TestCase):
+    """U11 挑战塌缩扩集：已登记平台码原样上抛，未知串仍塌缩。"""
+
+    def test_precise_codes_survive_and_unknown_collapses(self):
+        from courselens_worker.cloud_automation import (
+            _PLATFORM_PRECISE_CODES,
+            collapse_platform_code,
+        )
+
+        self.assertIn("platform_challenge_required", _PLATFORM_PRECISE_CODES)
+        self.assertGreaterEqual(len(_PLATFORM_PRECISE_CODES), 18)
+        self.assertEqual(collapse_platform_code("platform_challenge_required"), "platform_challenge_required")
+        self.assertEqual(collapse_platform_code("platform_media_missing"), "platform_media_missing")
+        self.assertEqual(collapse_platform_code("platform_something_new"), "platform_session_failed")
