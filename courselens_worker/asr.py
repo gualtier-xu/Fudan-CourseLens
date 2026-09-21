@@ -40,6 +40,12 @@ from .source import (
 SAMPLE_RATE = 16_000
 PCM_CHUNK_SECONDS = 10 * 60
 ASR_WINDOW_SECONDS = 30
+# decode_streams keeps every stream of one call inside a single activation
+# whose memory scales with the batch's total audio seconds, so a 600s chunk
+# of continuous speech decoded as one batch exhausted 16GB hosted runners.
+# Capping each call at the per-stream window ceiling bounds that activation
+# to the envelope proven safe on 4-core runners.
+ASR_DECODE_BATCH_SECONDS = 30
 
 # Frame-energy voice activity: deterministic, NumPy-only, no model.  The one
 # documented calibration knob is COURSELENS_ASR_ENERGY_RATIO (voiced threshold
@@ -396,7 +402,20 @@ class RecognizerPool:
             del samples
             return []
         if hasattr(recognizer, "decode_streams"):
-            recognizer.decode_streams([item[0] for item in work])
+            # Batches keep work order and each stream is decoded exactly once,
+            # so batching never changes segment order or anchors.
+            batch: list[Any] = []
+            batch_seconds = 0.0
+            for stream, start_ms, end_ms in work:
+                stream_seconds = max(0, end_ms - start_ms) / 1000.0
+                if batch and batch_seconds + stream_seconds > ASR_DECODE_BATCH_SECONDS:
+                    recognizer.decode_streams(batch)
+                    batch = []
+                    batch_seconds = 0.0
+                batch.append(stream)
+                batch_seconds += stream_seconds
+            if batch:
+                recognizer.decode_streams(batch)
         else:
             for stream, _, _ in work:
                 recognizer.decode_stream(stream)

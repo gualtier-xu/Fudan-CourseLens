@@ -53,6 +53,7 @@ class _FakeRecognizer:
         self.text = text
         self.result_builder = result_builder
         self.streams: list[_FakeStream] = []
+        self.batches: list[list[_FakeStream]] = []
 
     def create_stream(self) -> _FakeStream:
         stream = _FakeStream()
@@ -60,6 +61,7 @@ class _FakeRecognizer:
         return stream
 
     def decode_streams(self, streams) -> None:
+        self.batches.append(list(streams))
         for stream in streams:
             if self.result_builder is not None:
                 stream.result = self.result_builder(stream.waveform)
@@ -208,6 +210,121 @@ class TranscribePcmTimingTests(unittest.TestCase):
                 )
                 self.assertEqual(len(segments), 1)
                 self.assertNotIn("tokens", segments[0])
+
+
+class _TaggedRecognizer(_FakeRecognizer):
+    """Tags streams in creation order and decodes to a per-stream text."""
+
+    def create_stream(self) -> _FakeStream:
+        stream = super().create_stream()
+        stream.tag = len(self.streams)
+        return stream
+
+    def decode_streams(self, streams) -> None:
+        self.batches.append(list(streams))
+        for stream in streams:
+            stream.result = SimpleNamespace(text=f"段{stream.tag:02d}")
+
+
+class _LegacyRecognizer:
+    """Pre-decode_streams sherpa shape: one stream at a time, no batches."""
+
+    def __init__(self) -> None:
+        self.streams: list[SimpleNamespace] = []
+        self.decoded: list[SimpleNamespace] = []
+
+    def create_stream(self) -> SimpleNamespace:
+        stream = SimpleNamespace(result=None, tag=len(self.streams) + 1, waveform=None)
+
+        def accept_waveform(_sample_rate, samples, _stream=stream):
+            _stream.waveform = np.array(samples, dtype=np.float32)
+
+        stream.accept_waveform = accept_waveform
+        self.streams.append(stream)
+        return stream
+
+    def decode_stream(self, stream) -> None:
+        stream.result = SimpleNamespace(text=f"段{stream.tag:02d}")
+        self.decoded.append(stream)
+
+
+class DecodeBatchingTests(unittest.TestCase):
+    """decode_streams memory is bounded: activation size scales with the
+    total audio seconds of one call, so a 600s chunk of continuous speech
+    decoded as one batch exhausted 16GB hosted runners (ASRMEM-1)."""
+
+    def _transcribe(self, samples: np.ndarray, recognizer):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = _write_pcm(Path(temporary), "chunk.f32le", samples)
+            pool = asr.RecognizerPool.__new__(asr.RecognizerPool)
+            pool.threads = 1
+            pool._recognizers = {}
+            pool.sensevoice_dir = Path("sensevoice")
+            pool.firered_dir = Path("firered")
+            with patch.object(asr.RecognizerPool, "get", return_value=recognizer):
+                return pool.transcribe_pcm(path, "sensevoice", offset_seconds=0.0)
+
+    def _island_window(self) -> np.ndarray:
+        # 30s window: two ~10s speech islands; every window yields the same
+        # two regions, so N windows give 2N streams of known durations.
+        return _tone(0.0, 10.0, 30.0) + _tone(15.0, 25.0, 30.0)
+
+    def test_batched_calls_never_exceed_the_seconds_cap(self):
+        samples = np.concatenate([self._island_window() for _ in range(3)])  # 90s, 6 streams
+        recognizer = _FakeRecognizer()
+        segments = self._transcribe(samples, recognizer)
+        self.assertEqual(len(recognizer.streams), 6)
+        self.assertEqual(len(recognizer.batches), 3)
+        decoded = [stream for batch in recognizer.batches for stream in batch]
+        self.assertEqual(len(decoded), 6)
+        self.assertEqual(len({id(stream) for stream in decoded}), 6)
+        for batch in recognizer.batches:
+            seconds = sum(len(stream.waveform) for stream in batch) / SAMPLE_RATE
+            self.assertGreater(seconds, 0.0)
+            self.assertLessEqual(seconds, asr.ASR_DECODE_BATCH_SECONDS)
+        self.assertEqual(len(segments), 6)
+
+    def test_continuous_speech_no_longer_decodes_one_whole_chunk_per_call(self):
+        # Two full-window regions: the old single decode_streams call held
+        # 60s of audio in one activation; the cap must split it in two.
+        samples = np.full(60 * SAMPLE_RATE, 0.4, dtype=np.float32)
+        recognizer = _FakeRecognizer()
+        segments = self._transcribe(samples, recognizer)
+        self.assertEqual(len(recognizer.streams), 2)
+        self.assertEqual(len(recognizer.batches), 2)
+        for batch in recognizer.batches:
+            self.assertEqual(len(batch), 1)
+            seconds = len(batch[0].waveform) / SAMPLE_RATE
+            self.assertLessEqual(seconds, asr.ASR_DECODE_BATCH_SECONDS)
+        self.assertEqual(len(segments), 2)
+
+    def test_segment_order_is_stable_across_batches(self):
+        samples = np.concatenate([self._island_window() for _ in range(3)])
+        recognizer = _TaggedRecognizer()
+        segments = self._transcribe(samples, recognizer)
+        self.assertEqual(len(recognizer.batches), 3)
+        self.assertEqual(
+            [segment["text"] for segment in segments],
+            [f"段{index:02d}" for index in range(1, 7)],
+        )
+        starts = [segment["start_ms"] for segment in segments]
+        self.assertEqual(starts, sorted(starts))
+        self.assertEqual(len(set(starts)), len(starts))
+
+    def test_legacy_recognizers_still_decode_stream_by_stream(self):
+        samples = np.concatenate([self._island_window() for _ in range(2)])
+        recognizer = _LegacyRecognizer()
+        segments = self._transcribe(samples, recognizer)
+        self.assertEqual(len(recognizer.streams), 4)
+        self.assertEqual(len(recognizer.decoded), 4)
+        self.assertEqual(
+            [stream.tag for stream in recognizer.decoded],
+            [1, 2, 3, 4],
+        )
+        self.assertEqual(
+            [segment["text"] for segment in segments],
+            [f"段{index:02d}" for index in range(1, 5)],
+        )
 
 
 class NormalizeEvidenceTests(unittest.TestCase):
