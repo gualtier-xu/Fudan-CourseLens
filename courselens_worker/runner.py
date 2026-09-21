@@ -109,7 +109,7 @@ def safe_worker_error_detail(error: BaseException) -> str:
             "platform_auth_failed", "platform_ticket_missing",
             "platform_ticket_rejected", "platform_session_rejected",
             "platform_course_context_missing", "platform_course_request_failed",
-            "platform_media_missing",
+            "platform_media_missing", "platform_challenge_required",
         } else "platform_session_failed"
     return ""
 
@@ -338,6 +338,7 @@ def _process_materialized_job(
         from .asr import transcribe
         from .formats import to_srt, to_vtt
         from .lecture_ir import build_lecture_ir
+        from .glossary import build_glossary
         from .llm import answer_question, create_summary, proofread_segments
         from .ocr import process_slides
 
@@ -394,6 +395,7 @@ def _process_materialized_job(
                     ppt_pages=pages if wants_slides else None,
                     prior_checkpoint=saved,
                     checkpoint=write_with_ocr,
+                    glossary=build_glossary(pages, str(payload.get("title") or "")),
                 )
 
             value = transcribe(

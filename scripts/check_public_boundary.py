@@ -115,7 +115,10 @@ def _history_failures() -> list[str]:
     return failures
 
 
-def main() -> int:
+def tree_failures() -> list[str]:
+    """Scan the working tree only — the legs a local pre-publish gate can
+    reproduce before the mirror CI runs.  The git-history leg in ``main``
+    only makes sense inside the public mirror repository."""
     failures: list[str] = []
     for path in ROOT.rglob("*"):
         if not path.is_file() or ".git" in path.parts:
@@ -143,6 +146,11 @@ def main() -> int:
         for path in candidates:
             text = path.read_text(encoding="utf-8")
             failures.extend(_doc_violations(str(path.relative_to(ROOT)), text))
+    return failures
+
+
+def main() -> int:
+    failures = tree_failures()
     failures.extend(_history_failures())
     if failures:
         print("Public boundary violations:")
