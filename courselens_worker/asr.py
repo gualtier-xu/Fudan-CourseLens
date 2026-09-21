@@ -534,6 +534,97 @@ def _stamp_segment_identity(
         segment["provenance"] = dict(provenance)
 
 
+TELEMETRY_TICK_SECONDS = 30.0
+
+
+def _emit_telemetry(line: str) -> None:
+    # runner._progress discipline: counters, seconds, and fixed stage
+    # identifiers only — never URLs, paths, titles, or provider text.
+    print(line, flush=True)
+
+
+def _mem_available_kb_from(text: str) -> int:
+    """MemAvailable KiB from /proc/meminfo text; -1 when absent or unshaped."""
+    for line in str(text).splitlines():
+        if line.startswith("MemAvailable:"):
+            fields = line.split()
+            if len(fields) >= 2:
+                try:
+                    return int(fields[1])
+                except ValueError:
+                    return -1
+            return -1
+    return -1
+
+
+def _mem_available_kb(path: Path = Path("/proc/meminfo")) -> int:
+    try:
+        return _mem_available_kb_from(path.read_text(encoding="utf-8", errors="ignore"))
+    except OSError:
+        return -1
+
+
+class _ChunkTicker:
+    """Death-window telemetry for the subtitle chunk loop.
+
+    A daemon thread printing one bounded line per interval — elapsed seconds,
+    current chunk index, transient PCM file size, and MemAvailable — plus a
+    termination line on stop.  It only reads the loop's small state dict and
+    the filesystem; it never touches decode, ASR, fingerprint, or checkpoint
+    state, so it cannot change run semantics.
+    """
+
+    def __init__(
+        self,
+        state: dict[str, Any],
+        *,
+        interval: float = TELEMETRY_TICK_SECONDS,
+        emit: Callable[[str], None] = _emit_telemetry,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self._state = state
+        self._interval = max(0.05, float(interval))
+        self._emit = emit
+        self._clock = clock
+        self._stop = threading.Event()
+        self._started = False
+        self.started_at = self._clock()
+        self._thread = threading.Thread(
+            target=self._loop, name="asr-chunk-ticker", daemon=True,
+        )
+
+    def start(self) -> None:
+        self._started = True
+        self._thread.start()
+
+    def stop(self, *, timeout: float = 5.0) -> None:
+        self._stop.set()
+        if self._started:
+            self._thread.join(timeout=timeout)
+        self._emit(
+            f"stage=asr-tick-end elapsed={self._elapsed_seconds()} "
+            f"chunks={max(0, int(self._state.get('done') or 0))}"
+        )
+
+    def _elapsed_seconds(self) -> int:
+        return max(0, int(round(self._clock() - self.started_at)))
+
+    def _loop(self) -> None:
+        while not self._stop.wait(self._interval):
+            pcm = self._state.get("pcm")
+            size = 0
+            if pcm is not None:
+                try:
+                    size = int(pcm.stat().st_size)
+                except OSError:
+                    size = 0
+            self._emit(
+                f"stage=asr-tick elapsed={self._elapsed_seconds()} "
+                f"chunk={max(0, int(self._state.get('chunk') or 0))} "
+                f"pcm_bytes={size} mem_avail_kb={_mem_available_kb()}"
+            )
+
+
 def transcribe(
     job: dict[str, Any],
     *,
@@ -595,54 +686,84 @@ def transcribe(
     # refresh retry in the proxy.
     with tempfile.TemporaryDirectory(prefix="courselens-pcm-") as temporary, pinned_media_proxy(source) as proxy:
         root = Path(temporary)
-        for index in range(completed_chunks, total_chunks):
-            if index > completed_chunks:
-                proxy.refresh_source()
-            relative_offset = index * PCM_CHUNK_SECONDS
-            absolute_offset = start_seconds + relative_offset
-            chunk_duration = min(PCM_CHUNK_SECONDS, duration - relative_offset)
-            pcm = root / f"chunk-{index:04d}.f32le"
-            _decode_chunk_from_url(
-                proxy.url,
-                pcm,
-                offset=absolute_offset,
-                duration=chunk_duration,
-            )
-            if verifiable_fingerprint:
-                fingerprint_state = _advance_pcm_fingerprint(
-                    fingerprint_state, _pcm_file_digest(pcm)
+        # Death-window telemetry: fixed phase lines plus a 30s ticker line so
+        # one real run pinpoints a runner death to the phase and the second.
+        # Observation only — decode, fingerprint, and checkpoint math are
+        # untouched, and the lines carry counters and seconds exclusively.
+        t0 = time.monotonic()
+
+        def _elapsed_ticks() -> int:
+            return max(0, int(round(time.monotonic() - t0)))
+
+        telemetry_state: dict[str, Any] = {
+            "chunk": completed_chunks, "pcm": None, "done": completed_chunks,
+        }
+        ticker = _ChunkTicker(telemetry_state)
+        try:
+            _emit_telemetry(f"stage=proxy-resolved elapsed={_elapsed_ticks()}")
+            ticker.start()
+            for index in range(completed_chunks, total_chunks):
+                telemetry_state["chunk"] = index
+                if index > completed_chunks:
+                    proxy.refresh_source()
+                relative_offset = index * PCM_CHUNK_SECONDS
+                absolute_offset = start_seconds + relative_offset
+                chunk_duration = min(PCM_CHUNK_SECONDS, duration - relative_offset)
+                pcm = root / f"chunk-{index:04d}.f32le"
+                telemetry_state["pcm"] = pcm
+                _emit_telemetry(f"stage=decode-start chunk={index} elapsed={_elapsed_ticks()}")
+                decode_started = time.monotonic()
+                _decode_chunk_from_url(
+                    proxy.url,
+                    pcm,
+                    offset=absolute_offset,
+                    duration=chunk_duration,
                 )
-            if proofread_enabled and strategy == "parallel":
-                with ThreadPoolExecutor(max_workers=2, thread_name_prefix="asr") as executor:
-                    sense_future = executor.submit(
-                        pool.transcribe_pcm, pcm, "sensevoice", offset_seconds=absolute_offset
-                    )
-                    fire_future = executor.submit(
-                        pool.transcribe_pcm, pcm, "firered", offset_seconds=absolute_offset
-                    )
-                    sense_segments.extend(sense_future.result())
-                    firered_segments.extend(fire_future.result())
-            else:
-                if proofread_enabled:
-                    sense_segments.extend(
-                        pool.transcribe_pcm(pcm, "sensevoice", offset_seconds=absolute_offset)
-                    )
-                firered_segments.extend(
-                    pool.transcribe_pcm(pcm, "firered", offset_seconds=absolute_offset)
+                _emit_telemetry(
+                    f"stage=decode-done chunk={index} bytes={pcm.stat().st_size} "
+                    f"seconds={round(time.monotonic() - decode_started, 3)} "
+                    f"elapsed={_elapsed_ticks()}"
                 )
-            pcm.unlink(missing_ok=True)
-            progress("asr", index + 1, total_chunks)
-            if checkpoint is not None:
-                state: dict[str, Any] = {
-                    "completed_chunks": index + 1,
-                    "total_chunks": total_chunks,
-                    "mode": mode,
-                    "raw_sensevoice": normalize_segments(sense_segments),
-                    "raw_firered": normalize_segments(firered_segments),
-                }
-                if fingerprint_state is not None:
-                    state["pcm_fingerprint"] = fingerprint_state
-                checkpoint(state)
+                if verifiable_fingerprint:
+                    fingerprint_state = _advance_pcm_fingerprint(
+                        fingerprint_state, _pcm_file_digest(pcm)
+                    )
+                _emit_telemetry(f"stage=asr-start chunk={index} elapsed={_elapsed_ticks()}")
+                if proofread_enabled and strategy == "parallel":
+                    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="asr") as executor:
+                        sense_future = executor.submit(
+                            pool.transcribe_pcm, pcm, "sensevoice", offset_seconds=absolute_offset
+                        )
+                        fire_future = executor.submit(
+                            pool.transcribe_pcm, pcm, "firered", offset_seconds=absolute_offset
+                        )
+                        sense_segments.extend(sense_future.result())
+                        firered_segments.extend(fire_future.result())
+                else:
+                    if proofread_enabled:
+                        sense_segments.extend(
+                            pool.transcribe_pcm(pcm, "sensevoice", offset_seconds=absolute_offset)
+                        )
+                    firered_segments.extend(
+                        pool.transcribe_pcm(pcm, "firered", offset_seconds=absolute_offset)
+                    )
+                _emit_telemetry(f"stage=asr-end chunk={index} elapsed={_elapsed_ticks()}")
+                pcm.unlink(missing_ok=True)
+                telemetry_state["done"] = index + 1
+                progress("asr", index + 1, total_chunks)
+                if checkpoint is not None:
+                    state: dict[str, Any] = {
+                        "completed_chunks": index + 1,
+                        "total_chunks": total_chunks,
+                        "mode": mode,
+                        "raw_sensevoice": normalize_segments(sense_segments),
+                        "raw_firered": normalize_segments(firered_segments),
+                    }
+                    if fingerprint_state is not None:
+                        state["pcm_fingerprint"] = fingerprint_state
+                    checkpoint(state)
+        finally:
+            ticker.stop()
     if not proofread_enabled:
         final = firered_segments
     else:

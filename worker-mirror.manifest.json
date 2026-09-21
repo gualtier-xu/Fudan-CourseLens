@@ -1,6 +1,6 @@
 {
   "exporter": {
-    "allowlist_sha256": "833adb9fe14c4b5c6dc507cbf5b3ac88fe0d0614b6268c7e0d9da3469efc6655",
+    "allowlist_sha256": "6e1c70c30e5f0d61a1d6c8da1caa83f340be4db8046215ea199313cda3f71a5f",
     "version": "1.0.0"
   },
   "payload": {
@@ -98,8 +98,8 @@
       {
         "mode": "100644",
         "path": "courselens_worker/asr.py",
-        "sha256": "7463e65c575cf66d9a47f1aa4ef4038aa3bc6387f8673b519bcde9725eb7308e",
-        "size": 28795
+        "sha256": "080bd9b79e313678015380e536c033b1b3cad4e4c5ff2e0d6981cc3457ab3248",
+        "size": 33523
       },
       {
         "mode": "100644",
@@ -283,6 +283,12 @@
       },
       {
         "mode": "100644",
+        "path": "tests/test_asr_telemetry.py",
+        "sha256": "5f72401d9c3377cecb229e09e75f70ba4ea50ad9f756d9a1021be9f1fd9d6725",
+        "size": 4727
+      },
+      {
+        "mode": "100644",
         "path": "tests/test_asr_timing.py",
         "sha256": "73f9f13f09a0e6e17ea315e4490bc8afbcec406c979644cb6cd9ffc409dcd311",
         "size": 15942
@@ -402,8 +408,8 @@
         "size": 3336
       }
     ],
-    "git_tree": "bdb664c75a7e1089503e2dd2cf96fef810123e25",
-    "tree_sha256": "d2f3234a4087cc919d8d81351aefbae2eb67694020dfa546774127f8dec12b9f"
+    "git_tree": "9228b2d701fb6190c73fbf6e1c8c058c3337c704",
+    "tree_sha256": "cb25c0d22541a3f7031b58ef67204d384a6c6188bfeaa8ebb82507463d046e55"
   },
   "protocol": {
     "supported_versions": [
@@ -412,8 +418,8 @@
   },
   "schema": "courselens.worker-mirror.manifest.v1",
   "source": {
-    "commit": "932b71ed35c4750f577faa8a113032b1d28f923f",
+    "commit": "29f857c3bf15dab640506c75c92b12cdd0e96af6",
     "repository": "Fudan-CourseLens-Private",
-    "worker_tree": "4c9932fd136d598ed4b0e106f2730a1c68958b2c"
+    "worker_tree": "4710a10a3f8b0ba7f45217b1e4eb779c8f6037d5"
   }
 }
