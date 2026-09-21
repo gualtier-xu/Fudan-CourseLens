@@ -98,8 +98,8 @@
       {
         "mode": "100644",
         "path": "courselens_worker/asr.py",
-        "sha256": "080bd9b79e313678015380e536c033b1b3cad4e4c5ff2e0d6981cc3457ab3248",
-        "size": 33523
+        "sha256": "6a4b29c8a43c97b6bbb4a2b5e48f0f811a17f4b9f13f8e850f7faa0cd2d774d4",
+        "size": 34535
       },
       {
         "mode": "100644",
@@ -230,8 +230,8 @@
       {
         "mode": "100644",
         "path": "scripts/synthetic_ocr_smoke.py",
-        "sha256": "ad131736f36d9059e357dd87d28833b4a801a933102be2a858b9eab400da7f53",
-        "size": 2470
+        "sha256": "b655bab10d3585b935f1ec060db512649abb6334f29762854fa267fadc853362",
+        "size": 3350
       },
       {
         "mode": "100644",
@@ -290,8 +290,8 @@
       {
         "mode": "100644",
         "path": "tests/test_asr_timing.py",
-        "sha256": "73f9f13f09a0e6e17ea315e4490bc8afbcec406c979644cb6cd9ffc409dcd311",
-        "size": 15942
+        "sha256": "bea40bdb80d8eca7914551b93865ef54f0a0a0fb0729fe2f0ad7cc1588508990",
+        "size": 21185
       },
       {
         "mode": "100644",
@@ -408,8 +408,8 @@
         "size": 3336
       }
     ],
-    "git_tree": "9228b2d701fb6190c73fbf6e1c8c058c3337c704",
-    "tree_sha256": "cb25c0d22541a3f7031b58ef67204d384a6c6188bfeaa8ebb82507463d046e55"
+    "git_tree": "41cb607d7f998a807552e9cc6f042f43c0956359",
+    "tree_sha256": "a432892acb06743846fa58b6dccc7e13c145033e7143386e6a506f95c401f094"
   },
   "protocol": {
     "supported_versions": [
@@ -418,8 +418,8 @@
   },
   "schema": "courselens.worker-mirror.manifest.v1",
   "source": {
-    "commit": "29f857c3bf15dab640506c75c92b12cdd0e96af6",
+    "commit": "5e58fe120d4a8fb3bf514719f1ac59aa4be90b93",
     "repository": "Fudan-CourseLens-Private",
-    "worker_tree": "4710a10a3f8b0ba7f45217b1e4eb779c8f6037d5"
+    "worker_tree": "cbd1325d64f208ae50c9ff499486deedef31723b"
   }
 }

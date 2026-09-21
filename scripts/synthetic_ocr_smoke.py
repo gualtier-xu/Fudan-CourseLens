@@ -37,12 +37,13 @@ def main() -> int:
     progress: list[tuple[str, int, int]] = []
     original_fetch = ocr.fetch_bytes
     started = time.monotonic()
+    deck = {"source_id": "synthetic-smoke", "deck_id": "synthetic-smoke-deck"}
     try:
         ocr.fetch_bytes = lambda source: raw
-        pages = ocr.process_slides(
+        pages, skipped = ocr.process_slides(
             [
-                {"page_num": 1, "created_sec": 0, "source": {"synthetic": True}},
-                {"page_num": 2, "created_sec": 5, "source": {"synthetic": True}},
+                {"page_num": 1, "created_sec": 0, "source": {"synthetic": True}, "deck": deck},
+                {"page_num": 2, "created_sec": 5, "source": {"synthetic": True}, "deck": deck},
             ],
             progress=lambda stage, completed, total: progress.append(
                 (stage, completed, total)
@@ -51,18 +52,30 @@ def main() -> int:
         )
     finally:
         ocr.fetch_bytes = original_fetch
-    if len(pages) != 1:
-        raise RuntimeError("exact duplicate synthetic slides were not deduplicated")
-    if not str(pages[0].get("text") or "").strip():
-        raise RuntimeError("RapidOCR returned no text for the generated slide")
+    # 现行证据语义：重复内容永不合并或丢弃——同内容两页是同一逻辑实体
+    # 在两个不同时间线事件上的观测（ocr.process_slides 文档串钉死）。
+    if len(pages) != 2:
+        raise RuntimeError("every recognized synthetic slide must be kept as one event")
+    entities = {str(page.get("entity_id") or "") for page in pages}
+    events = {str(page.get("event_id") or "") for page in pages}
+    if len(entities) != 1 or "" in entities:
+        raise RuntimeError("repeated slide content must share one slide entity")
+    if len(events) != len(pages):
+        raise RuntimeError("each kept occurrence must carry a distinct event id")
+    for page in pages:
+        if not str(page.get("text") or "").strip():
+            raise RuntimeError("RapidOCR returned no text for the generated slide")
+    if skipped:
+        raise RuntimeError("synthetic slides must not be skipped: " + ",".join(sorted(skipped)))
     if not checkpoints or checkpoints[-1].get("ocr_completed_items") != 2:
         raise RuntimeError("OCR checkpoint did not cover every generated slide")
     print(json.dumps({
         "schema": "synthetic-ocr-smoke.v1",
         "sample_origin": "generated-in-runner",
         "input_pages": 2,
-        "deduplicated_pages": len(pages),
-        "recognized_characters": len(str(pages[0].get("text") or "")),
+        "pages_kept": len(pages),
+        "entity_count": len(entities),
+        "recognized_characters": sum(len(str(page.get("text") or "")) for page in pages),
         "progress_events": len(progress),
         "checkpoints": len(checkpoints),
         "elapsed_seconds": round(time.monotonic() - started, 3),
