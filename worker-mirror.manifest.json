@@ -50,8 +50,8 @@
       {
         "mode": "100644",
         "path": ".github/workflows/process.yml",
-        "sha256": "aef92acd4e17d5fdbdd45a9adbf44c39832b0510bf323333ef76bd575774a202",
-        "size": 3414
+        "sha256": "4faa234ae24780cef578465e53a9759ef1eb9fddd6d0476278ffc72ddba07c90",
+        "size": 3436
       },
       {
         "mode": "100644",
@@ -134,8 +134,8 @@
       {
         "mode": "100644",
         "path": "courselens_worker/llm.py",
-        "sha256": "d8d349e23f6631c12fd4937047fc948095c100fee84ac8b3bd3193224d7c53dc",
-        "size": 24686
+        "sha256": "b80eb8721ce4886da7bca6817a548e73c431940b99295f7dc85b5ef5ee9614c2",
+        "size": 24925
       },
       {
         "mode": "100644",
@@ -326,8 +326,8 @@
       {
         "mode": "100644",
         "path": "tests/test_llm_checkpoints.py",
-        "sha256": "dbb410a4441b664ef21ab933a7cc641bc96778ddcd3570e0c875eabc9338b106",
-        "size": 6124
+        "sha256": "ce41eb920fb9928a2d3e35b77de78248a23bdc2d8e6f10f7bce1b5219372970a",
+        "size": 6835
       },
       {
         "mode": "100644",
@@ -408,8 +408,8 @@
         "size": 3336
       }
     ],
-    "git_tree": "41cb607d7f998a807552e9cc6f042f43c0956359",
-    "tree_sha256": "a432892acb06743846fa58b6dccc7e13c145033e7143386e6a506f95c401f094"
+    "git_tree": "02c1365cce45e587a2d401b3a10338140633b931",
+    "tree_sha256": "232dfdb5104a30321e522901912ffdc6bc41c09bfa7176a59b46b351eb537733"
   },
   "protocol": {
     "supported_versions": [
@@ -418,8 +418,8 @@
   },
   "schema": "courselens.worker-mirror.manifest.v1",
   "source": {
-    "commit": "5e58fe120d4a8fb3bf514719f1ac59aa4be90b93",
+    "commit": "1f7797cb2edcc656eb7e92ad0b1a4f096e754fb9",
     "repository": "Fudan-CourseLens-Private",
-    "worker_tree": "cbd1325d64f208ae50c9ff499486deedef31723b"
+    "worker_tree": "5caeccf5f7273dccd330e65fdb1a1d4adbe27ba6"
   }
 }
