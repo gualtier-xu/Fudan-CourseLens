@@ -15,6 +15,16 @@ class LLMCheckpointTests(unittest.TestCase):
         self.assertTrue(value["grounded"])
         self.assertEqual(value["citations"], ["r1"])
 
+    def test_answer_prompt_requires_full_answer_and_solution_approach(self):
+        """C⑩ 用户拍板：完整答案+每题解题思路；提示词必须承载该要求。"""
+        with patch("courselens_worker.llm._chat", return_value='{"answer":"回答","grounded":true,"citations":["r1"]}') as chat:
+            answer_question("key", query="q", evidence=[{"citation_id": "r1", "text": "证据"}])
+        system = chat.call_args.args[1][0]["content"]
+        self.assertIn("完整答案", system)
+        self.assertIn("解题思路", system)
+        self.assertEqual(chat.call_args.kwargs.get("max_tokens"), 8192,
+                         "完整答案+思路需要更大的输出预算（8192）")
+
     def test_proofread_resumes_after_completed_window(self):
         source = [
             {"start_ms": index * 1000, "end_ms": (index + 1) * 1000, "text": f"文本{index}"}

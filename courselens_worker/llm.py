@@ -548,12 +548,14 @@ def answer_question(
             "role": "system",
             "content": (
                 "你是严谨的课程问答助手。只能依据用户提供的 evidence 回答，禁止补充外部事实。"
+                "C⑩ 用户拍板：answer 必须给出完整答案，不得只给结论或省略关键步骤；"
+                "凡涉及计算、推导或过程的题目，先写『解题思路』逐步展开，再给最终结论。"
                 "输出 JSON 对象，字段为 answer、grounded、citations。citations 只能填写输入中的 citation_id；"
                 "证据不足时 answer 必须为‘资料不足，无法根据当前课程资料回答。’，grounded 为 false。"
             ),
         },
         {"role": "user", "content": json.dumps({"query": str(query), "evidence": allowed}, ensure_ascii=False)},
-    ], max_tokens=4096))
+    ], max_tokens=8192))
     if not isinstance(raw, dict) or not isinstance(raw.get("answer"), str) or not isinstance(raw.get("citations"), list):
         raise LLMError("answer response has an invalid shape")
     allowed_ids = {str(item["citation_id"]) for item in allowed}
