@@ -668,6 +668,25 @@ def _active_pending_keys(state: dict[str, Any]) -> set[str]:
     return {str(item.get("key") or "") for item in pending}
 
 
+# U11 挑战塌缩扩集：平台层已登记的全部精确码原样上抛（原五码扩到全闭集），
+# 未登记的未知串才塌缩为 platform_session_failed——挑战/媒体/分页类失败不再
+# 被吞成一句泛化话，学生看到的提示能对上真实原因。
+_PLATFORM_PRECISE_CODES = frozenset({
+    "platform_auth_failed", "platform_ticket_rejected", "platform_session_rejected",
+    "platform_connection_failed", "platform_course_request_failed",
+    "platform_auth_context_missing", "platform_auth_method_missing",
+    "platform_challenge_required", "platform_course_context_missing",
+    "platform_credentials_missing", "platform_key_rejected", "platform_media_missing",
+    "platform_redirect_rejected", "platform_ticket_missing",
+    "platform_slide_pagination_stalled", "platform_slide_payload_invalid",
+    "platform_slide_record_storm", "platform_slide_response_too_large",
+})
+
+
+def collapse_platform_code(base_code: str) -> str:
+    return str(base_code) if str(base_code) in _PLATFORM_PRECISE_CODES else "platform_session_failed"
+
+
 def _auth_rejection(code: str) -> bool:
     return code in {
         "platform_auth_failed", "platform_ticket_rejected", "platform_session_rejected",
@@ -908,10 +927,7 @@ def run_daily() -> int:
                     code = reason or "cloud_processing_failed"
     except PlatformSessionError as exc:
         base_code = str(exc)
-        code = safe_worker_error_detail(exc) if base_code in {
-            "platform_auth_failed", "platform_ticket_rejected", "platform_session_rejected",
-            "platform_connection_failed", "platform_course_request_failed",
-        } else "platform_session_failed"
+        code = safe_worker_error_detail(exc) if base_code in _PLATFORM_PRECISE_CODES else "platform_session_failed"
         if _auth_rejection(base_code):
             # A known credential or identity rejection opens the auth circuit
             # immediately; the next scheduled login is prevented.

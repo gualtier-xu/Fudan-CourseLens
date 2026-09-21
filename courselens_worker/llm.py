@@ -13,9 +13,10 @@ from typing import Any, Callable
 import requests
 
 from .formats import normalize_segments
+from .glossary import apply_glossary
 
 API_URL = "https://api.deepseek.com/chat/completions"
-MODEL = "deepseek-chat"
+MODEL = "deepseek-flash"  # N5A-P6：官方 2026-07-24 停用 deepseek-chat 别名
 _USAGE_LOCK = threading.RLock()
 _USAGE = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
@@ -118,6 +119,12 @@ _CORRECTION_STATUSES = (
     "rejected-budget",
     "rejected-protected",
     "unpaired",
+    "applied-glossary",  # N5A-P3：课程词表规则纠错（确定性后处理，第八态）
+)
+# N5A-P2：summary 合并调用顺带输出的考核事件类别闭集（与客户端台账同源）
+ASSESSMENT_CATEGORIES = (
+    "exam", "resit", "quiz", "assignment", "project", "lab", "computer_lab",
+    "attendance", "rollcall", "schedule_change", "qa_session",
 )
 # Protected spans: formula-like tokens (must contain an operator), numbers
 # with separators and optional unit suffixes, negation words, and runs of
@@ -325,6 +332,7 @@ def proofread_segments(
     prior_checkpoint: dict[str, Any] | None = None,
     checkpoint: Callable[[dict[str, Any]], None] | None = None,
     ppt_pages: list[dict[str, Any]] | None = None,
+    glossary: tuple[str, ...] = (),
 ) -> list[dict[str, Any]]:
     primaries = normalize_segments(firered)
     alternates = normalize_segments(sensevoice)
@@ -392,7 +400,18 @@ def proofread_segments(
                     "proofread_total_windows": total_windows,
                     "proofread_segments": normalize_segments(output),
                 })
-    return normalize_segments(output)
+    return apply_glossary(normalize_segments(output), glossary)  # N5A-P3 一行挂点
+
+
+_SUMMARY_MERGE_PROMPT = (
+    "合并各窗口笔记为完整中文学习笔记，不得增加输入外事实。输出 JSON 对象，"
+    "字段为 markdown 和 chapters；保留原有合法 start_ms，"
+    "另输出 key_takeaways（≤6条、每条≤30字）"
+    "和 assessment_events（仅当提到课程考核，每项含 "
+    "category/title/due_hint/quote，category 仅限{"
+    + ",".join(ASSESSMENT_CATEGORIES)
+    + "}，quote 须为原文，无则空数组）"
+)
 
 
 def create_summary(
@@ -447,7 +466,7 @@ def create_summary(
                 })
 
     value = _json_content(_chat(api_key, [
-        {"role": "system", "content": "合并各窗口笔记为完整中文学习笔记，不得增加输入外事实。输出 JSON 对象，字段为 markdown 和 chapters；保留原有合法 start_ms。"},
+        {"role": "system", "content": _SUMMARY_MERGE_PROMPT},
         {"role": "user", "content": json.dumps({"title": title, "parts": parts}, ensure_ascii=False)},
     ], max_tokens=12_000))
     if not isinstance(value, dict) or not isinstance(value.get("markdown"), str) or not isinstance(value.get("chapters"), list):
@@ -466,7 +485,52 @@ def create_summary(
             "start_ms": start_ms,
             "summary": str(item.get("summary") or "").strip(),
         })
-    return {"model": MODEL, "markdown": value["markdown"].strip(), "chapters": chapters}
+    # N5A-P2 顺风车校验（fail-closed 丢项，不失败摘要）：events 闭集+quote
+    # 必须是 parts 拼接原文子串；takeaways 截断到 6 条、每条≤60 字。
+    parts_text = "".join(
+        str(part.get("markdown") or "") for part in parts if isinstance(part, dict)
+    )
+    raw_events = value.get("assessment_events")
+    events, rejected = [], 0
+    if isinstance(raw_events, list):
+        for item in raw_events[:10]:
+            if not isinstance(item, dict):
+                rejected += 1
+                continue
+            category = str(item.get("category") or "")
+            quote = str(item.get("quote") or "").strip()[:80]
+            title = str(item.get("title") or "").strip()[:30]
+            if (
+                category not in ASSESSMENT_CATEGORIES
+                or not title
+                or not quote
+                or quote not in parts_text
+            ):
+                rejected += 1
+                continue
+            events.append({
+                "category": category,
+                "title": title,
+                "due_hint": str(item.get("due_hint") or "").strip()[:20],
+                "quote": quote,
+            })
+    raw_takeaways = value.get("key_takeaways")
+    takeaways = []
+    if isinstance(raw_takeaways, list):
+        for item in raw_takeaways:
+            if len(takeaways) >= 6:
+                break
+            text = str(item or "").strip()[:60]
+            if text:
+                takeaways.append(text)
+    return {
+        "model": MODEL,
+        "markdown": value["markdown"].strip(),
+        "chapters": chapters,
+        "assessment_events": events,
+        "assessment_events_rejected": rejected,
+        "key_takeaways": takeaways,
+    }
 
 
 def answer_question(
