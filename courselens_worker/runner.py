@@ -76,6 +76,7 @@ _SUBTITLE_RESUME_KEYS = (
     "mode",
     "raw_sensevoice",
     "raw_firered",
+    "raw_paraformer",
     "pcm_fingerprint",
     "proofread_pairing",
     "proofread_completed_windows",
@@ -119,6 +120,15 @@ def _required(name: str) -> str:
     if not value:
         raise WorkerError(f"required worker setting is missing: {name}")
     return value
+
+
+def _optional_model_dir(name: str) -> Path | None:
+    # 可选模型目录（如 PARAFORMER_MODEL_DIR）：默认双模型链不依赖它，
+    # 缺环境变量时保持 None，仅当 SUBTITLE_BACKENDS 真正点名该 backend
+    # 才由 RecognizerPool 显式失败——默认链在未安装新模型的 runner 上
+    # 零行为变化。
+    value = os.environ.get(name, "").strip()
+    return Path(value) if value else None
 
 
 def _progress(stage: str, completed: int, total: int) -> None:
@@ -258,6 +268,7 @@ def _process_materialized_job(
             job,
             sensevoice_dir=Path(_required("SENSEVOICE_MODEL_DIR")),
             firered_dir=Path(_required("FIRERED_MODEL_DIR")),
+            paraformer_dir=_optional_model_dir("PARAFORMER_MODEL_DIR"),
             proofread=(
                 (lambda sense, fire, prior, write: proofread_segments(
                     api_key,
@@ -276,8 +287,9 @@ def _process_materialized_job(
                 "segments": value["segments"],
                 "srt": to_srt(value["segments"]),
                 "vtt": to_vtt(value["segments"]),
-                "raw_sensevoice": value["raw_sensevoice"],
-                "raw_firered": value["raw_firered"],
+                # raw 段键随 SUBTITLE_BACKENDS 序列泛化（raw_<backend>），
+                # 默认链仍是 raw_sensevoice + raw_firered，客户端合同不变。
+                **{key: value[key] for key in value if key.startswith("raw_")},
             }
         }
         metrics = value["metrics"]
@@ -402,18 +414,23 @@ def _process_materialized_job(
                 job,
                 sensevoice_dir=Path(_required("SENSEVOICE_MODEL_DIR")),
                 firered_dir=Path(_required("FIRERED_MODEL_DIR")),
+                paraformer_dir=_optional_model_dir("PARAFORMER_MODEL_DIR"),
                 proofread=proofread_with_slides if api_key else None,
                 progress=progress,
                 checkpoint=subtitle_checkpoint,
             )
+            # G7：ASR 段产出的闭集警告（如 proofread_degraded）并入结果警告，
+            # 随既有 result_notices 通道上屏，绝不静默丢弃。
+            for _warning in value.get("warnings") or []:
+                if _warning not in warnings:
+                    warnings.append(_warning)
             transcript = value["segments"]
             outputs["subtitle"] = {
                 "mode": value["mode"],
                 "segments": transcript,
                 "srt": to_srt(transcript),
                 "vtt": to_vtt(transcript),
-                "raw_sensevoice": value["raw_sensevoice"],
-                "raw_firered": value["raw_firered"],
+                **{key: value[key] for key in value if key.startswith("raw_")},
             }
             metrics["subtitle"] = value["metrics"]
         if "answer" in requested:

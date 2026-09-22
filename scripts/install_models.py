@@ -21,6 +21,13 @@ MODELS = {
         "archive": "sherpa-onnx-fire-red-asr2-ctc-zh_en-int8-2026-02-25.tar.bz2",
         "sha256": "1da8b737ecc5e29f36759a4460c754863e7c919a4ba325aea187331fbfc83274",
     },
+    # M4 Paraformer（ASRBENCH-1 A5）：条目先行就位；sha256 留空 = 尚未实测钉，
+    # main() 跳过未钉条目（不下载、不写 models.env），首次真下载后把实测
+    # 哈希填入即自动进入安装面。
+    "paraformer": {
+        "archive": "sherpa-onnx-paraformer-zh-2023-09-14.tar.bz2",
+        "sha256": "",
+    },
 }
 BASE = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models"
 
@@ -30,7 +37,12 @@ def _model_directories(root: Path, name: str) -> list[Path]:
         path for path in root.iterdir()
         if path.is_dir() and (path / "tokens.txt").is_file()
     ] if root.is_dir() else []
-    marker = "fire-red" if name == "firered" else "sense-voice"
+    markers = {
+        "sensevoice": "sense-voice",
+        "firered": "fire-red",
+        "paraformer": "paraformer",
+    }
+    marker = markers[name]
     return sorted(path for path in candidates if marker in path.name)
 
 
@@ -95,11 +107,16 @@ def _install(name: str, spec: dict[str, str], root: Path) -> Path:
 
 def main() -> None:
     root = Path(os.environ.get("COURSELENS_MODEL_ROOT", ".models")).resolve()
-    installed = {name: _install(name, spec, root) for name, spec in MODELS.items()}
+    # 空 sha256 = 条目尚未实测钉（见 MODELS 内 paraformer 注释），整条跳过。
+    installed = {
+        name: _install(name, spec, root)
+        for name, spec in MODELS.items()
+        if spec["sha256"]
+    }
     environment = Path(os.environ.get("GITHUB_ENV", root / "models.env"))
     with environment.open("a", encoding="utf-8") as output:
-        output.write(f"SENSEVOICE_MODEL_DIR={installed['sensevoice']}\n")
-        output.write(f"FIRERED_MODEL_DIR={installed['firered']}\n")
+        for name, directory in installed.items():
+            output.write(f"{name.upper()}_MODEL_DIR={directory}\n")
 
 
 if __name__ == "__main__":
