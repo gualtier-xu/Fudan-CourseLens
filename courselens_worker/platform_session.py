@@ -67,7 +67,19 @@ _RETRYABLE_SESSION_ERRORS = frozenset({
 })
 
 
-def _bounded_session_refresh(refresh, relogin=None, *, attempts: int = 3):
+# 第四十一案（SESSION-RELOGIN-RETRY-1）：会话作废后的重取窗口必须覆盖
+# 「学生重启客户端→重新登录」这段真实时长。旧窗为 3 次尝试、退避
+# 2s+4s＝6s，分块字幕跑到中段（实测 16/27 块、elapsed=1571）一旦撞上
+# 会话作废就整单失败——重试窗口短于重登录耗时，等于没有重试。
+# 现窗＝8 次尝试，退避 2/4/8/16/30/30/30 合计 120s，再叠加每次重登录
+# 自身的耗时；单次退避封顶 30s，保证窗口有界、不无限拖住运行时长。
+# 非会话类错误（platform_media_missing、platform_challenge_required 等）
+# 不在 _RETRYABLE_SESSION_ERRORS 内，仍然一次即败，不因本窗放大等待。
+_SESSION_REFRESH_ATTEMPTS = 8
+_SESSION_REFRESH_BACKOFF_CAP = 30.0
+
+
+def _bounded_session_refresh(refresh, relogin=None, *, attempts: int = _SESSION_REFRESH_ATTEMPTS):
     """Retry one media-source refresh, re-authenticating between tries.
 
     A long decode can outlive the WebVPN/iCourse session, so the runner's
@@ -82,7 +94,7 @@ def _bounded_session_refresh(refresh, relogin=None, *, attempts: int = 3):
         except PlatformSessionError as exc:
             if str(exc) not in _RETRYABLE_SESSION_ERRORS or attempt == total - 1:
                 raise
-            time.sleep(2.0 * (attempt + 1))
+            time.sleep(min(2.0 * 2 ** attempt, _SESSION_REFRESH_BACKOFF_CAP))
             relogin()
     raise AssertionError("unreachable")
 
@@ -269,6 +281,9 @@ class PlatformSession:
     CATALOG_MONTHS_BACK = 12
     CATALOG_MONTHS_AHEAD = 1
     CATALOG_MAX_ROWS_PER_MONTH = 1000
+    # 本人续登回调：登录成功时登记，close() 释放。缺省 None 表示这个会话
+    # 从未登录过，媒体重取退回「一次即败」语义（无凭据不重试）。
+    _relogin: Callable[[], None] | None = None
 
     def __init__(self, *, transport: str = "curl") -> None:
         if transport not in {"curl", "requests"}:
@@ -409,7 +424,6 @@ class PlatformSession:
         try:
             try:
                 self._login_course_direct(account, password)
-                return
             except PlatformSessionError as exc:
                 if str(exc) not in {
                     "platform_connection_failed",
@@ -423,11 +437,17 @@ class PlatformSession:
                     raise
                 self._course_direct = False
                 self._course_bearer = ""
-            self._login_webvpn_full(account, password)
+                self._login_webvpn_full(account, password)
         except PlatformSessionError:
             raise
         except Exception as exc:
             raise _fail("platform_auth_failed") from exc
+        # 第四十一案：登录成功即登记本人续登回调。分块字幕跑到中段时，
+        # 学生重启客户端并重新登录会让本会话被服务端作废，而调用方
+        # （每日自动化链）并不持有口令可自行重登录；媒体重取撞上会话失效
+        # 时按 _SESSION_REFRESH_* 窗口自动续登重试。口令只活在闭包里，
+        # 不写日志、不进产物，close() 时随会话一起释放。
+        self._relogin = lambda: self.login(account, password)
 
     @staticmethod
     def _encrypt_password(password: str, public_key: str) -> str:
@@ -1063,6 +1083,12 @@ class PlatformSession:
         # every refresh must obtain a new base before applying the CDN signature.
         from .source import SourceSecurityError, resolve_source_address
 
+        # 第四十一案：调用方没显式给续登回调时，用会话登录时登记的本人回调。
+        # 每日自动化链不持有口令，但它的分块解码照样会在中段撞上会话作废；
+        # 从未登录过的会话（_relogin 为空）保持「一次即败」，不误重试。
+        if not callable(relogin):
+            relogin = self._relogin
+
         direct_headers = {
             name: value
             for name, value in self._source_headers().items()
@@ -1120,7 +1146,12 @@ class PlatformSession:
         except SourceSecurityError:
             if not self._webvpn_ready:
                 raise
-            return {**fallback_source(), "_refresh_source": fallback_source}
+            # WebVPN 回退源同样要能扛过会话作废：同一有界续登窗，别让回退
+            # 分支成为重试缺口（第四十一案）。
+            return {
+                **fallback_source(),
+                "_refresh_source": lambda: _bounded_session_refresh(fallback_source, relogin),
+            }
         output = {
             **source,
             "_refresh_source": lambda: _bounded_session_refresh(refresh_source, relogin),
@@ -1256,6 +1287,8 @@ class PlatformSession:
         self._course_bearer = ""
         self._userinfo = None
         self._webvpn_ready = False
+        # 关会话即释放续登回调（连同闭包里的口令），不给关掉的会话留后门。
+        self._relogin = None
         try:
             self.course_session.close()
         finally:

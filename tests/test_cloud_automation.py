@@ -499,6 +499,57 @@ class CloudAutomationTests(WorkerEnvTestCase):
         self.assertEqual(state.get("checkpoints"), {},
                          "成功后活动检查点必须清空")
 
+    def test_session_expiry_exhaustion_keeps_chunk_progress_and_resumes_at_16(self):
+        """第四十一案：分块中期会话作废（重试耗尽）后，16/27 必须保留并可续跑。
+
+        实测链路＝客户端重启→重登录→学校会话作废→runner 在 16/27 块处报
+        platform_course_request_failed、整任务 exit 1。此钉验证失败不留残影：
+        检查点（含已识别段与指纹链）仍加密留在状态里、该讲不进 seen/pending
+        可重跑，下一次尝试把 completed_chunks=16 交回任务，而不是从 0 重来。
+        """
+        courses = [{"course_id": "36941", "lectures": [{"sub_id": "l-1", "has_playback": True}]}]
+        seen = {}
+        partial = {
+            "stage": "asr",
+            "mode": "automatic",
+            "completed_chunks": 16,
+            "total_chunks": 27,
+            "raw_sensevoice": [{"start_ms": 0, "end_ms": 600000, "text": "已识别片段"}],
+            "raw_paraformer": [{"start_ms": 0, "end_ms": 600000, "text": "已识别片段"}],
+            "pcm_fingerprint": "a" * 64,
+        }
+        item_key = _dedupe_key(make_rules(rules=[make_course_rule("36941")]), "36941", "l-1")
+
+        def expired_attempt(job, *, checkpoint_writer=None):
+            checkpoint_writer(dict(partial))
+            raise PlatformSessionError("platform_course_request_failed")
+
+        code, processed, _ = self.run_daily_with(courses, process=expired_attempt)
+        self.assertEqual(code, 1, "会话作废仍是失败运行（重试窗口内自愈才不失败）")
+        self.assertEqual(len(processed), 1)
+        state = self.read_persisted_state()
+        saved = dict((state.get("checkpoints") or {}).get(item_key) or {})
+        self.assertEqual(saved.get("completed_chunks"), 16, "已完成的 16 块必须留在检查点里")
+        self.assertEqual(saved.get("total_chunks"), 27)
+        self.assertEqual(saved.get("raw_sensevoice"), partial["raw_sensevoice"])
+        self.assertEqual(saved.get("pcm_fingerprint"), "a" * 64, "指纹链随检查点保留，续跑身份可复现")
+        self.assertEqual(dict(state.get("seen") or {}).get("36941") or [], [],
+                         "失败项绝不能被记成已完成")
+        self.assertEqual(state.get("pending") or [], [], "失败项的 pending 必须清掉才可重跑")
+
+        def resume_attempt(job, *, checkpoint_writer=None):
+            prior = dict((job.get("payload") or {}).get("checkpoint") or {})
+            seen["prior"] = prior
+            return {"outputs": {"subtitle": {"mode": "automatic"}}, "metrics": {}}
+
+        code, processed, _ = self.run_daily_with(courses, process=resume_attempt)
+        self.assertEqual(code, 0)
+        self.assertEqual(seen["prior"].get("completed_chunks"), 16, "续跑从最后完成块开始，不归零")
+        self.assertEqual(seen["prior"].get("total_chunks"), 27)
+        self.assertEqual(seen["prior"].get("pcm_fingerprint"), "a" * 64)
+        self.assertEqual(self.read_persisted_state().get("checkpoints"), {},
+                         "成功后活动检查点必须清空")
+
     def test_manual_dispatch_rejected_while_paused_before_login(self):
         def rejected():
             raise AssertionError("login attempted despite paused manual dispatch")

@@ -863,8 +863,31 @@ class PlatformSessionTests(unittest.TestCase):
         with patch("courselens_worker.platform_session.time.sleep"), \
              self.assertRaises(PlatformSessionError):
             _bounded_session_refresh(refresh, lambda: calls.__setitem__("relogin", calls["relogin"] + 1))
-        self.assertEqual(calls["refresh"], 3)
-        self.assertEqual(calls["relogin"], 2)
+        # 第四十一案：窗口钉在档（8 次尝试/7 次续登），改窗必改此钉并复核覆盖时长。
+        self.assertEqual(calls["refresh"], 8)
+        self.assertEqual(calls["relogin"], 7)
+
+    def test_media_refresh_window_covers_a_client_relogin_and_stays_bounded(self):
+        """第四十一案：窗口必须比「学生重启客户端+重新登录」更长，且仍然有界。
+
+        旧窗 2s+4s＝6s 短于重登录耗时，16/27 块处会话作废即整单失败。
+        """
+        from courselens_worker.platform_session import (
+            _SESSION_REFRESH_BACKOFF_CAP,
+            _bounded_session_refresh,
+        )
+
+        sleeps = []
+
+        def refresh():
+            raise PlatformSessionError("platform_course_request_failed")
+
+        with patch("courselens_worker.platform_session.time.sleep", side_effect=sleeps.append), \
+             self.assertRaises(PlatformSessionError):
+            _bounded_session_refresh(refresh, lambda: None)
+        self.assertGreaterEqual(sum(sleeps), 120.0, "退避窗必须覆盖客户端重登录时长")
+        self.assertLessEqual(max(sleeps), _SESSION_REFRESH_BACKOFF_CAP, "单次退避有界")
+        self.assertEqual(len(sleeps), 7)
 
     def test_media_refresh_without_relogin_tries_once(self):
         from courselens_worker.platform_session import _bounded_session_refresh
@@ -891,6 +914,97 @@ class PlatformSessionTests(unittest.TestCase):
         with self.assertRaises(PlatformSessionError):
             _bounded_session_refresh(refresh, lambda: calls.__setitem__("relogin", calls["relogin"] + 1))
         self.assertEqual(calls, {"refresh": 1, "relogin": 0})
+
+    @staticmethod
+    def _media_session_double(base):
+        """会话替身：只保留取源/签名/解析三个接缝，不触网。"""
+        session = object.__new__(PlatformSession)
+        session._webvpn_ready = False
+        session._relogin = None
+        session._source_headers = lambda: {}
+        session._sign = lambda url, now: url
+        session._media_base = base
+        return session
+
+    @staticmethod
+    def _stub_resolution():
+        return patch(
+            "courselens_worker.source.resolve_source_address",
+            side_effect=lambda url, headers=None, public_ip_hint="": ResolvedSource(
+                url=url, headers=dict(headers or {}), ip="203.0.113.7",
+            ),
+        )
+
+    def test_media_source_defaults_to_the_session_owned_relogin(self):
+        """第四十一案主症：每日自动化链不传 relogin，媒体重取也必须能续登。"""
+        relogin = lambda: None
+        session = self._media_session_double(
+            lambda course_id, sub_id: ("https://icourse.fudan.edu.cn/lecture.mp4", 0)
+        )
+        session._relogin = relogin
+        with self._stub_resolution(), patch(
+            "courselens_worker.platform_session._bounded_session_refresh"
+        ) as bounded:
+            source = session.media_source("36941", "l-1")
+            source["_refresh_source"]()
+        self.assertIs(bounded.call_args.args[1], relogin, "缺省必须用会话本人续登回调")
+
+    def test_session_owned_relogin_reauthenticates_between_refresh_tries(self):
+        """会话自持回调端到端：一次会话失效 → 自动续登 → 重取成功。"""
+        from courselens_worker.platform_session import _bounded_session_refresh
+
+        logins = {"count": 0}
+        session = object.__new__(PlatformSession)
+        session._relogin = None
+        session._login_course_direct = lambda account, password: logins.__setitem__(
+            "count", logins["count"] + 1
+        )
+        session._login_webvpn_full = Mock()
+        session.login("2020001", "synthetic")
+        session._login_webvpn_full.assert_not_called()
+        self.assertTrue(callable(session._relogin))
+
+        refreshes = {"count": 0}
+
+        def refresh():
+            refreshes["count"] += 1
+            if refreshes["count"] == 1:
+                raise PlatformSessionError("platform_course_request_failed")
+            return {"url": "https://example.org/fresh.mp4"}
+
+        with patch("courselens_worker.platform_session.time.sleep"):
+            value = _bounded_session_refresh(refresh, session._relogin)
+        self.assertEqual(value["url"], "https://example.org/fresh.mp4")
+        self.assertEqual(refreshes["count"], 2)
+        self.assertEqual(logins["count"], 2, "首次登录 + 一次续登")
+
+    def test_media_source_without_a_logged_in_session_keeps_single_try(self):
+        """从未登录过的会话没有可用的续登回调：保持一次即败，不误重试。"""
+        bases = {"count": 0}
+
+        def base(course_id, sub_id):
+            bases["count"] += 1
+            if bases["count"] == 1:
+                return ("https://icourse.fudan.edu.cn/lecture.mp4", 0)
+            raise PlatformSessionError("platform_course_request_failed")
+
+        session = self._media_session_double(base)
+        with self._stub_resolution():
+            source = session.media_source("36941", "l-1")
+            with self.assertRaises(PlatformSessionError):
+                source["_refresh_source"]()
+        self.assertEqual(bases["count"], 2, "无回调时不重取")
+
+    def test_close_releases_the_session_owned_relogin(self):
+        session = object.__new__(PlatformSession)
+        session._relogin = lambda: None
+        session._course_bearer = ""
+        session._userinfo = None
+        session._webvpn_ready = False
+        session.course_session = Mock()
+        session.session = Mock()
+        session.close()
+        self.assertIsNone(session._relogin)
 
     def test_materialize_media_source_receives_relogin_callback(self):
         captured = {}
