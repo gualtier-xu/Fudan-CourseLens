@@ -113,4 +113,4 @@ git diff --check
 
 ## 许可证与依赖
 
-仓库代码采用 Apache License 2.0。SenseVoice、FireRedASR2、RapidOCR、ONNX Runtime、FFmpeg、DeepSeek 和其他依赖分别遵循其上游许可证、模型许可与服务条款。发布者必须保留相应声明，不得把 Apache-2.0 误表述为覆盖全部模型和服务。
+仓库代码采用 Apache License 2.0。SenseVoice、Paraformer、RapidOCR、ONNX Runtime、FFmpeg、DeepSeek 和其他依赖分别遵循其上游许可证、模型许可与服务条款。发布者必须保留相应声明，不得把 Apache-2.0 误表述为覆盖全部模型和服务。

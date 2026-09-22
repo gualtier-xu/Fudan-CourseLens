@@ -149,7 +149,6 @@ class TranscribePcmTimingTests(unittest.TestCase):
             pool.threads = 1
             pool._recognizers = {}
             pool.sensevoice_dir = Path("sensevoice")
-            pool.firered_dir = Path("firered")
             with patch.object(asr.RecognizerPool, "get", return_value=recognizer):
                 return pool.transcribe_pcm(path, "sensevoice", offset_seconds=offset_seconds), recognizer
 
@@ -260,7 +259,6 @@ class DecodeBatchingTests(unittest.TestCase):
             pool.threads = 1
             pool._recognizers = {}
             pool.sensevoice_dir = Path("sensevoice")
-            pool.firered_dir = Path("firered")
             with patch.object(asr.RecognizerPool, "get", return_value=recognizer):
                 return pool.transcribe_pcm(path, "sensevoice", offset_seconds=0.0)
 

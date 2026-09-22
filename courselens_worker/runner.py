@@ -75,7 +75,6 @@ _SUBTITLE_RESUME_KEYS = (
     "total_chunks",
     "mode",
     "raw_sensevoice",
-    "raw_firered",
     "raw_paraformer",
     "pcm_fingerprint",
     "proofread_pairing",
@@ -120,15 +119,6 @@ def _required(name: str) -> str:
     if not value:
         raise WorkerError(f"required worker setting is missing: {name}")
     return value
-
-
-def _optional_model_dir(name: str) -> Path | None:
-    # 可选模型目录（如 PARAFORMER_MODEL_DIR）：默认双模型链不依赖它，
-    # 缺环境变量时保持 None，仅当 SUBTITLE_BACKENDS 真正点名该 backend
-    # 才由 RecognizerPool 显式失败——默认链在未安装新模型的 runner 上
-    # 零行为变化。
-    value = os.environ.get(name, "").strip()
-    return Path(value) if value else None
 
 
 def _progress(stage: str, completed: int, total: int) -> None:
@@ -267,13 +257,12 @@ def _process_materialized_job(
         value = transcribe(
             job,
             sensevoice_dir=Path(_required("SENSEVOICE_MODEL_DIR")),
-            firered_dir=Path(_required("FIRERED_MODEL_DIR")),
-            paraformer_dir=_optional_model_dir("PARAFORMER_MODEL_DIR"),
+            paraformer_dir=Path(_required("PARAFORMER_MODEL_DIR")),
             proofread=(
-                (lambda sense, fire, prior, write: proofread_segments(
+                (lambda rough, refined, prior, write: proofread_segments(
                     api_key,
-                    sense,
-                    fire,
+                    rough,
+                    refined,
                     prior_checkpoint=prior,
                     checkpoint=write,
                 )) if api_key else None
@@ -288,7 +277,7 @@ def _process_materialized_job(
                 "srt": to_srt(value["segments"]),
                 "vtt": to_vtt(value["segments"]),
                 # raw 段键随 SUBTITLE_BACKENDS 序列泛化（raw_<backend>），
-                # 默认链仍是 raw_sensevoice + raw_firered，客户端合同不变。
+                # 默认链仍是 raw_sensevoice + raw_paraformer，客户端合同不变。
                 **{key: value[key] for key in value if key.startswith("raw_")},
             }
         }
@@ -396,14 +385,14 @@ def _process_materialized_job(
                 if checkpoint_writer is not None:
                     checkpoint_writer({**ocr_fields, **value})
 
-            def proofread_with_slides(sense, fire, saved, write):
+            def proofread_with_slides(rough, refined, saved, write):
                 def write_with_ocr(proofread_value: dict[str, Any]) -> None:
                     write({**ocr_fields, **proofread_value})
 
                 return proofread_segments(
                     api_key,
-                    sense,
-                    fire,
+                    rough,
+                    refined,
                     ppt_pages=pages if wants_slides else None,
                     prior_checkpoint=saved,
                     checkpoint=write_with_ocr,
@@ -413,8 +402,7 @@ def _process_materialized_job(
             value = transcribe(
                 job,
                 sensevoice_dir=Path(_required("SENSEVOICE_MODEL_DIR")),
-                firered_dir=Path(_required("FIRERED_MODEL_DIR")),
-                paraformer_dir=_optional_model_dir("PARAFORMER_MODEL_DIR"),
+                paraformer_dir=Path(_required("PARAFORMER_MODEL_DIR")),
                 proofread=proofread_with_slides if api_key else None,
                 progress=progress,
                 checkpoint=subtitle_checkpoint,

@@ -30,13 +30,13 @@ _INSTALL_MODELS_SPEC.loader.exec_module(install_models)
 
 
 class InstallModelsParaformerEntryTests(unittest.TestCase):
-    def test_paraformer_entry_is_present_but_unpinned(self):
+    def test_paraformer_entry_is_pinned_to_measured_sha256(self):
         entry = install_models.MODELS["paraformer"]
         self.assertEqual(
             entry["archive"], "sherpa-onnx-paraformer-zh-2023-09-14.tar.bz2"
         )
-        # 空 sha256 = 尚未实测钉：安装面跳过该条目（不下载、不写 models.env）。
-        self.assertEqual(entry["sha256"], "")
+        # 实测钉（ASRBENCH 下载件 sha256，M4-ENABLE-1 U1）：条目进入安装面。
+        self.assertEqual(entry["sha256"], "9c49fd9c6fb63de8e18c1054cf3d100f804741b7e608e187923cd8ff09fa9f03")
 
     def test_unpinned_entry_skips_download_and_env_registration(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -49,7 +49,7 @@ class InstallModelsParaformerEntryTests(unittest.TestCase):
                 patch.object(
                     install_models,
                     "MODELS",
-                    {"paraformer": install_models.MODELS["paraformer"]},
+                    {"ghost": {"archive": "ghost.tar.bz2", "sha256": ""}},
                 ),
                 patch.object(
                     install_models.requests,
@@ -66,7 +66,6 @@ class InstallModelsParaformerEntryTests(unittest.TestCase):
             names = (
                 "sherpa-onnx-paraformer-zh-2023-09-14",
                 "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17",
-                "sherpa-onnx-fire-red-asr2-ctc-zh_en-int8-2026-02-25",
             )
             for name in names:
                 tokens = root / name / "tokens.txt"
@@ -77,7 +76,6 @@ class InstallModelsParaformerEntryTests(unittest.TestCase):
                 ["sherpa-onnx-paraformer-zh-2023-09-14"],
             )
             self.assertEqual(len(install_models._model_directories(root, "sensevoice")), 1)
-            self.assertEqual(len(install_models._model_directories(root, "firered")), 1)
 
 
 class RecognizerPoolParaformerTests(unittest.TestCase):
@@ -91,7 +89,7 @@ class RecognizerPoolParaformerTests(unittest.TestCase):
     def test_paraformer_branch_builds_via_from_paraformer(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = self._paraformer_directory(Path(temporary))
-            pool = asr.RecognizerPool(Path("sense"), Path("fire"), directory, threads=2)
+            pool = asr.RecognizerPool(Path("sense"), directory, threads=2)
             with patch.object(asr, "sherpa_onnx") as sherpa:
                 recognizer = pool.get("paraformer")
                 # 构造缓存：同 backend 第二次 get 不再触达构造器
@@ -108,21 +106,21 @@ class RecognizerPoolParaformerTests(unittest.TestCase):
             )
 
     def test_paraformer_requires_configured_directory(self):
-        pool = asr.RecognizerPool(Path("sense"), Path("fire"), None, threads=1)
+        pool = asr.RecognizerPool(Path("sense"), None, threads=1)
         with self.assertRaises(asr.ASRError):
             pool.get("paraformer")
 
     def test_unknown_backend_still_fails_closed(self):
-        pool = asr.RecognizerPool(Path("sense"), Path("fire"), None, threads=1)
+        pool = asr.RecognizerPool(Path("sense"), None, threads=1)
         with self.assertRaises(asr.ASRError):
             pool.get("whisper")
 
 
 class SubtitleBackendSequenceTests(unittest.TestCase):
-    def test_default_sequence_is_unchanged(self):
+    def test_default_sequence_is_m4_paraformer_refinement(self):
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(
-                asr.subtitle_backend_sequence(), ["sensevoice", "firered"]
+                asr.subtitle_backend_sequence(), ["sensevoice", "paraformer"]
             )
 
     def test_env_override_selects_paraformer_refinement(self):
@@ -133,7 +131,7 @@ class SubtitleBackendSequenceTests(unittest.TestCase):
                 )
         with patch.dict(os.environ, {"SUBTITLE_BACKENDS": ""}):
             self.assertEqual(
-                asr.subtitle_backend_sequence(), ["sensevoice", "firered"]
+                asr.subtitle_backend_sequence(), ["sensevoice", "paraformer"]
             )
 
     def test_invalid_sequences_fail_closed(self):
@@ -141,7 +139,7 @@ class SubtitleBackendSequenceTests(unittest.TestCase):
             "sensevoice",
             "sensevoice,sensevoice",
             "sensevoice,gpt",
-            "sensevoice,paraformer,firered",
+            "sensevoice,paraformer,gpt",
             "   ",
         ):
             with patch.dict(os.environ, {"SUBTITLE_BACKENDS": raw}):
@@ -186,7 +184,7 @@ class ParaformerDecodeSmokeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "chunk.f32le"
             np.asarray(samples, dtype=np.float32).tofile(path)
-            pool = asr.RecognizerPool(Path("sense"), Path("fire"), Path("para"))
+            pool = asr.RecognizerPool(Path("sense"), Path("para"))
             with patch.object(asr.RecognizerPool, "get", return_value=recognizer):
                 segments = pool.transcribe_pcm(path, "paraformer", offset_seconds=0.0)
         self.assertEqual(len(segments), 1)
@@ -235,7 +233,6 @@ class ParaformerChainTranscribeTests(unittest.TestCase):
             return asr.transcribe(
                 {"payload": payload},
                 sensevoice_dir=Mock(),
-                firered_dir=Mock(),
                 paraformer_dir=Mock(),
                 proofread=proofread_fn,
                 progress=Mock(),
@@ -247,7 +244,9 @@ class ParaformerChainTranscribeTests(unittest.TestCase):
         result = self._run(self._pool(), checkpoints=checkpoints.append)
         self.assertIn("raw_sensevoice", result)
         self.assertIn("raw_paraformer", result)
-        self.assertNotIn("raw_firered", result)
+        self.assertEqual(
+            {key for key in result if key.startswith("raw_")},{"raw_sensevoice", "raw_paraformer"},
+        )
         self.assertEqual(result["segments"][0]["text"], "校对后")
         self.assertEqual(
             result["segments"][0]["provenance"]["model"],
@@ -272,7 +271,6 @@ class ParaformerChainTranscribeTests(unittest.TestCase):
             "total_chunks": 3,
             "mode": "automatic",
             "raw_sensevoice": [{"start_ms": 0, "end_ms": 1000, "text": "x"}],
-            "raw_firered": [{"start_ms": 0, "end_ms": 1000, "text": "y"}],
         }
         with self.assertRaises(asr.ASRError):
             self._run(self._pool(), prior=prior)
