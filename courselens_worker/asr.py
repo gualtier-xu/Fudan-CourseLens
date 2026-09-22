@@ -24,6 +24,8 @@ from typing import Any, Callable
 import numpy as np
 import sherpa_onnx
 
+from .llm import LLMError
+
 from shared.evidence_contract import (
     NAMESPACE_SEGMENT,
     NAMESPACE_SOURCE,
@@ -46,6 +48,12 @@ ASR_WINDOW_SECONDS = 30
 # Capping each call at the per-stream window ceiling bounds that activation
 # to the envelope proven safe on 4-core runners.
 ASR_DECODE_BATCH_SECONDS = 30
+
+# 精修管线 backend 序列策略（ASRBENCH-1 A5）：SUBTITLE_BACKENDS 是
+# 「粗识别, 精识别」两元序列，默认与历史双模型链逐字节一致；环境变量
+# 覆写为 sensevoice,paraformer 即换装 M4，回填默认值即时回退。
+SUPPORTED_ASR_BACKENDS = ("sensevoice", "firered", "paraformer")
+DEFAULT_SUBTITLE_BACKENDS = "sensevoice,firered"
 
 # Frame-energy voice activity: deterministic, NumPy-only, no model.  The one
 # documented calibration knob is COURSELENS_ASR_ENERGY_RATIO (voiced threshold
@@ -315,31 +323,56 @@ def _run_media_proxy(
 
 
 def _probe_duration(source: dict[str, Any]) -> float:
-    try:
-        returncode, stdout, _ = _run_media_proxy(
-            source,
-            lambda media_url: [
-                "ffprobe", "-v", "error", "-show_entries", "format=duration",
-                "-of", "default=nw=1:nk=1", "-i", media_url,
-            ],
-            timeout=120,
-            capture_stdout=True,
-        )
-    except (subprocess.TimeoutExpired, OSError):
-        raise ASRError("authorized media duration probe timed out")
-    try:
-        duration = float(stdout.decode("ascii", errors="ignore").strip())
-    except (TypeError, ValueError):
-        duration = 0.0
-    if returncode != 0 or duration <= 0:
-        raise ASRError("authorized media duration could not be determined")
-    return duration
+    # 第二十一案同族（A5 邻接扫）：时长探测发生在分块代理建立之前，学校单
+    # 会话作废/签名过期在这里同样秒败。有界=至多两次探测，每次起手都会重取
+    # 会话材料（pinned_media_proxy 检测到 _refresh_source 即先刷新授权）；
+    # 仍败按闭集码如实失败。超时不重试——那不是秒败族，重试只放大等待。
+    for _attempt in (0, 1):
+        try:
+            returncode, stdout, _ = _run_media_proxy(
+                source,
+                lambda media_url: [
+                    "ffprobe", "-v", "error", "-show_entries", "format=duration",
+                    "-of", "default=nw=1:nk=1", "-i", media_url,
+                ],
+                timeout=120,
+                capture_stdout=True,
+            )
+        except (subprocess.TimeoutExpired, OSError):
+            raise ASRError("authorized media duration probe timed out")
+        try:
+            duration = float(stdout.decode("ascii", errors="ignore").strip())
+        except (TypeError, ValueError):
+            duration = 0.0
+        if returncode == 0 and duration > 0:
+            return duration
+    raise ASRError("authorized media duration could not be determined")
+
+
+def subtitle_backend_sequence() -> list[str]:
+    raw = os.environ.get("SUBTITLE_BACKENDS") or DEFAULT_SUBTITLE_BACKENDS
+    names = [part.strip() for part in raw.split(",") if part.strip()]
+    if (
+        len(names) != 2
+        or len(set(names)) != 2
+        or any(name not in SUPPORTED_ASR_BACKENDS for name in names)
+    ):
+        raise ASRError("subtitle backend sequence is invalid")
+    return names
 
 
 class RecognizerPool:
-    def __init__(self, sensevoice_dir: Path, firered_dir: Path, *, threads: int = 4):
+    def __init__(
+        self,
+        sensevoice_dir: Path,
+        firered_dir: Path,
+        paraformer_dir: Path | None = None,
+        *,
+        threads: int = 4,
+    ):
         self.sensevoice_dir = sensevoice_dir
         self.firered_dir = firered_dir
+        self.paraformer_dir = paraformer_dir
         self.threads = max(1, min(4, int(threads)))
         self._recognizers: dict[str, Any] = {}
 
@@ -354,7 +387,16 @@ class RecognizerPool:
     def get(self, backend: str):
         if backend in self._recognizers:
             return self._recognizers[backend]
-        directory = self.sensevoice_dir if backend == "sensevoice" else self.firered_dir
+        directories = {
+            "sensevoice": self.sensevoice_dir,
+            "firered": self.firered_dir,
+            "paraformer": self.paraformer_dir,
+        }
+        directory = directories.get(backend)
+        if directory is None:
+            if backend not in SUPPORTED_ASR_BACKENDS:
+                raise ASRError("unsupported ASR backend")
+            raise ASRError(f"{backend} model directory is not configured")
         model = self._model(directory)
         tokens = directory / "tokens.txt"
         if not tokens.is_file():
@@ -367,6 +409,12 @@ class RecognizerPool:
         elif backend == "firered":
             recognizer = sherpa_onnx.OfflineRecognizer.from_fire_red_asr_ctc(
                 model=str(model), tokens=str(tokens), num_threads=self.threads,
+                debug=False, provider="cpu",
+            )
+        elif backend == "paraformer":
+            # 参数名对 sherpa-onnx 1.13.4 官方绑定实核（from_paraformer）。
+            recognizer = sherpa_onnx.OfflineRecognizer.from_paraformer(
+                paraformer=str(model), tokens=str(tokens), num_threads=self.threads,
                 debug=False, provider="cpu",
             )
         else:
@@ -448,6 +496,20 @@ def _ffmpeg_proxy_command(
     ]
 
 
+# 第二十案(2026-09-21 真机定案)：chunk6 取流 0 字节秒败（media_format_rejected
+# 族），与学校单会话作废 runner 媒体会话/签名过期强相关。该族不再立即整单
+# 失败：每次失败先有界重取会话材料（刷新授权，平台侧自带重登退避），再重试
+# 当前块；次数与退避有界，穷尽后按最后一个闭集码如实失败。4xx/404/429 与
+# moov 缺索引属确定性拒绝，不进重试族。
+_MEDIA_RETRY_BACKOFF_SECONDS = (2.0, 5.0)
+_MEDIA_RETRY_MESSAGES = frozenset({
+    "authorized media format was rejected by ffmpeg",
+    "ffmpeg could not decode the authorized media stream",
+    "authorized media upstream connection failed",
+    "authorized media request returned HTTP 5xx",
+})
+
+
 def _decode_chunk_from_url(
     media_url: str,
     target: Path,
@@ -472,12 +534,6 @@ def _decode_chunk_from_url(
     if returncode != 0 or not target.is_file() or target.stat().st_size == 0:
         target.unlink(missing_ok=True)
         raise _decode_failure(ffmpeg_stderr.decode("utf-8", errors="replace"))
-
-
-def _decode_chunk(source: dict[str, Any], target: Path, *, offset: float, duration: float) -> None:
-    """Decode one bounded chunk through a transient pinned media session."""
-    with pinned_media_proxy(source) as proxy:
-        _decode_chunk_from_url(proxy.url, target, offset=offset, duration=duration)
 
 
 def _pcm_file_digest(path: Path) -> bytes:
@@ -649,6 +705,7 @@ def transcribe(
     *,
     sensevoice_dir: Path,
     firered_dir: Path,
+    paraformer_dir: Path | None = None,
     proofread: Callable[..., list[dict[str, Any]]] | None,
     progress: Callable[[str, int, int], None],
     checkpoint: Callable[[dict[str, Any]], None] | None = None,
@@ -673,17 +730,26 @@ def transcribe(
     if strategy not in {"sequential", "parallel"}:
         strategy = "sequential"
     recognizer_threads = 2 if proofread_enabled and strategy == "parallel" else 4
-    pool = RecognizerPool(sensevoice_dir, firered_dir, threads=recognizer_threads)
+    backends = subtitle_backend_sequence()
+    rough, refined = backends
+    pool = RecognizerPool(
+        sensevoice_dir, firered_dir, paraformer_dir, threads=recognizer_threads
+    )
     if proofread_enabled and strategy == "parallel":
-        pool.get("sensevoice")
-        pool.get("firered")
+        pool.get(rough)
+        pool.get(refined)
     prior = dict(payload.get("checkpoint") or {})
     if prior and str(prior.get("mode") or "") != mode:
         raise ASRError("checkpoint subtitle mode does not match the job")
-    sense_segments: list[dict[str, Any]] = list(prior.get("raw_sensevoice") or [])
-    firered_segments: list[dict[str, Any]] = list(prior.get("raw_firered") or [])
+    rough_segments: list[dict[str, Any]] = list(prior.get(f"raw_{rough}") or [])
+    refined_segments: list[dict[str, Any]] = list(prior.get(f"raw_{refined}") or [])
     total_chunks = max(1, int((duration + PCM_CHUNK_SECONDS - 1) // PCM_CHUNK_SECONDS))
     completed_chunks = max(0, min(total_chunks, int(prior.get("completed_chunks") or 0)))
+    # 换链续跑的检查点必须已携带同序列车型的 raw 段，否则精识别会从
+    # completed_chunks 起步而丢失前段输出——缺键宁可显式失败。
+    if completed_chunks > 0 and backends != ["sensevoice", "firered"]:
+        if any(f"raw_{name}" not in prior for name in backends):
+            raise ASRError("checkpoint raw segments do not match the subtitle backends")
     # Provenance is stamped only when the fingerprint chain covers every chunk
     # of the run.  A legacy checkpoint without chain state makes that
     # impossible, so the output omits provenance entirely and the client
@@ -732,12 +798,25 @@ def transcribe(
                 telemetry_state["pcm"] = pcm
                 _emit_telemetry(f"stage=decode-start chunk={index} elapsed={_elapsed_ticks()}")
                 decode_started = time.monotonic()
-                _decode_chunk_from_url(
-                    proxy.url,
-                    pcm,
-                    offset=absolute_offset,
-                    duration=chunk_duration,
-                )
+                for media_attempt in range(len(_MEDIA_RETRY_BACKOFF_SECONDS) + 1):
+                    try:
+                        _decode_chunk_from_url(
+                            proxy.url,
+                            pcm,
+                            offset=absolute_offset,
+                            duration=chunk_duration,
+                        )
+                        break
+                    except ASRError as exc:
+                        last_attempt = media_attempt == len(_MEDIA_RETRY_BACKOFF_SECONDS)
+                        if last_attempt or str(exc) not in _MEDIA_RETRY_MESSAGES:
+                            raise
+                        proxy.refresh_source()
+                        _emit_telemetry(
+                            f"stage=media-retry chunk={index} "
+                            f"attempt={media_attempt + 1} elapsed={_elapsed_ticks()}"
+                        )
+                        time.sleep(_MEDIA_RETRY_BACKOFF_SECONDS[media_attempt])
                 _emit_telemetry(
                     f"stage=decode-done chunk={index} bytes={pcm.stat().st_size} "
                     f"seconds={round(time.monotonic() - decode_started, 3)} "
@@ -750,21 +829,21 @@ def transcribe(
                 _emit_telemetry(f"stage=asr-start chunk={index} elapsed={_elapsed_ticks()}")
                 if proofread_enabled and strategy == "parallel":
                     with ThreadPoolExecutor(max_workers=2, thread_name_prefix="asr") as executor:
-                        sense_future = executor.submit(
-                            pool.transcribe_pcm, pcm, "sensevoice", offset_seconds=absolute_offset
+                        rough_future = executor.submit(
+                            pool.transcribe_pcm, pcm, rough, offset_seconds=absolute_offset
                         )
-                        fire_future = executor.submit(
-                            pool.transcribe_pcm, pcm, "firered", offset_seconds=absolute_offset
+                        refined_future = executor.submit(
+                            pool.transcribe_pcm, pcm, refined, offset_seconds=absolute_offset
                         )
-                        sense_segments.extend(sense_future.result())
-                        firered_segments.extend(fire_future.result())
+                        rough_segments.extend(rough_future.result())
+                        refined_segments.extend(refined_future.result())
                 else:
                     if proofread_enabled:
-                        sense_segments.extend(
-                            pool.transcribe_pcm(pcm, "sensevoice", offset_seconds=absolute_offset)
+                        rough_segments.extend(
+                            pool.transcribe_pcm(pcm, rough, offset_seconds=absolute_offset)
                         )
-                    firered_segments.extend(
-                        pool.transcribe_pcm(pcm, "firered", offset_seconds=absolute_offset)
+                    refined_segments.extend(
+                        pool.transcribe_pcm(pcm, refined, offset_seconds=absolute_offset)
                     )
                 _emit_telemetry(f"stage=asr-end chunk={index} elapsed={_elapsed_ticks()}")
                 pcm.unlink(missing_ok=True)
@@ -775,16 +854,17 @@ def transcribe(
                         "completed_chunks": index + 1,
                         "total_chunks": total_chunks,
                         "mode": mode,
-                        "raw_sensevoice": normalize_segments(sense_segments),
-                        "raw_firered": normalize_segments(firered_segments),
+                        f"raw_{rough}": normalize_segments(rough_segments),
+                        f"raw_{refined}": normalize_segments(refined_segments),
                     }
                     if fingerprint_state is not None:
                         state["pcm_fingerprint"] = fingerprint_state
                     checkpoint(state)
         finally:
             ticker.stop()
+    proofread_degraded = False
     if not proofread_enabled:
-        final = firered_segments
+        final = refined_segments
     else:
         def proofread_checkpoint(value: dict[str, Any]) -> None:
             if checkpoint is not None:
@@ -793,48 +873,55 @@ def transcribe(
                     "completed_chunks": total_chunks,
                     "total_chunks": total_chunks,
                     "mode": mode,
-                    "raw_sensevoice": normalize_segments(sense_segments),
-                    "raw_firered": normalize_segments(firered_segments),
+                    f"raw_{rough}": normalize_segments(rough_segments),
+                    f"raw_{refined}": normalize_segments(refined_segments),
                     **value,
                 }
                 if fingerprint_state is not None:
                     state["pcm_fingerprint"] = fingerprint_state
                 checkpoint(state)
 
-        final = proofread(
-            sense_segments,
-            firered_segments,
-            prior,
-            proofread_checkpoint,
-        )
+        try:
+            final = proofread(
+                rough_segments,
+                refined_segments,
+                prior,
+                proofread_checkpoint,
+            )
+        except LLMError:
+            # ASRBENCH P1（G7）：AI 校对失败不再把已完成的识别整单带崩——
+            # 降级交付未经校订的原始结果，闭集警告随产物上屏（诚实标注）。
+            proofread_degraded = True
+            final = refined_segments
     final_segments = normalize_segments(final)
-    raw_sensevoice = normalize_segments(sense_segments)
-    raw_firered = normalize_segments(firered_segments)
+    raw_rough = normalize_segments(rough_segments)
+    raw_refined = normalize_segments(refined_segments)
     if verifiable_fingerprint and fingerprint_state is not None:
         config_hash = _timing_config_hash(asr_energy_ratio())
         source_id = _source_evidence_id(fingerprint_state, duration)
         _stamp_segment_identity(
-            raw_sensevoice,
+            raw_rough,
             source_id=source_id,
             source_hash=fingerprint_state,
             provenance={
                 "producer": PRODUCER_ID,
-                "model": "sensevoice",
+                "model": rough,
                 "config_hash": config_hash,
             },
         )
         _stamp_segment_identity(
-            raw_firered,
+            raw_refined,
             source_id=source_id,
             source_hash=fingerprint_state,
             provenance={
                 "producer": PRODUCER_ID,
-                "model": "firered",
+                "model": refined,
                 "config_hash": config_hash,
             },
         )
         final_model = (
-            "sensevoice+firered:proofread" if proofread_enabled else "firered"
+            refined if (not proofread_enabled or proofread_degraded)
+            else f"{rough}+{refined}:proofread"
         )
         _stamp_segment_identity(
             final_segments,
@@ -849,8 +936,9 @@ def transcribe(
     return {
         "mode": mode,
         "segments": final_segments,
-        "raw_sensevoice": raw_sensevoice,
-        "raw_firered": raw_firered,
+        f"raw_{rough}": raw_rough,
+        f"raw_{refined}": raw_refined,
+        **({"warnings": ["proofread_degraded"]} if proofread_degraded else {}),
         "metrics": {
             "duration_seconds": duration,
             "elapsed_seconds": round(time.monotonic() - started, 3),

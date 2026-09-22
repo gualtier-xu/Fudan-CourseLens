@@ -209,10 +209,6 @@ def resolve_source(
     raise SourceSecurityError("source exceeded the redirect limit")
 
 
-def resolve_redirects(url: str, headers: dict[str, str], *, timeout: int = 20) -> str:
-    return resolve_source(url, headers, timeout=timeout).url
-
-
 def classify_media_response(
     status: int,
     content_type: str,
@@ -300,30 +296,6 @@ def open_pinned_stream(source: dict[str, Any], *, timeout: int = 60) -> Iterator
             connection.close()
         return
     raise SourceSecurityError("source exceeded the redirect limit")
-
-
-def ffmpeg_headers(headers: dict[str, str]) -> str:
-    return "".join(f"{name}: {value}\r\n" for name, value in headers.items())
-
-
-def pinned_curl_command(source: dict[str, Any]) -> list[str]:
-    headers = safe_headers(source.get("headers"))
-    resolved = resolve_source(
-        str(source.get("url") or ""),
-        headers,
-        public_ip_hint=str(source.get("resolved_public_ip") or ""),
-    )
-    parsed = urlsplit(resolved.url)
-    address = f"[{resolved.ip}]" if ":" in resolved.ip else resolved.ip
-    command = [
-        "curl", "--fail", "--silent", "--show-error", "--no-progress-meter",
-        "--proto", "=https", "--connect-timeout", "30", "--max-time", "21600",
-        "--resolve", f"{parsed.hostname}:443:{address}",
-    ]
-    for name, value in resolved.headers.items():
-        command += ["--header", f"{name}: {value}"]
-    command += [resolved.url]
-    return command
 
 
 class _PinnedRangeProxy(http.server.ThreadingHTTPServer):
