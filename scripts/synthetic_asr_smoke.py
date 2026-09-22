@@ -41,7 +41,7 @@ def _run(command: list[str]) -> None:
 
 def main() -> int:
     sensevoice = _required_directory("SENSEVOICE_MODEL_DIR")
-    firered = _required_directory("FIRERED_MODEL_DIR")
+    paraformer = _required_directory("PARAFORMER_MODEL_DIR")
     started = time.monotonic()
     metrics: dict[str, object] = {
         "schema": "synthetic-asr-smoke.v1",
@@ -59,8 +59,8 @@ def main() -> int:
             "-i", str(wav), "-vn", "-ac", "1", "-ar", str(SAMPLE_RATE),
             "-f", "f32le", "-y", str(pcm),
         ])
-        pool = RecognizerPool(sensevoice, firered, threads=4)
-        for backend in ("sensevoice", "firered"):
+        pool = RecognizerPool(sensevoice, paraformer, threads=4)
+        for backend in ("sensevoice", "paraformer"):
             model_started = time.monotonic()
             segments = pool.transcribe_pcm(pcm, backend, offset_seconds=0.0)
             character_count = sum(len(str(item.get("text") or "")) for item in segments)

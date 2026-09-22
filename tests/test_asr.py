@@ -42,7 +42,6 @@ class ASRProxyLifecycleTests(unittest.TestCase):
                     },
                 },
                 sensevoice_dir=Mock(),
-                firered_dir=Mock(),
                 proofread=None,
                 progress=progress,
             )
@@ -106,7 +105,6 @@ class ASREvidenceIdentityTests(unittest.TestCase):
             return asr.transcribe(
                 {"payload": payload},
                 sensevoice_dir=Mock(),
-                firered_dir=Mock(),
                 proofread=proofread_fn,
                 progress=Mock(),
                 checkpoint=capture,
@@ -121,7 +119,7 @@ class ASREvidenceIdentityTests(unittest.TestCase):
             self.assertRegex(segment["segment_id"], r"^seg:[0-9a-f]{12}$")
             self.assertRegex(segment["source_hash"], r"^[0-9a-f]{64}$")
             self.assertEqual(segment["provenance"]["producer"], asr.PRODUCER_ID)
-            self.assertEqual(segment["provenance"]["model"], "firered")
+            self.assertEqual(segment["provenance"]["model"], "paraformer")
             self.assertRegex(segment["provenance"]["config_hash"], r"^[0-9a-f]{12,64}$")
         # 每个 chunk 的检查点都携带可续跑的非秘密指纹状态
         self.assertEqual(len(checkpoints), 3)
@@ -148,6 +146,19 @@ class ASREvidenceIdentityTests(unittest.TestCase):
             resumed["segments"][0]["source_hash"],
         )
 
+    def test_checkpoint_without_current_chain_raw_fails_explicitly(self):
+        # M4-ENABLE-1 U4：缺当前链精修 raw 的检查点（如退役链产物）续跑必须
+        # 显式失败——静默混链会丢前段输出。
+        pool = self._pool()
+        prior = {
+            "completed_chunks": 1,
+            "total_chunks": 3,
+            "mode": "automatic",
+            "raw_sensevoice": [{"start_ms": 0, "end_ms": 1000, "text": "legacy@0"}],
+        }
+        with self.assertRaises(asr.ASRError):
+            self._run(pool, prior=prior, proofread=None)
+
     def test_legacy_checkpoint_omits_unverifiable_provenance(self):
         pool = self._pool()
         checkpoints = []
@@ -156,7 +167,7 @@ class ASREvidenceIdentityTests(unittest.TestCase):
             "total_chunks": 3,
             "mode": "automatic",
             "raw_sensevoice": [{"start_ms": 0, "end_ms": 1000, "text": "legacy@0"}],
-            "raw_firered": [{"start_ms": 0, "end_ms": 1000, "text": "legacy-fire@0"}],
+            "raw_paraformer": [{"start_ms": 0, "end_ms": 1000, "text": "legacy-fire@0"}],
         }
         result = self._run(pool, prior=prior, capture=checkpoints.append, proofread=None)
         self.assertEqual(len(result["segments"]), 3)
@@ -174,15 +185,15 @@ class ASREvidenceIdentityTests(unittest.TestCase):
         self.assertEqual(result["segments"][0]["text"], "校对后")
         self.assertEqual(
             result["segments"][0]["provenance"]["model"],
-            "sensevoice+firered:proofread",
+            "sensevoice+paraformer:proofread",
         )
         self.assertEqual(result["raw_sensevoice"][0]["provenance"]["model"], "sensevoice")
-        self.assertEqual(result["raw_firered"][0]["provenance"]["model"], "firered")
+        self.assertEqual(result["raw_paraformer"][0]["provenance"]["model"], "paraformer")
         # 校对后的文本是独立证据：final ID 不与 raw ID 共享
         final_id = result["segments"][0]["segment_id"]
         raw_ids = {
             result["raw_sensevoice"][0]["segment_id"],
-            result["raw_firered"][0]["segment_id"],
+            result["raw_paraformer"][0]["segment_id"],
         }
         self.assertNotIn(final_id, raw_ids)
 
@@ -225,7 +236,6 @@ class ASRMediaRetryTests(unittest.TestCase):
                         },
                     },
                     sensevoice_dir=Mock(),
-                    firered_dir=Mock(),
                     proofread=None,
                     progress=Mock(),
                 )
@@ -320,14 +330,13 @@ class ProofreadDegradationTests(unittest.TestCase):
                     },
                 },
                 sensevoice_dir=Mock(),
-                firered_dir=Mock(),
                 proofread=flaky,
                 progress=Mock(),
             )
         self.assertEqual(result["warnings"], ["proofread_degraded"])
-        # 交付的是原始 firered 识别结果（三条 chunk 段），不是空手而归
+        # 交付的是原始精修识别结果（三条 chunk 段），不是空手而归
         self.assertEqual(len(result["segments"]), 3)
-        self.assertNotIn("sensevoice+firered:proofread", str(result))
+        self.assertNotIn(":proofread", str(result))
 
     def test_proofread_success_has_no_warning(self):
         pool = Mock()
@@ -359,7 +368,6 @@ class ProofreadDegradationTests(unittest.TestCase):
                     },
                 },
                 sensevoice_dir=Mock(),
-                firered_dir=Mock(),
                 proofread=good,
                 progress=Mock(),
             )

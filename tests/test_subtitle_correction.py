@@ -19,7 +19,7 @@ def seg(start_ms, end_ms, text, **extra):
     return value
 
 
-def run_proofread(sensevoice, firered, responses, *, prior=None):
+def run_proofread(sensevoice, primary, responses, *, prior=None):
     """Run proofread_segments with a mocked _chat; returns (result, user_payloads, chat).
 
     `responses` is either the fixed string returned by every _chat call, or a
@@ -34,7 +34,7 @@ def run_proofread(sensevoice, firered, responses, *, prior=None):
         return responses
 
     with patch("courselens_worker.llm._chat", side_effect=fake_chat) as chat:
-        result = proofread_segments("secret", sensevoice, firered, prior_checkpoint=prior)
+        result = proofread_segments("secret", sensevoice, primary, prior_checkpoint=prior)
     return result, payloads, chat
 
 
@@ -83,38 +83,38 @@ class PairAlternatesTests(unittest.TestCase):
 
 class CorrectionTests(unittest.TestCase):
     def test_unequal_counts_pair_by_time_without_index_drift(self):
-        firered = [seg(0, 1000, "甲说第一句"), seg(2000, 3000, "乙说第二句")]
+        primary = [seg(0, 1000, "甲说第一句"), seg(2000, 3000, "乙说第二句")]
         sensevoice = [
             seg(100, 900, "甲第一句"),
             seg(1300, 1800, "插入"),
             seg(2100, 2900, "乙第二句"),
         ]
-        result, payloads, _ = run_proofread(sensevoice, firered, "[]")
+        result, payloads, _ = run_proofread(sensevoice, primary, "[]")
         self.assertEqual([item["alt"] for item in payloads[0]], ["甲第一句", "乙第二句"])
         self.assertEqual(len(result), 2)
         self.assertEqual([item["text"] for item in result], ["甲说第一句", "乙说第二句"])
         self.assertEqual([item["start_ms"] for item in result], [0, 2000])
 
     def test_wire_payload_is_bounded_pairs_with_ids_and_anchors(self):
-        firered = [seg(0, 1000, "第一句")]
+        primary = [seg(0, 1000, "第一句")]
         sensevoice = [seg(0, 1000, "参考")]
-        _, payloads, _ = run_proofread(sensevoice, firered, "[]")
+        _, payloads, _ = run_proofread(sensevoice, primary, "[]")
         self.assertEqual(
             payloads[0],
             [{"id": "p0", "start_ms": 0, "end_ms": 1000, "text": "第一句", "alt": "参考"}],
         )
 
     def test_unmatched_primary_falls_back_to_raw_text(self):
-        firered = [seg(0, 1000, "只有主候选")]
+        primary = [seg(0, 1000, "只有主候选")]
         sensevoice = [seg(50000, 51000, "远处片段")]
-        result, _, _ = run_proofread(sensevoice, firered, "[]")
+        result, _, _ = run_proofread(sensevoice, primary, "[]")
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["text"], "只有主候选")
         self.assertEqual(result[0]["correction"], "unpaired")
         self.assertEqual((result[0]["start_ms"], result[0]["end_ms"]), (0, 1000))
 
     def test_accepted_replacement_preserves_anchors_and_evidence(self):
-        firered = [seg(
+        primary = [seg(
             1000, 2000, "温度是25摄氐度",
             tokens=[{"text": "温", "start_ms": 1000, "end_ms": 1050}],
             segment_id="seg-1",
@@ -124,7 +124,7 @@ class CorrectionTests(unittest.TestCase):
         )]
         sensevoice = [seg(1000, 2000, "温度是25摄氏度")]
         response = json.dumps([{"id": "p0", "old": "摄氐", "new": "摄氏"}])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "温度是25摄氏度")
         self.assertEqual(result[0]["correction"], "applied")
         self.assertIn(result[0]["correction"], _CORRECTION_STATUSES)
@@ -136,160 +136,160 @@ class CorrectionTests(unittest.TestCase):
         self.assertEqual(result[0]["lang"], "zh")
 
     def test_uncorrected_pair_keeps_tokens_and_identity(self):
-        firered = [seg(0, 1000, "原文", tokens=[{"t": 1}], segment_id="seg-1")]
+        primary = [seg(0, 1000, "原文", tokens=[{"t": 1}], segment_id="seg-1")]
         sensevoice = [seg(0, 1000, "参考")]
-        result, _, _ = run_proofread(sensevoice, firered, "[]")
+        result, _, _ = run_proofread(sensevoice, primary, "[]")
         self.assertEqual(result[0]["tokens"], [{"t": 1}])
         self.assertEqual(result[0]["segment_id"], "seg-1")
         self.assertNotIn("correction", result[0])
 
     def test_unknown_target_ids_are_ignored(self):
-        firered = [seg(0, 1000, "原文片段")]
+        primary = [seg(0, 1000, "原文片段")]
         sensevoice = [seg(0, 1000, "参考")]
         response = json.dumps([
             {"id": "p99", "old": "原文", "new": "改写"},
             {"id": "p20", "old": "原文", "new": "改写"},
         ])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "原文片段")
         self.assertNotIn("correction", result[0])
 
     def test_duplicate_proposals_for_the_same_span_are_ignored(self):
-        firered = [seg(0, 1000, "目标词在这里")]
+        primary = [seg(0, 1000, "目标词在这里")]
         sensevoice = [seg(0, 1000, "参考")]
         response = json.dumps([
             {"id": "p0", "old": "目标词", "new": "目标句"},
             {"id": "p0", "old": "目标词", "new": "别的改法"},
             {"id": "p0", "old": "目标句", "new": "第三种"},
         ])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "第三种在这里")
         self.assertEqual(result[0]["correction"], "applied")
 
     def test_failed_first_op_does_not_block_a_distinct_later_op(self):
-        firered = [seg(0, 1000, "目标词在这里")]
+        primary = [seg(0, 1000, "目标词在这里")]
         sensevoice = [seg(0, 1000, "参考")]
         response = json.dumps([
             {"id": "p0", "old": "不存在", "new": "x"},
             {"id": "p0", "old": "目标词", "new": "目标句"},
         ])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "目标句在这里")
         self.assertEqual(result[0]["correction"], "applied")
 
     def test_ambiguous_old_text_is_rejected(self):
-        firered = [seg(0, 1000, "AAA BBB AAA")]
+        primary = [seg(0, 1000, "AAA BBB AAA")]
         sensevoice = [seg(0, 1000, "参考")]
         response = json.dumps([{"id": "p0", "old": "AAA", "new": "C"}])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "AAA BBB AAA")
         self.assertEqual(result[0]["correction"], "rejected-ambiguous")
 
     def test_empty_result_is_rejected(self):
-        firered = [seg(0, 1000, "对")]
+        primary = [seg(0, 1000, "对")]
         sensevoice = [seg(0, 1000, "参考")]
         response = json.dumps([{"id": "p0", "old": "对", "new": ""}])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "对")
         self.assertEqual(result[0]["correction"], "rejected-budget")
 
     def test_over_budget_expansion_is_rejected(self):
-        firered = [seg(0, 1000, "一二三四")]
+        primary = [seg(0, 1000, "一二三四")]
         sensevoice = [seg(0, 1000, "参考")]
         response = json.dumps([{"id": "p0", "old": "一", "new": "一二三四五六七八九十"}])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "一二三四")
         self.assertEqual(result[0]["correction"], "rejected-budget")
 
     def test_per_op_growth_cap_is_rejected(self):
-        firered = [seg(0, 1000, "abc")]
+        primary = [seg(0, 1000, "abc")]
         sensevoice = [seg(0, 1000, "参考")]
         response = json.dumps([{"id": "p0", "old": "a", "new": "x" * 18}])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "abc")
         self.assertEqual(result[0]["correction"], "rejected-budget")
 
     def test_protected_number_change_without_support_is_rejected(self):
-        firered = [seg(0, 1000, "用了25分钟")]
+        primary = [seg(0, 1000, "用了25分钟")]
         sensevoice = [seg(0, 1000, "用了25分钟")]
         response = json.dumps([{"id": "p0", "old": "25", "new": "26"}])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "用了25分钟")
         self.assertEqual(result[0]["correction"], "rejected-protected")
 
     def test_alternate_support_allows_protected_number_change(self):
-        firered = [seg(0, 1000, "用了25分钟")]
+        primary = [seg(0, 1000, "用了25分钟")]
         sensevoice = [seg(0, 1000, "用了26分钟")]
         response = json.dumps([{"id": "p0", "old": "25", "new": "26"}])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "用了26分钟")
         self.assertEqual(result[0]["correction"], "applied")
 
     def test_corroborated_negation_deletion_is_rejected(self):
-        firered = [seg(0, 1000, "这个方法不能重复使用")]
+        primary = [seg(0, 1000, "这个方法不能重复使用")]
         sensevoice = [seg(0, 1000, "这个方法不能重复使用")]
         response = json.dumps([{"id": "p0", "old": "不", "new": ""}])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "这个方法不能重复使用")
         self.assertEqual(result[0]["correction"], "rejected-protected")
 
     def test_alternate_supported_negation_fix_is_applied(self):
-        firered = [seg(0, 1000, "这个方法能重复使用")]
+        primary = [seg(0, 1000, "这个方法能重复使用")]
         sensevoice = [seg(0, 1000, "这个方法不能重复使用")]
         response = json.dumps([{"id": "p0", "old": "能", "new": "不能"}])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "这个方法不能重复使用")
         self.assertEqual(result[0]["correction"], "applied")
 
     def test_formula_change_without_support_is_rejected(self):
-        firered = [seg(0, 1000, "质能方程E=mc2很著名")]
+        primary = [seg(0, 1000, "质能方程E=mc2很著名")]
         sensevoice = [seg(0, 1000, "质能方程E=mc2很著名")]
         response = json.dumps([{"id": "p0", "old": "E=mc2", "new": "E=MC2"}])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "质能方程E=mc2很著名")
         self.assertEqual(result[0]["correction"], "rejected-protected")
 
     def test_unit_change_without_support_is_rejected(self):
-        firered = [seg(0, 1000, "长度约3km")]
+        primary = [seg(0, 1000, "长度约3km")]
         sensevoice = [seg(0, 1000, "长度约3km")]
         response = json.dumps([{"id": "p0", "old": "3km", "new": "3米"}])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "长度约3km")
         self.assertEqual(result[0]["correction"], "rejected-protected")
 
     def test_malformed_json_raises_llm_error(self):
-        firered = [seg(0, 1000, "原文")]
+        primary = [seg(0, 1000, "原文")]
         sensevoice = [seg(0, 1000, "参考")]
         with self.assertRaises(LLMError):
-            run_proofread(sensevoice, firered, "不是JSON")
+            run_proofread(sensevoice, primary, "不是JSON")
 
     def test_non_array_response_raises_llm_error(self):
-        firered = [seg(0, 1000, "原文")]
+        primary = [seg(0, 1000, "原文")]
         sensevoice = [seg(0, 1000, "参考")]
         with self.assertRaises(LLMError):
-            run_proofread(sensevoice, firered, json.dumps({"index": 0, "text": "整段改写"}))
+            run_proofread(sensevoice, primary, json.dumps({"index": 0, "text": "整段改写"}))
 
     def test_malformed_ops_fail_closed_per_pair(self):
-        firered = [seg(0, 1000, "原文")]
+        primary = [seg(0, 1000, "原文")]
         sensevoice = [seg(0, 1000, "参考")]
         response = json.dumps(["junk", 42, {"id": "p0"}, {"id": "p0", "old": "原", "new": "改"}])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "改文")
         self.assertEqual(result[0]["correction"], "applied")
 
     def test_malformed_op_without_valid_followup_keeps_raw_text(self):
-        firered = [seg(0, 1000, "原文")]
+        primary = [seg(0, 1000, "原文")]
         sensevoice = [seg(0, 1000, "参考")]
         response = json.dumps([{"id": "p0", "old": "", "new": "改"}])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         self.assertEqual(result[0]["text"], "原文")
         self.assertEqual(result[0]["correction"], "rejected-shape")
 
     def test_corrected_segments_render_to_srt_and_vtt(self):
-        firered = [seg(1000, 2000, "温度是25摄氐度")]
+        primary = [seg(1000, 2000, "温度是25摄氐度")]
         sensevoice = [seg(1000, 2000, "温度是25摄氏度")]
         response = json.dumps([{"id": "p0", "old": "摄氐", "new": "摄氏"}])
-        result, _, _ = run_proofread(sensevoice, firered, response)
+        result, _, _ = run_proofread(sensevoice, primary, response)
         srt = to_srt(result)
         self.assertIn("00:00:01,000 --> 00:00:02,000", srt)
         self.assertIn("温度是25摄氏度", srt)

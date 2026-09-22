@@ -404,13 +404,13 @@ class RunnerSeamTests(unittest.TestCase):
             },
             "secrets": {"deepseek_api_key": "secret"},
         }
-        with patch.dict("os.environ", {"SENSEVOICE_MODEL_DIR": "s", "FIRERED_MODEL_DIR": "f"}), \
+        with patch.dict("os.environ", {"SENSEVOICE_MODEL_DIR": "s", "PARAFORMER_MODEL_DIR": "p"}), \
                 patch("courselens_worker.asr.transcribe") as transcribe_mock:
             transcribe_mock.return_value = {
                 "mode": "automatic",
                 "segments": [],
                 "raw_sensevoice": [],
-                "raw_firered": [],
+                "raw_paraformer": [],
                 "metrics": {},
             }
             result = _process_materialized_job(job)

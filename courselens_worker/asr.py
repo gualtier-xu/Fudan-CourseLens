@@ -49,11 +49,11 @@ ASR_WINDOW_SECONDS = 30
 # to the envelope proven safe on 4-core runners.
 ASR_DECODE_BATCH_SECONDS = 30
 
-# 精修管线 backend 序列策略（ASRBENCH-1 A5）：SUBTITLE_BACKENDS 是
-# 「粗识别, 精识别」两元序列，默认与历史双模型链逐字节一致；环境变量
-# 覆写为 sensevoice,paraformer 即换装 M4，回填默认值即时回退。
-SUPPORTED_ASR_BACKENDS = ("sensevoice", "firered", "paraformer")
-DEFAULT_SUBTITLE_BACKENDS = "sensevoice,firered"
+# 精修管线 backend 序列策略（ASRBENCH-1 A5 立项，M4-ENABLE-1 U3 翻默认）：
+# 「粗识别, 精识别」两元序列默认即 M4（sensevoice 主识别 + paraformer 精修），
+# 环境变量可覆写；旧链如需回退走 git revert，不留运行时后门。
+SUPPORTED_ASR_BACKENDS = ("sensevoice", "paraformer")
+DEFAULT_SUBTITLE_BACKENDS = "sensevoice,paraformer"
 
 # Frame-energy voice activity: deterministic, NumPy-only, no model.  The one
 # documented calibration knob is COURSELENS_ASR_ENERGY_RATIO (voiced threshold
@@ -365,13 +365,11 @@ class RecognizerPool:
     def __init__(
         self,
         sensevoice_dir: Path,
-        firered_dir: Path,
         paraformer_dir: Path | None = None,
         *,
         threads: int = 4,
     ):
         self.sensevoice_dir = sensevoice_dir
-        self.firered_dir = firered_dir
         self.paraformer_dir = paraformer_dir
         self.threads = max(1, min(4, int(threads)))
         self._recognizers: dict[str, Any] = {}
@@ -389,7 +387,6 @@ class RecognizerPool:
             return self._recognizers[backend]
         directories = {
             "sensevoice": self.sensevoice_dir,
-            "firered": self.firered_dir,
             "paraformer": self.paraformer_dir,
         }
         directory = directories.get(backend)
@@ -405,11 +402,6 @@ class RecognizerPool:
             recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
                 model=str(model), tokens=str(tokens), num_threads=self.threads,
                 use_itn=True, debug=False, provider="cpu",
-            )
-        elif backend == "firered":
-            recognizer = sherpa_onnx.OfflineRecognizer.from_fire_red_asr_ctc(
-                model=str(model), tokens=str(tokens), num_threads=self.threads,
-                debug=False, provider="cpu",
             )
         elif backend == "paraformer":
             # 参数名对 sherpa-onnx 1.13.4 官方绑定实核（from_paraformer）。
@@ -704,7 +696,6 @@ def transcribe(
     job: dict[str, Any],
     *,
     sensevoice_dir: Path,
-    firered_dir: Path,
     paraformer_dir: Path | None = None,
     proofread: Callable[..., list[dict[str, Any]]] | None,
     progress: Callable[[str, int, int], None],
@@ -733,7 +724,7 @@ def transcribe(
     backends = subtitle_backend_sequence()
     rough, refined = backends
     pool = RecognizerPool(
-        sensevoice_dir, firered_dir, paraformer_dir, threads=recognizer_threads
+        sensevoice_dir, paraformer_dir, threads=recognizer_threads
     )
     if proofread_enabled and strategy == "parallel":
         pool.get(rough)
@@ -745,11 +736,10 @@ def transcribe(
     refined_segments: list[dict[str, Any]] = list(prior.get(f"raw_{refined}") or [])
     total_chunks = max(1, int((duration + PCM_CHUNK_SECONDS - 1) // PCM_CHUNK_SECONDS))
     completed_chunks = max(0, min(total_chunks, int(prior.get("completed_chunks") or 0)))
-    # 换链续跑的检查点必须已携带同序列车型的 raw 段，否则精识别会从
+    # 续跑的检查点必须已携带同序列车型的 raw 段，否则精识别会从
     # completed_chunks 起步而丢失前段输出——缺键宁可显式失败。
-    if completed_chunks > 0 and backends != ["sensevoice", "firered"]:
-        if any(f"raw_{name}" not in prior for name in backends):
-            raise ASRError("checkpoint raw segments do not match the subtitle backends")
+    if completed_chunks > 0 and any(f"raw_{name}" not in prior for name in backends):
+        raise ASRError("checkpoint raw segments do not match the subtitle backends")
     # Provenance is stamped only when the fingerprint chain covers every chunk
     # of the run.  A legacy checkpoint without chain state makes that
     # impossible, so the output omits provenance entirely and the client

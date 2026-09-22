@@ -17,16 +17,10 @@ MODELS = {
         "archive": "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2",
         "sha256": "7d1efa2138a65b0b488df37f8b89e3d91a60676e416f515b952358d83dfd347e",
     },
-    "firered": {
-        "archive": "sherpa-onnx-fire-red-asr2-ctc-zh_en-int8-2026-02-25.tar.bz2",
-        "sha256": "1da8b737ecc5e29f36759a4460c754863e7c919a4ba325aea187331fbfc83274",
-    },
-    # M4 Paraformer（ASRBENCH-1 A5）：条目先行就位；sha256 留空 = 尚未实测钉，
-    # main() 跳过未钉条目（不下载、不写 models.env），首次真下载后把实测
-    # 哈希填入即自动进入安装面。
+    # M4 Paraformer（ASRBENCH-1 A5 立项，M4-ENABLE-1 U1 实测钉，234 MB tar.bz2）。
     "paraformer": {
         "archive": "sherpa-onnx-paraformer-zh-2023-09-14.tar.bz2",
-        "sha256": "",
+        "sha256": "9c49fd9c6fb63de8e18c1054cf3d100f804741b7e608e187923cd8ff09fa9f03",
     },
 }
 BASE = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models"
@@ -39,7 +33,6 @@ def _model_directories(root: Path, name: str) -> list[Path]:
     ] if root.is_dir() else []
     markers = {
         "sensevoice": "sense-voice",
-        "firered": "fire-red",
         "paraformer": "paraformer",
     }
     marker = markers[name]
@@ -107,7 +100,7 @@ def _install(name: str, spec: dict[str, str], root: Path) -> Path:
 
 def main() -> None:
     root = Path(os.environ.get("COURSELENS_MODEL_ROOT", ".models")).resolve()
-    # 空 sha256 = 条目尚未实测钉（见 MODELS 内 paraformer 注释），整条跳过。
+    # 空 sha256 = 条目尚未实测钉，整条跳过。
     installed = {
         name: _install(name, spec, root)
         for name, spec in MODELS.items()

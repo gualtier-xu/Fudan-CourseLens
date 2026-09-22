@@ -70,7 +70,7 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .models
-          key: ${{ runner.os }}-asr-models-v1-sensevoice-7d1efa21-firered-1da8b737
+          key: ${{ runner.os }}-asr-models-v1-sensevoice-7d1efa21-paraformer-9c49fd9c
       - name: Install bounded media tools
         env:
           HOMEBREW_NO_AUTO_UPDATE: "1"

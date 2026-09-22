@@ -89,7 +89,7 @@ def _json_content(text: str) -> Any:
 # Bounded correction contract for the proofread stage.  Candidates are paired
 # by absolute anchors instead of array position, the model may only propose
 # bounded replacement operations tied to known pair ids, and every proposal
-# fails closed back to the primary (FireRed) text unless it validates
+# fails closed back to the primary text unless it validates
 # deterministically.  The pairing marker inside checkpoints separates
 # resumable state from legacy positional checkpoints, which are restarted.
 PROOFREAD_PAIRING = "temporal-overlap"
@@ -327,14 +327,14 @@ def _active_slide_text(pages: list[dict[str, Any]] | None, midpoint_ms: int) -> 
 def proofread_segments(
     api_key: str,
     sensevoice: list[dict[str, Any]],
-    firered: list[dict[str, Any]],
+    primary: list[dict[str, Any]],
     *,
     prior_checkpoint: dict[str, Any] | None = None,
     checkpoint: Callable[[dict[str, Any]], None] | None = None,
     ppt_pages: list[dict[str, Any]] | None = None,
     glossary: tuple[str, ...] = (),
 ) -> list[dict[str, Any]]:
-    primaries = normalize_segments(firered)
+    primaries = normalize_segments(primary)
     alternates = normalize_segments(sensevoice)
     partners = _pair_alternates(primaries, alternates)
     prior = dict(prior_checkpoint or {})

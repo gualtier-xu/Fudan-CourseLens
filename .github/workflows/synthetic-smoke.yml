@@ -30,7 +30,7 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .models
-          key: asr-models-v1-sensevoice-7d1efa21-firered-1da8b737
+          key: asr-models-v1-sensevoice-7d1efa21-paraformer-9c49fd9c
       - name: Install generated-speech tools
         run: |
           sudo apt-get update

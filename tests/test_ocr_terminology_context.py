@@ -9,7 +9,7 @@ from courselens_worker.llm import PROOFREAD_PAIRING, proofread_segments
 from courselens_worker.runner import _process_materialized_job
 
 
-ENV = {"SENSEVOICE_MODEL_DIR": "sensevoice", "FIRERED_MODEL_DIR": "firered"}
+ENV = {"SENSEVOICE_MODEL_DIR": "sensevoice", "PARAFORMER_MODEL_DIR": "paraformer"}
 
 
 def seg(start_ms, end_ms, text):
@@ -21,7 +21,7 @@ def transcribe_value(mode="automatic", segments=None):
         "mode": mode,
         "segments": list(segments if segments is not None else [seg(0, 2000, "这个决策叔算法很经典")]),
         "raw_sensevoice": [],
-        "raw_firered": [],
+        "raw_paraformer": [],
         "metrics": {},
     }
 
@@ -34,7 +34,7 @@ def recording_transcribe(value, calls):
                 "total_chunks": 1,
                 "mode": "automatic",
                 "raw_sensevoice": [],
-                "raw_firered": [],
+                "raw_paraformer": [],
             })
         calls.append("asr")
         return value
@@ -78,7 +78,7 @@ def run_pack(job, checkpoints):
                 "total_chunks": 1,
                 "mode": "automatic",
                 "raw_sensevoice": [],
-                "raw_firered": [],
+                "raw_paraformer": [],
             })
         if proofread is None:
             return transcribe_value("automatic")
@@ -162,7 +162,7 @@ class RunnerOrderTests(unittest.TestCase):
             "total_chunks": 9,
             "mode": "automatic",
             "raw_sensevoice": [seg(0, 500, "旧参考")],
-            "raw_firered": [seg(0, 500, "旧主文本")],
+            "raw_paraformer": [seg(0, 500, "旧主文本")],
             "pcm_fingerprint": "a" * 64,
         }
         checkpoints = []
@@ -181,7 +181,7 @@ class RunnerOrderTests(unittest.TestCase):
         self.assertEqual(ocr_checkpoint["total_chunks"], 9)
         self.assertEqual(ocr_checkpoint["mode"], "automatic")
         self.assertEqual(ocr_checkpoint["pcm_fingerprint"], prior["pcm_fingerprint"])
-        self.assertEqual(ocr_checkpoint["raw_firered"], prior["raw_firered"])
+        self.assertEqual(ocr_checkpoint["raw_paraformer"], prior["raw_paraformer"])
 
     def test_completed_slides_are_not_reprocessed_on_resume(self):
         prior = {
@@ -291,7 +291,7 @@ class RunnerOrderTests(unittest.TestCase):
 
 
 class SlideContextWireTests(unittest.TestCase):
-    def run_proofread(self, firered, sensevoice, pages, response="[]"):
+    def run_proofread(self, primary, sensevoice, pages, response="[]"):
         payloads = []
 
         def fake_chat(api_key, messages, **kwargs):
@@ -299,7 +299,7 @@ class SlideContextWireTests(unittest.TestCase):
             return response
 
         with patch("courselens_worker.llm._chat", side_effect=fake_chat):
-            result = proofread_segments("secret", sensevoice, firered, ppt_pages=pages)
+            result = proofread_segments("secret", sensevoice, primary, ppt_pages=pages)
         return result, payloads
 
     def test_active_slide_not_a_future_slide(self):
