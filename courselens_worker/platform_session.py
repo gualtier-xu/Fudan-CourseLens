@@ -78,6 +78,43 @@ _RETRYABLE_SESSION_ERRORS = frozenset({
 _SESSION_REFRESH_ATTEMPTS = 8
 _SESSION_REFRESH_BACKOFF_CAP = 30.0
 
+# P55（第五十五案）：中途续登此前是单发 lambda——真机事故 2026-09-24：字幕任务
+# 第 117 秒块边界刷新授权触发续登，WebVPN 腿撞上跨境抖动没拿到 lck，
+# platform_auth_context_missing 一发即死。启动材料化的 3 次登录梯只护启动链，
+# 不护中途。中途续登与启动登录同族：同一重试闭集、同量次数、指数退避
+# （封顶对齐 WebVPN 全梯 8s），每次失败发一行遥测（仅计数与闭集码，零敏感值）；
+# 梯尽按原闭集码诚实失败，绝不吞错、不伪造成功。
+_MIDTASK_RELOGIN_ATTEMPTS = 3
+_MIDTASK_RELOGIN_BACKOFF_CAP = 8.0
+
+
+def _emit_session_telemetry(line: str) -> None:
+    # runner._progress discipline: counters and closed-set codes only —
+    # never URLs, account values, headers, or provider text.
+    print(line, flush=True)
+
+
+def _bounded_midtask_relogin(relogin: Callable[[], None]) -> None:
+    """One logical mid-task relogin: a bounded ladder over retryable login errors."""
+    for attempt in range(_MIDTASK_RELOGIN_ATTEMPTS):
+        try:
+            relogin()
+            return
+        except PlatformSessionError as exc:
+            if (
+                str(exc) not in _RETRYABLE_LOGIN_ERRORS
+                or attempt == _MIDTASK_RELOGIN_ATTEMPTS - 1
+            ):
+                _emit_session_telemetry(
+                    f"stage=relogin attempt={attempt + 1} outcome=failed reason={exc}"
+                )
+                raise
+            _emit_session_telemetry(
+                f"stage=relogin attempt={attempt + 1} outcome=retry reason={exc}"
+            )
+            time.sleep(min(2.0 * (2 ** attempt), _MIDTASK_RELOGIN_BACKOFF_CAP))
+    raise AssertionError("unreachable")
+
 
 def _bounded_session_refresh(refresh, relogin=None, *, attempts: int = _SESSION_REFRESH_ATTEMPTS):
     """Retry one media-source refresh, re-authenticating between tries.
@@ -453,7 +490,11 @@ class PlatformSession:
         # （每日自动化链）并不持有口令可自行重登录；媒体重取撞上会话失效
         # 时按 _SESSION_REFRESH_* 窗口自动续登重试。口令只活在闭包里，
         # 不写日志、不进产物，close() 时随会话一起释放。
-        self._relogin = lambda: self.login(account, password)
+        # P55：登记面自带三梯——中途续登与启动登录同族，撞上瞬态失效
+        # （跨境抖动、单会话作废）先按梯重试，梯尽才按闭集码诚实失败。
+        self._relogin = lambda: _bounded_midtask_relogin(
+            lambda: self.login(account, password)
+        )
 
     @staticmethod
     def _encrypt_password(password: str, public_key: str) -> str:
@@ -1392,9 +1433,13 @@ def materialize_job_sources(job: dict[str, Any]) -> dict[str, Any]:
         sub_id = str(request.get("sub_id") or "")
         if request.get("media"):
             media = dict(payload.get("media") or {})
+            # P55：显式续登回调与 _relogin 登记面同梯，等价调用面不留单发缺口。
             media.update(connector.media_source(
                 course_id, sub_id,
-                relogin=(lambda a=account, p=password: connector.login(a, p)) if account else None,
+                relogin=(
+                    lambda a=account, p=password, target=connector:
+                    _bounded_midtask_relogin(lambda: target.login(a, p))
+                ) if account else None,
             ))
             payload["media"] = media
             retain_for_media_refresh = callable(media.get("_refresh_source"))
