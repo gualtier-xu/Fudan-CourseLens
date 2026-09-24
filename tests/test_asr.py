@@ -8,6 +8,12 @@ from unittest.mock import Mock, patch
 with patch.dict(sys.modules, {"numpy": Mock(), "sherpa_onnx": Mock()}):
     from courselens_worker import asr
 
+# 与 asr 同源取类，禁止跨模块直接 import platform_session：asr 是在
+# patch.dict 窗口内导入的，platform_session 若此前未加载会在窗口内首执行、
+# 窗口退出时被逐出，之后再 import 会二次执行出第二个类对象——梯的
+# except 咬不住测试抛的异常（P55 自检实测踩中）。
+PlatformSessionError = asr.PlatformSessionError
+
 
 class ASRProxyLifecycleTests(unittest.TestCase):
     def test_all_pcm_chunks_share_one_pinned_media_session(self):
@@ -295,6 +301,156 @@ class ASRMediaRetryTests(unittest.TestCase):
         self.assertEqual(decode_mock.call_count, 1)
         self.assertEqual(proxy.refresh_source.call_count, 0)
         self.assertEqual(sleep.call_count, 0)
+
+
+class P55ChunkBoundaryRefreshLadderTests(unittest.TestCase):
+    """P55：块边界授权刷新从裸死变有界梯（真机事故 2026-09-24：117s 死窗无痕）。
+
+    事故链：chunk 边界 refresh 抛 platform_auth_context_missing 在 decode-start
+    遥测之前裸传播——本组钉「瞬态入梯重试、梯尽闭集诚实失败、逐次遥测留痕」。
+    """
+
+    @contextmanager
+    def _media(self, decode_side_effect, telemetry_lines):
+        pool = Mock()
+        pool.transcribe_pcm.side_effect = lambda _path, backend, *, offset_seconds: [{
+            "start_ms": int(offset_seconds * 1000),
+            "end_ms": int(offset_seconds * 1000) + 1000,
+            "text": backend,
+        }]
+        with (
+            patch.object(asr, "RecognizerPool", return_value=pool),
+            patch.object(asr, "pinned_media_proxy") as media_proxy,
+            patch.object(asr, "_decode_chunk_from_url", side_effect=decode_side_effect),
+            patch.object(asr, "_emit_telemetry", side_effect=telemetry_lines.append),
+            patch.object(asr.time, "sleep"),
+        ):
+            proxy = media_proxy.return_value.__enter__.return_value
+            proxy.url = "http://127.0.0.1/session"
+
+            def invoke():
+                return asr.transcribe(
+                    {
+                        "payload": {
+                            "mode": "automatic",
+                            "media": {
+                                "url": "https://media.example.com/lecture.mp4",
+                                "duration_seconds": 1250,
+                            },
+                        },
+                    },
+                    sensevoice_dir=Mock(),
+                    proofread=None,
+                    progress=Mock(),
+                )
+
+            yield invoke, proxy
+
+    def test_boundary_refresh_recovers_after_transient_platform_error(self):
+        refreshes = {"count": 0}
+
+        def refresh():
+            refreshes["count"] += 1
+            if refreshes["count"] == 1:
+                raise PlatformSessionError("platform_auth_context_missing")
+
+        def decode(_url, target, *, offset, duration):
+            target.write_bytes(b"pcm")
+
+        lines = []
+        with self._media(decode, lines) as (invoke, proxy):
+            proxy.refresh_source.side_effect = refresh
+            result = invoke()
+        self.assertEqual(result["metrics"]["chunks"], 3)
+        # 块1 边界首发1败+梯内重试1胜；块2 边界轮换1胜
+        self.assertEqual(refreshes["count"], 3)
+        retry_lines = [
+            line for line in lines if line.startswith("stage=source-refresh-retry")
+        ]
+        self.assertEqual(len(retry_lines), 1)
+        self.assertTrue(retry_lines[0].startswith(
+            "stage=source-refresh-retry chunk=1 attempt=1 "
+            "reason=platform_auth_context_missing"
+        ), retry_lines[0])
+
+    def test_boundary_refresh_exhausts_ladder_and_fails_closed_set(self):
+        calls = {"count": 0}
+
+        def refresh():
+            calls["count"] += 1
+            raise PlatformSessionError("platform_session_rejected")
+
+        def decode(_url, target, *, offset, duration):
+            target.write_bytes(b"pcm")
+
+        lines = []
+        with self._media(decode, lines) as (invoke, proxy):
+            proxy.refresh_source.side_effect = refresh
+            with self.assertRaises(PlatformSessionError) as caught:
+                invoke()
+        # 梯尽（3 次尝试）按最后闭集码如实失败，worker_failed 语义不变
+        self.assertEqual(str(caught.exception), "platform_session_rejected")
+        self.assertEqual(calls["count"], 3)
+        refresh_lines = [
+            line for line in lines if line.startswith("stage=source-refresh-")
+        ]
+        self.assertEqual(len(refresh_lines), 3)
+        self.assertTrue(refresh_lines[0].startswith(
+            "stage=source-refresh-retry chunk=1 attempt=1 reason=platform_session_rejected"))
+        self.assertTrue(refresh_lines[1].startswith(
+            "stage=source-refresh-retry chunk=1 attempt=2 reason=platform_session_rejected"))
+        self.assertTrue(refresh_lines[2].startswith(
+            "stage=source-refresh-failed chunk=1 attempt=3 reason=platform_session_rejected"))
+
+    def test_boundary_refresh_deterministic_error_fails_without_ladder(self):
+        def refresh():
+            raise PlatformSessionError("platform_media_missing")
+
+        def decode(_url, target, *, offset, duration):
+            target.write_bytes(b"pcm")
+
+        lines = []
+        with self._media(decode, lines) as (invoke, proxy):
+            proxy.refresh_source.side_effect = refresh
+            with self.assertRaises(PlatformSessionError) as caught:
+                invoke()
+        # 确定性拒绝不进梯：一次即败，无重试遥测、无退避放大
+        self.assertEqual(str(caught.exception), "platform_media_missing")
+        self.assertEqual(proxy.refresh_source.call_count, 1)
+        self.assertEqual(
+            [line for line in lines if line.startswith("stage=source-refresh-")],
+            [],
+        )
+
+    def test_media_retry_refresh_also_walks_the_ladder(self):
+        """P55 邻面：媒体重取路径内的刷新动作同一梯，不留第二个裸抛缺口。"""
+        outcome = [asr.ASRError("authorized media request returned HTTP 5xx")]
+        refreshes = {"count": 0}
+
+        def refresh():
+            refreshes["count"] += 1
+            if refreshes["count"] == 1:
+                raise PlatformSessionError("platform_connection_failed")
+
+        def decode(_url, target, *, offset, duration):
+            if outcome:
+                raise outcome.pop(0)
+            target.write_bytes(b"pcm")
+
+        lines = []
+        with self._media(decode, lines) as (invoke, proxy):
+            proxy.refresh_source.side_effect = refresh
+            result = invoke()
+        self.assertEqual(result["metrics"]["chunks"], 3)
+        self.assertTrue(any(
+            line.startswith(
+                "stage=source-refresh-retry chunk=0 attempt=1 reason=platform_connection_failed"
+            )
+            for line in lines
+        ))
+        self.assertTrue(any(
+            line.startswith("stage=media-retry chunk=0") for line in lines
+        ))
 
 
 class ProofreadDegradationTests(unittest.TestCase):

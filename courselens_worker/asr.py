@@ -34,6 +34,11 @@ from shared.evidence_contract import (
 )
 
 from .formats import normalize_segments
+from .platform_session import (
+    PlatformSessionError,
+    _RETRYABLE_LOGIN_ERRORS,
+    _RETRYABLE_SESSION_ERRORS,
+)
 from .source import (
     MediaResponseProfile,
     pinned_media_proxy,
@@ -522,6 +527,35 @@ _MEDIA_RETRY_MESSAGES = frozenset({
     "authorized media request returned HTTP 5xx",
 })
 
+# P55（第五十五案）：块边界授权刷新此前裸奔——真机事故 2026-09-24：粗腿与前两
+# 块正常，chunk 2 边界 refresh 抛 platform_auth_context_missing 整单即死，且死在
+# decode-start 遥测之前（死窗无痕）。边界刷新与块内媒体重取同族：同量退避梯
+# （2s/5s，共 3 次尝试）+ 逐次遥测；重试闭集=登录梯∪会话梯的瞬态码并集，
+# 确定性拒绝（platform_media_missing、platform_challenge_required 等）不进梯、
+# 一次即败不放大等待。梯尽按最后闭集码如实失败（worker_failed 语义不变）。
+_SOURCE_REFRESH_ATTEMPTS = len(_MEDIA_RETRY_BACKOFF_SECONDS) + 1
+_SOURCE_REFRESH_RETRY_CODES = frozenset(_RETRYABLE_LOGIN_ERRORS | _RETRYABLE_SESSION_ERRORS)
+
+
+def _refresh_media_authorization(proxy: Any, *, chunk: int, elapsed: Callable[[], int]) -> None:
+    """Bounded refresh ladder for one chunk-boundary authorization refresh."""
+    for attempt in range(_SOURCE_REFRESH_ATTEMPTS):
+        try:
+            proxy.refresh_source()
+            return
+        except PlatformSessionError as exc:
+            if str(exc) not in _SOURCE_REFRESH_RETRY_CODES:
+                raise
+            failed = attempt == _SOURCE_REFRESH_ATTEMPTS - 1
+            _emit_telemetry(
+                f"stage=source-refresh-{'failed' if failed else 'retry'} "
+                f"chunk={chunk} attempt={attempt + 1} reason={exc} elapsed={elapsed()}"
+            )
+            if failed:
+                raise
+            time.sleep(_MEDIA_RETRY_BACKOFF_SECONDS[attempt])
+    raise AssertionError("unreachable")
+
 
 def _decode_chunk_from_url(
     media_url: str,
@@ -896,7 +930,9 @@ def transcribe(
             for index in range(completed_chunks, total_chunks):
                 telemetry_state["chunk"] = index
                 if index > completed_chunks:
-                    proxy.refresh_source()
+                    # P55：块边界刷新走有界梯——不再在 decode-start 前裸抛
+                    # 未重试的 PlatformSessionError（真机 117s 死窗根因）。
+                    _refresh_media_authorization(proxy, chunk=index, elapsed=_elapsed_ticks)
                 relative_offset = index * PCM_CHUNK_SECONDS
                 absolute_offset = start_seconds + relative_offset
                 chunk_duration = min(PCM_CHUNK_SECONDS, duration - relative_offset)
@@ -917,7 +953,9 @@ def transcribe(
                         last_attempt = media_attempt == len(_MEDIA_RETRY_BACKOFF_SECONDS)
                         if last_attempt or str(exc) not in _MEDIA_RETRY_MESSAGES:
                             raise
-                        proxy.refresh_source()
+                        # P55：重取动作本身也走同一有界梯，媒体重取路径不留
+                        # 第二个裸抛 PlatformSessionError 的缺口。
+                        _refresh_media_authorization(proxy, chunk=index, elapsed=_elapsed_ticks)
                         _emit_telemetry(
                             f"stage=media-retry chunk={index} "
                             f"attempt={media_attempt + 1} elapsed={_elapsed_ticks()}"

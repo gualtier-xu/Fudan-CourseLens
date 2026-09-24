@@ -706,6 +706,145 @@ class PlatformSessionTests(unittest.TestCase):
         self.assertEqual(AlwaysContextMissingConnector.attempts, 3)
         self.assertEqual(sleep.call_count, 2)
 
+    def test_p55_midtask_relogin_ladder_retries_transient_context_missing(self):
+        """P55 核心钉：中途续登从单发裸死变三梯（真机事故 2026-09-24 117s 处）。"""
+        from courselens_worker.platform_session import _bounded_midtask_relogin
+
+        attempts = {"count": 0}
+        lines = []
+
+        def relogin():
+            attempts["count"] += 1
+            if attempts["count"] < 3:
+                raise PlatformSessionError("platform_auth_context_missing")
+
+        with patch("courselens_worker.platform_session._emit_session_telemetry", side_effect=lines.append), \
+             patch("courselens_worker.platform_session.time.sleep") as sleep:
+            _bounded_midtask_relogin(relogin)
+        self.assertEqual(attempts["count"], 3)
+        self.assertEqual([c.args for c in sleep.call_args_list], [(2.0,), (4.0,)])
+        self.assertEqual(lines, [
+            "stage=relogin attempt=1 outcome=retry reason=platform_auth_context_missing",
+            "stage=relogin attempt=2 outcome=retry reason=platform_auth_context_missing",
+        ])
+
+    def test_p55_midtask_relogin_ladder_exhausts_to_closed_set_failure(self):
+        """P55：梯尽按原闭集码诚实失败，遥测留全程痕（worker_failed 语义不变）。"""
+        from courselens_worker.platform_session import _bounded_midtask_relogin
+
+        attempts = {"count": 0}
+        lines = []
+
+        def relogin():
+            attempts["count"] += 1
+            raise PlatformSessionError("platform_auth_context_missing")
+
+        with patch("courselens_worker.platform_session._emit_session_telemetry", side_effect=lines.append), \
+             patch("courselens_worker.platform_session.time.sleep"):
+            with self.assertRaises(PlatformSessionError) as captured:
+                _bounded_midtask_relogin(relogin)
+        self.assertEqual(str(captured.exception), "platform_auth_context_missing")
+        self.assertEqual(attempts["count"], 3)
+        self.assertEqual(
+            lines[-1],
+            "stage=relogin attempt=3 outcome=failed reason=platform_auth_context_missing",
+        )
+
+    def test_p55_midtask_relogin_non_retryable_code_fails_once_without_ladder(self):
+        """P55：挑战页等非瞬态码不入梯——一次即败，不放大等待。"""
+        from courselens_worker.platform_session import _bounded_midtask_relogin
+
+        attempts = {"count": 0}
+        lines = []
+
+        def relogin():
+            attempts["count"] += 1
+            raise PlatformSessionError("platform_challenge_required")
+
+        with patch("courselens_worker.platform_session._emit_session_telemetry", side_effect=lines.append), \
+             patch("courselens_worker.platform_session.time.sleep") as sleep:
+            with self.assertRaises(PlatformSessionError):
+                _bounded_midtask_relogin(relogin)
+        self.assertEqual(attempts["count"], 1)
+        self.assertEqual(sleep.call_count, 0)
+        self.assertEqual(
+            lines,
+            ["stage=relogin attempt=1 outcome=failed reason=platform_challenge_required"],
+        )
+
+    def test_p55_login_registers_the_laddered_session_relogin(self):
+        """P55 接线钉：登录成功登记的本人续登回调自带三梯。"""
+        session = object.__new__(PlatformSession)
+        session._login_course_direct = Mock()
+        session.login("a", "p")
+        self.assertIsNotNone(session._relogin)
+
+        logins = {"count": 0}
+
+        def flaky(account, password):
+            logins["count"] += 1
+            if logins["count"] == 1:
+                raise PlatformSessionError("platform_auth_context_missing")
+
+        session.login = Mock(side_effect=flaky)
+        lines = []
+        with patch("courselens_worker.platform_session._emit_session_telemetry", side_effect=lines.append), \
+             patch("courselens_worker.platform_session.time.sleep"):
+            session._relogin()
+        self.assertEqual(logins["count"], 2, "瞬态一发不终局：梯内重试后成功")
+        self.assertEqual(len(lines), 1, "失败尝试留遥测行，成功静默")
+
+    def test_p55_materialize_media_relogin_goes_through_the_same_ladder(self):
+        """P55 接线钉：materialize 显式续登回调与 _relogin 登记面同梯。"""
+        class LadderRecordingConnector(_FakeConnector):
+            login_count = 0
+            captured_relogin = None
+
+            def login(self, account, password):
+                type(self).login_count += 1
+                if type(self).login_count == 2:
+                    raise PlatformSessionError("platform_auth_context_missing")
+
+            def media_source(self, course_id, sub_id, *, relogin=None):
+                type(self).captured_relogin = relogin
+                return {"url": "https://example.org/stream.mp4", "headers": {"Cookie": "sealed"}}
+
+        job = {
+            "payload": {
+                "media": {},
+                "source_session": {
+                    "provider": "runner-session-v1", "course_id": "1", "sub_id": "2",
+                    "media": True, "slides": False,
+                },
+            },
+            "secrets": {"source_credentials": {"account": "a", "password": "p"}},
+        }
+        with patch("courselens_worker.platform_session.PlatformSession", LadderRecordingConnector), \
+             patch("courselens_worker.platform_session._emit_session_telemetry") as telemetry, \
+             patch("courselens_worker.platform_session.time.sleep") as sleep:
+            materialize_job_sources(job)
+            callback = LadderRecordingConnector.captured_relogin
+            self.assertIsNotNone(callback)
+            callback()
+        self.assertEqual(LadderRecordingConnector.login_count, 3, "续登撞瞬态一发→梯内重试后成功")
+        self.assertEqual(telemetry.call_count, 1)
+        self.assertEqual(sleep.call_count, 1)
+
+    def test_p55_midtask_relogin_constants_are_pinned(self):
+        """P55：中途梯与启动登录梯同族同量，接线面钉源防漂移。"""
+        from courselens_worker import platform_session as module
+
+        self.assertEqual(module._MIDTASK_RELOGIN_ATTEMPTS, module._MATERIALIZE_LOGIN_ATTEMPTS)
+        self.assertEqual(module._MIDTASK_RELOGIN_BACKOFF_CAP, 8.0)
+        with open(module.__file__, encoding="utf-8") as handle:
+            source = handle.read()
+        self.assertIn("stage=relogin attempt=", source)
+        self.assertEqual(
+            source.count("_bounded_midtask_relogin("),
+            3,
+            "一次 def + 两处接线（_relogin 登记、materialize 显式回调）",
+        )
+
     def _context_page(self, body):
         """A non-redirect 200 response for the webvpn context stage."""
         page = Mock(status_code=200)
