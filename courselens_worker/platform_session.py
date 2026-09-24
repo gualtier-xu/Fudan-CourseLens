@@ -107,6 +107,12 @@ SLIDE_PAGE_SIZE = 100
 SLIDE_RESPONSE_MAX_BYTES = 8 * 1024 * 1024
 SLIDE_RECORD_STORM_LIMIT = 20000
 
+# 平台原生文稿拉取护栏（AS12）：与 search-ppt 同量纲的响应体/记录密度熔断。
+# 一节真实课程的文稿（约每 3 秒一条、几千条）远低于密度阈值；超界按闭集码
+# 失败并由调用方回落旧链，绝不整段吞下不可信体量。
+TRANSCRIPT_RESPONSE_MAX_BYTES = SLIDE_RESPONSE_MAX_BYTES
+TRANSCRIPT_RECORD_STORM_LIMIT = SLIDE_RECORD_STORM_LIMIT
+
 
 def _slide_deck_scope(course_id: str, sub_id: str) -> dict[str, str]:
     """Bounded nonsecret deck identity minted inside this adapter.
@@ -1258,6 +1264,52 @@ class PlatformSession:
             page += 1
         return items
 
+    def rough_transcript_segments(self, sub_id: str) -> list[dict[str, Any]]:
+        """Platform-native transcript rows as rough-leg alternate candidates.
+
+        AS12: one GET per lecture against the same authorized icourse host as
+        every other course request; rows are ``{start_ms, end_ms, text}`` with
+        second-based platform stamps converted to milliseconds exactly like
+        the client's transcript seam (icourse.py ``search-trans-result``).
+        Returns ``[]`` when the platform holds no transcript.  Fails with
+        closed-set PlatformSessionError codes only — callers treat every
+        failure as a fallback signal and never fail the job on it.
+        """
+        data = self._course_json(
+            "/courseapi/v3/web-socket/search-trans-result",
+            params={"sub_id": str(sub_id), "format": "json"},
+            max_bytes=TRANSCRIPT_RESPONSE_MAX_BYTES,
+        )
+        if data.get("code") not in (0, 200):
+            raise _fail("platform_course_request_failed")
+        rows = data.get("list")
+        segments: list[dict[str, Any]] = []
+        if not isinstance(rows, list) or not rows or not isinstance(rows[0], dict):
+            return segments
+        content = rows[0].get("all_content")
+        if not isinstance(content, list):
+            return segments
+        for row in content:
+            if not isinstance(row, dict):
+                continue
+            try:
+                start_sec = float(row.get("BeginSec") or 0)
+                end_sec = float(row.get("EndSec", row.get("BeginSec") or 0))
+            except (TypeError, ValueError):
+                continue
+            text = str(row.get("Text") or "").strip()
+            if not text:
+                continue
+            start_ms = int(start_sec * 1000)
+            segments.append({
+                "start_ms": start_ms,
+                "end_ms": max(start_ms, int(end_sec * 1000)),
+                "text": text,
+            })
+            if len(segments) >= TRANSCRIPT_RECORD_STORM_LIMIT:
+                raise _fail("platform_course_request_failed")
+        return segments
+
     def _source_headers(self) -> dict[str, str]:
         try:
             cookie_items = list(self.session.cookies.items())
@@ -1293,6 +1345,16 @@ class PlatformSession:
             self.course_session.close()
         finally:
             self.session.close()
+
+
+def _job_needs_rough_transcript(job: dict[str, Any]) -> bool:
+    """True for jobs whose subtitle stage consumes rough-leg alternates (AS12)."""
+    kind = str(job.get("job_kind") or "")
+    if kind == "subtitle":
+        return True
+    if kind == "learning_pack":
+        return "subtitle" in set(job.get("requested_outputs") or [])
+    return False
 
 
 def materialize_job_sources(job: dict[str, Any]) -> dict[str, Any]:
@@ -1338,6 +1400,20 @@ def materialize_job_sources(job: dict[str, Any]) -> dict[str, Any]:
             retain_for_media_refresh = callable(media.get("_refresh_source"))
         if request.get("slides"):
             payload["slides"] = connector.slide_sources(course_id, sub_id)
+        if _job_needs_rough_transcript(job):
+            # AS12 平台代粗腿：文稿获取失败/空文稿只降级回落，绝不失败任务。
+            # 闭集状态随 payload 留在 runner 内存（sealed job 已拆封，绝不回写），
+            # 供 ASR 链诚实记账 rough_source 回落原因。
+            try:
+                rows = connector.rough_transcript_segments(sub_id)
+            except PlatformSessionError:
+                payload["platform_transcript_state"] = "transcript_fetch_failed"
+            else:
+                if rows:
+                    payload["platform_transcript"] = rows
+                    payload["platform_transcript_state"] = "transcript_fetched"
+                else:
+                    payload["platform_transcript_state"] = "transcript_empty"
         if retain_for_media_refresh:
             payload["_close_source_session"] = connector.close
             retained_connector = True

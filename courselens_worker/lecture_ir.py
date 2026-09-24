@@ -306,16 +306,115 @@ def _build_key_moments(
     return units
 
 
+def _event_windows(events: list[dict[str, Any]], evidence_end: int) -> dict[str, dict[str, int]]:
+    """Slide-event id → its interval, derived the same way key moments do it."""
+    windows: dict[str, dict[str, int]] = {}
+    for index, event in enumerate(events):
+        end = events[index + 1]["start_ms"] if index + 1 < len(events) else evidence_end
+        windows[event["id"]] = {"start_ms": event["start_ms"], "end_ms": max(event["start_ms"], end)}
+    return windows
+
+
+def _project_knowledge_points(
+    knowledge_points: list[dict[str, Any]] | None,
+    evidence_packet: dict[str, Any] | None,
+    segments: list[dict[str, Any]],
+    events: list[dict[str, Any]],
+    evidence_end: int,
+) -> tuple[list[dict[str, Any]], int]:
+    """Project validated knowledge points into evidence.v1 ``knowledge_unit``s.
+
+    A unit is emitted only when at least one of its citations resolves to a
+    locally-held ``seg:``/``slevt|slent:`` identity, because every evidence.v1
+    unit must carry a non-empty, resolvable span set and a real interval —
+    timing is never fabricated.  Citations of document/assessment kinds have
+    no speech anchor, so they travel as course-knowledge ``evidence_refs``
+    inside ``content`` instead of becoming spans.  Points that resolve to no
+    citable span are skipped and counted (their content still reaches the
+    client through ``summary.knowledge_points``).
+    """
+    points = knowledge_points if isinstance(knowledge_points, list) else []
+    if not points:
+        return [], 0
+    items = {
+        str(item.get("citation_id")): item
+        for item in ((evidence_packet or {}).get("items") or [])
+        if isinstance(item, dict) and item.get("citation_id")
+    }
+    if not items:
+        return [], len(points)
+    segments_by_id = {segment["id"]: segment for segment in segments}
+    event_windows = _event_windows(events, evidence_end)
+    units: list[dict[str, Any]] = []
+    skipped = 0
+    for point in points:
+        if not isinstance(point, dict):
+            continue
+        text = str(point.get("text") or "").strip()
+        if not text:
+            continue
+        citable: list[tuple[int, int, int, dict[str, str]]] = []
+        references: list[dict[str, Any]] = []
+        for citation_id in point.get("citation_ids") or []:
+            item = items.get(str(citation_id))
+            if item is None:
+                continue
+            kind = str(item.get("kind"))
+            source_id = str(item.get("source_id"))
+            if kind == "transcript" and source_id in segments_by_id:
+                segment = segments_by_id[source_id]
+                citable.append((segment["start_ms"], segment["end_ms"], 0,
+                                {"kind": "segment", "id": source_id}))
+                continue
+            if kind == "slide" and source_id in event_windows:
+                window = event_windows[source_id]
+                citable.append((window["start_ms"], window["end_ms"], 1,
+                                {"kind": "slide_event", "id": source_id}))
+                continue
+            references.append({
+                "citation_id": str(citation_id),
+                "kind": kind,
+                "source_id": source_id,
+                "revision_id": str(item.get("revision_id") or ""),
+                "content_hash": str(item.get("content_hash") or ""),
+                "locator": dict(item.get("locator") or {}),
+                "label": str(item.get("label") or ""),
+            })
+        if not citable:
+            skipped += 1
+            continue
+        citable.sort(key=lambda value: (value[0], value[1], value[2], value[3]["id"]))
+        start = min(value[0] for value in citable)
+        end = max(value[1] for value in citable)
+        content: dict[str, Any] = {"text": text}
+        if references:
+            content["evidence_refs"] = references[:_MAX_UNIT_SPANS]
+        if point.get("conflict") is True:
+            content["conflict"] = True
+        units.append(_unit(
+            "knowledge_unit",
+            str(point.get("title") or "").strip()[:60] or None,
+            {"start_ms": start, "end_ms": end},
+            [value[3] for value in citable[:_MAX_UNIT_SPANS]],
+            content,
+        ))
+    return units, skipped
+
+
 def build_lecture_ir(
     transcript: list[dict[str, Any]] | None = None,
     chapters: list[dict[str, Any]] | None = None,
     ppt_pages: list[dict[str, Any]] | None = None,
+    knowledge_points: list[dict[str, Any]] | None = None,
+    evidence_packet: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the additive Lecture IR view from already-produced evidence.
 
     Total over arbitrary inputs: anything malformed, unfounded, or
     uncitable is dropped, and empty or legacy inputs yield the empty view
     ``{"contract", "sections": [], "knowledge_units": [], "key_moments": []}``.
+    ``knowledge_points``/``evidence_packet`` are optional and additive: without
+    them the view is exactly the pre-existing one.
     """
     segments, segment_starts, transcript_end = _collect_segments(transcript)
     events, event_starts = _collect_events(ppt_pages)
@@ -323,9 +422,24 @@ def build_lecture_ir(
     sections = _build_sections(
         chapters, segments, events, segment_starts, event_starts, evidence_end
     )
-    return {
+    knowledge_units = _build_knowledge_units(sections, segments, events)
+    view = {
         "contract": CONTRACT_ID,
         "sections": sections,
-        "knowledge_units": _build_knowledge_units(sections, segments, events),
+        "knowledge_units": knowledge_units,
         "key_moments": _build_key_moments(events, evidence_end),
     }
+    if knowledge_points:
+        # 只在真的处理过多源知识点时报账：不传知识点的旧调用拿到的是与历史
+        # 逐键相同的视图（空输入仍等于四键空视图）。
+        projected, skipped = _project_knowledge_points(
+            knowledge_points, evidence_packet, segments, events, evidence_end
+        )
+        if projected:
+            view["knowledge_units"] = sorted(
+                knowledge_units + projected,
+                key=lambda unit: (unit["time"]["start_ms"], unit["id"]),
+            )
+        view["knowledge_points_projected"] = len(projected)
+        view["knowledge_points_skipped"] = skipped
+    return view

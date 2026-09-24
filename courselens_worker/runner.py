@@ -77,6 +77,10 @@ _SUBTITLE_RESUME_KEYS = (
     "raw_sensevoice",
     "raw_paraformer",
     "pcm_fingerprint",
+    # AS12：rough 源与列车序同属链身份，跨段重排（OCR 先行）时必须随
+    # 检查点携带，否则平台链续跑会在守卫处误判为缺键。
+    "rough_source",
+    "backends",
     "proofread_pairing",
     "proofread_completed_windows",
     "proofread_total_windows",
@@ -283,6 +287,7 @@ def _process_materialized_job(
         }
         metrics = value["metrics"]
     elif kind in {"summary", "chapters"}:
+        from .course_knowledge import normalize_evidence_packet
         from .lecture_ir import build_lecture_ir
         from .llm import create_summary
         from .ocr import process_slides
@@ -307,6 +312,25 @@ def _process_materialized_job(
                     **value,
                 })
 
+        # 客户端可选的 evidence packet：校验通过才投喂；整包不可用时如实记警告
+        # 并按旧 summary 路径降级，绝不让坏知识落地。
+        knowledge = normalize_evidence_packet(
+            payload.get("evidence_packet"),
+            course_id=str(payload.get("course_id") or ""),
+            sub_id=str(payload.get("sub_id") or ""),
+            transcript=transcript,
+            ppt_pages=pages,
+        )
+        packet = knowledge if knowledge.get("usable") else None
+        if payload.get("evidence_packet") is not None and packet is None:
+            warnings.append("evidence_packet_rejected")
+        # 只有真的要传多源证据时才带新参数：老 job（无 packet/无 course_context）
+        # 的调用保持与历史逐字相同，既有的严格测试替身不会被签名变化打破。
+        summary_args: dict[str, Any] = {}
+        if packet is not None:
+            summary_args["evidence_packet"] = packet
+        if payload.get("course_context") is not None:
+            summary_args["course_context"] = payload.get("course_context")
         summary = create_summary(
             str(dict(job.get("secrets") or {}).get("deepseek_api_key") or ""),
             title=str(payload.get("title") or ""),
@@ -314,6 +338,7 @@ def _process_materialized_job(
             ppt_pages=pages,
             prior_checkpoint=prior,
             checkpoint=summary_checkpoint,
+            **summary_args,
         )
         outputs = {"ppt_pages": pages}
         if kind == "chapters":
@@ -326,17 +351,24 @@ def _process_materialized_job(
             transcript=transcript,
             chapters=list(summary.get("chapters") or []),
             ppt_pages=pages,
+            knowledge_points=list(summary.get("knowledge_points") or []),
+            evidence_packet=packet,
         )
         metrics = {
             "elapsed_seconds": round(time.monotonic() - started, 3),
             "transcript_segments": len(transcript),
             "ppt_pages": len(pages),
         }
+        if packet is not None:
+            metrics["evidence_items"] = len(packet.get("items") or [])
+            metrics["knowledge_points"] = len(list(summary.get("knowledge_points") or []))
+            metrics["citations_rejected"] = int(summary.get("citations_rejected") or 0)
         if slides_skipped:
             metrics["slides_skipped"] = slides_skipped
             warnings.append("slides_skipped")
     elif kind == "learning_pack":
         from .asr import transcribe
+        from .course_knowledge import normalize_evidence_packet
         from .formats import to_srt, to_vtt
         from .lecture_ir import build_lecture_ir
         from .glossary import build_glossary
@@ -445,6 +477,21 @@ def _process_materialized_job(
                         **value,
                     })
 
+            knowledge = normalize_evidence_packet(
+                payload.get("evidence_packet"),
+                course_id=str(payload.get("course_id") or ""),
+                sub_id=str(payload.get("sub_id") or ""),
+                transcript=transcript,
+                ppt_pages=pages,
+            )
+            packet = knowledge if knowledge.get("usable") else None
+            if payload.get("evidence_packet") is not None and packet is None:
+                warnings.append("evidence_packet_rejected")
+            summary_args: dict[str, Any] = {}
+            if packet is not None:
+                summary_args["evidence_packet"] = packet
+            if payload.get("course_context") is not None:
+                summary_args["course_context"] = payload.get("course_context")
             summary = create_summary(
                 api_key,
                 title=str(payload.get("title") or ""),
@@ -452,6 +499,7 @@ def _process_materialized_job(
                 ppt_pages=pages,
                 prior_checkpoint=prior,
                 checkpoint=summary_checkpoint,
+                **summary_args,
             )
             if "summary" in requested:
                 outputs["summary"] = summary
@@ -463,7 +511,13 @@ def _process_materialized_job(
                 transcript=transcript,
                 chapters=list(summary.get("chapters") or []),
                 ppt_pages=pages,
+                knowledge_points=list(summary.get("knowledge_points") or []),
+                evidence_packet=packet,
             )
+            if packet is not None:
+                metrics["evidence_items"] = len(packet.get("items") or [])
+                metrics["knowledge_points"] = len(list(summary.get("knowledge_points") or []))
+                metrics["citations_rejected"] = int(summary.get("citations_rejected") or 0)
         metrics["elapsed_seconds"] = round(time.monotonic() - started, 3)
     else:
         raise WorkerError("unsupported job kind")

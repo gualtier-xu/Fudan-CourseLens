@@ -339,7 +339,9 @@ class RunnerSeamTests(unittest.TestCase):
         def fake_slides(slides_arg, *, progress, prior_checkpoint, checkpoint, **kwargs):
             return pages, {}
 
-        def fake_summary(api_key, *, title, transcript, ppt_pages, prior_checkpoint, checkpoint):
+        def fake_summary(api_key, *, title, transcript, ppt_pages, prior_checkpoint, checkpoint,
+                         evidence_packet=None, course_context=None):
+            # evidence_packet/course_context 是 N7A 的加性参数：显式接住以钉住调用签名。
             return {"model": "deepseek-chat", "markdown": "笔记", "chapters": chapters}
 
         with patch("courselens_worker.ocr.process_slides", side_effect=fake_slides), \
@@ -415,6 +417,115 @@ class RunnerSeamTests(unittest.TestCase):
             }
             result = _process_materialized_job(job)
         self.assertNotIn("lecture_ir", result["outputs"])
+
+
+class KnowledgePointProjectionTests(unittest.TestCase):
+    """N7A：多源知识点投影成 evidence.v1 稳定单元（引用可解析、时间不编造）。"""
+
+    def setUp(self):
+        self.segment_id = f"{NAMESPACE_SEGMENT}:0123456789ab"
+        self.event_id = f"{NAMESPACE_SLIDE_EVENT}:0123456789ab"
+        self.transcript = [{
+            "segment_id": self.segment_id, "start_ms": 0, "end_ms": 4000, "text": "动力学",
+        }]
+        self.pages = [{
+            "event_id": self.event_id, "page_num": 1, "created_sec": 2, "text": "第三章",
+        }]
+        self.packet = {
+            "contract": "courselens.course-knowledge.v1",
+            "items": [
+                {"citation_id": "ckc:000000000001", "kind": "transcript",
+                 "source_id": self.segment_id, "revision_id": "a" * 16,
+                 "content_hash": "b" * 64, "locator": {"start_ms": 0, "end_ms": 4000},
+                 "label": "00:00 动力学"},
+                {"citation_id": "ckc:000000000002", "kind": "document_page",
+                 "source_id": "doc-x", "revision_id": "c" * 16,
+                 "content_hash": "d" * 64, "locator": {"page": 3}, "label": "第3页 讲义"},
+            ],
+        }
+
+    def test_points_citing_transcript_become_units_with_real_intervals(self):
+        point = {"title": "凝胶点", "text": "p_c≈0.8。",
+                 "citation_ids": ["ckc:000000000001", "ckc:000000000002"]}
+        view = build_lecture_ir(transcript=self.transcript, chapters=[], ppt_pages=self.pages,
+                                knowledge_points=[point], evidence_packet=self.packet)
+        self.assertEqual(view["knowledge_points_projected"], 1)
+        self.assertEqual(view["knowledge_points_skipped"], 0)
+        projections = [unit for unit in view["knowledge_units"] if unit["content"]
+                       and unit["content"].get("text") == "p_c≈0.8。"]
+        self.assertEqual(len(projections), 1)
+        unit = projections[0]
+        self.assertEqual(unit["kind"], "knowledge_unit")
+        self.assertEqual(unit["time"], {"start_ms": 0, "end_ms": 4000},
+                         "区间取自被引字幕，不自造")
+        self.assertEqual(unit["spans"], [{"kind": "segment", "id": self.segment_id}])
+        self.assertEqual(unit["title"], "凝胶点")
+        # 文档页没有时间锚，走 contract evidence_refs 而不是 span
+        refs = unit["content"]["evidence_refs"]
+        self.assertEqual(len(refs), 1)
+        self.assertEqual(refs[0]["citation_id"], "ckc:000000000002")
+        self.assertEqual(refs[0]["locator"], {"page": 3})
+
+    def test_points_without_any_citable_span_are_skipped_and_counted(self):
+        point = {"title": "仅文档", "text": "讲义第3页写了。",
+                 "citation_ids": ["ckc:000000000002"]}
+        view = build_lecture_ir(transcript=self.transcript, chapters=[], ppt_pages=self.pages,
+                                knowledge_points=[point], evidence_packet=self.packet)
+        self.assertEqual(view["knowledge_points_projected"], 0)
+        self.assertEqual(view["knowledge_points_skipped"], 1,
+                         "不编造时间轴：没有可解析引用就不出单元")
+
+    def test_slide_citations_resolve_through_the_event_window(self):
+        packet = {
+            "contract": "courselens.course-knowledge.v1",
+            "items": [{"citation_id": "ckc:000000000003", "kind": "slide",
+                       "source_id": self.event_id, "revision_id": "e" * 16,
+                       "content_hash": "f" * 64, "locator": {"page": 1}, "label": "第1页"}],
+        }
+        view = build_lecture_ir(
+            transcript=self.transcript, chapters=[], ppt_pages=self.pages,
+            knowledge_points=[{"title": "幻灯", "text": "第三章。",
+                               "citation_ids": ["ckc:000000000003"]}],
+            evidence_packet=packet)
+        self.assertEqual(view["knowledge_points_projected"], 1)
+        unit = next(unit for unit in view["knowledge_units"]
+                    if unit["spans"] and unit["spans"][0]["kind"] == "slide_event")
+        # 幻灯事件的时间窗与该 key_moment 一致：到下一个事件或证据末尾为止，
+        # 是既有推导规则，不是为知识点另造一套时间。
+        moment = next(moment for moment in view["key_moments"]
+                      if moment["spans"][0]["id"] == self.event_id)
+        self.assertEqual(unit["time"], moment["time"])
+        self.assertEqual(unit["time"], {"start_ms": 2000, "end_ms": 4000})
+
+    def test_unknown_citation_is_dropped_without_breaking_the_view(self):
+        view = build_lecture_ir(
+            transcript=self.transcript, chapters=[], ppt_pages=self.pages,
+            knowledge_points=[{"title": "悬空", "text": "引用了包外。",
+                               "citation_ids": ["ckc:ffffffffffff"]}],
+            evidence_packet=self.packet)
+        self.assertEqual(view["knowledge_points_projected"], 0)
+        self.assertEqual(view["knowledge_points_skipped"], 1)
+
+    def test_projection_is_stable_across_input_order(self):
+        points = [
+            {"title": "乙", "text": "第二次讲到的。", "citation_ids": ["ckc:000000000001"]},
+            {"title": "甲", "text": "先讲到的。", "citation_ids": ["ckc:000000000001"]},
+        ]
+        forward = build_lecture_ir(transcript=self.transcript, ppt_pages=self.pages,
+                                   knowledge_points=points, evidence_packet=self.packet)
+        backward = build_lecture_ir(transcript=self.transcript, ppt_pages=self.pages,
+                                    knowledge_points=list(reversed(points)),
+                                    evidence_packet=self.packet)
+        self.assertEqual(
+            sorted(unit["id"] for unit in forward["knowledge_units"]),
+            sorted(unit["id"] for unit in backward["knowledge_units"]),
+            "单元身份与输入顺序无关",
+        )
+
+    def test_view_stays_four_keys_without_knowledge_points(self):
+        view = build_lecture_ir(transcript=self.transcript, chapters=[], ppt_pages=self.pages)
+        self.assertEqual(sorted(view), ["contract", "key_moments", "knowledge_units", "sections"],
+                         "不传知识点的旧调用拿到的是与历史逐键相同的视图")
 
 
 if __name__ == "__main__":
