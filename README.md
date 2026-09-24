@@ -36,7 +36,7 @@ CourseLens 客户端
 
 ## 它会做什么
 
-- 字幕执行只有一个内部 `automatic` 策略：配置 DeepSeek Key 时做 SenseVoice 粗识别、Paraformer 精修与用户授权的 AI 校对；未配置时自动走非 AI 回退（仅 Paraformer 精修）。
+- 字幕执行只有一个内部 `automatic` 策略：配置 DeepSeek Key 时做「粗识别 + Paraformer 精修 + 用户授权的 AI 校对」，未配置时自动走非 AI 回退（仅 Paraformer 精修）。平台原生文稿存在且时间覆盖达标时，默认用它替代粗识别腿——它只作校对时的参考文本，绝不直接成为字幕输出；设置 `COURSELENS_ASR_ROUGH_SOURCE=sensevoice` 可随时强制回原双模型链。
 - 可选 OCR、摘要、章节、证据问答和云端每日检查。
 - 用签名控制消息报告真实阶段；没有可靠总量时不伪造百分比或剩余时间。
 

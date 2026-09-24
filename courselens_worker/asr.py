@@ -55,6 +55,27 @@ ASR_DECODE_BATCH_SECONDS = 30
 SUPPORTED_ASR_BACKENDS = ("sensevoice", "paraformer")
 DEFAULT_SUBTITLE_BACKENDS = "sensevoice,paraformer"
 
+# AS12（第五十二案）：平台原生文稿可代 SenseVoice 粗识别腿——只当校对交替
+# 源，绝不直接成为字幕输出（用户拍板 2026-09-23：平台文稿差，质量由精识别
+# Paraformer + DeepSeek 校对链把守）。platform-first 命中文稿且时间覆盖达阈
+# 即整讲跳过粗腿；COURSELENS_ASR_ROUGH_SOURCE=sensevoice 为杀开关强制旧双
+# 模链。获取失败/空文稿/覆盖不足一律整讲回落旧链：失败=降级，绝不失败任务。
+ASR_ROUGH_SOURCE_ENV = "COURSELENS_ASR_ROUGH_SOURCE"
+ASR_ROUGH_SOURCE_PLATFORM = "platform"
+ASR_ROUGH_SOURCE_SENSEVOICE = "sensevoice"
+# 文稿时间覆盖门：平台段并集至少盖住待转写时长的这一比例才跳过粗腿。钉死
+# 常量、无 env 后门；实测校准随 U2 护栏数字记录。
+PLATFORM_TRANSCRIPT_MIN_COVERAGE = 0.8
+# U6（夜批 8 实测修正）：平台 cue 是句级的，句间自然停顿（1-5s）会把裸并集
+# 覆盖压到阈值之下——u2c 产品路径 E2E 抓到该语义洞。合并容忍=小于该 gap 的
+# 停顿粘合后再算覆盖：正常停顿不再误伤，真正的长段缺失（>30s）仍如实算洞。
+PLATFORM_TRANSCRIPT_MERGE_GAP_MS = 30_000
+# 闭集回落原因（只进 metrics 与 stage=rough-source 遥测行，绝不外扩）。
+ROUGH_SOURCE_FALLBACK_REASONS = frozenset({
+    "env_disabled", "transcript_fetch_failed", "transcript_empty",
+    "platform_transcript_missing", "coverage_low", "legacy_checkpoint",
+})
+
 # Frame-energy voice activity: deterministic, NumPy-only, no model.  The one
 # documented calibration knob is COURSELENS_ASR_ENERGY_RATIO (voiced threshold
 # as a ratio over the window noise floor); everything else is a fixed default
@@ -577,6 +598,37 @@ def _source_evidence_id(fingerprint: str, duration: float) -> str:
     })
 
 
+def platform_transcript_coverage(
+    segments: list[dict[str, Any]],
+    duration_ms: int,
+    *,
+    merge_gap_ms: int = PLATFORM_TRANSCRIPT_MERGE_GAP_MS,
+) -> float:
+    """Content coverage of transcript intervals clipped to [0, duration_ms].
+
+    Intervals separated by less than ``merge_gap_ms`` are merged first, so
+    natural inter-sentence pauses in platform cues do not read as missing
+    content; only gaps at least that wide count as holes (U6).
+    """
+    if duration_ms <= 0 or not segments:
+        return 0.0
+    intervals = sorted(
+        (max(0, int(item.get("start_ms") or 0)), max(0, int(item.get("end_ms") or 0)))
+        for item in segments
+        if str(item.get("text") or "").strip()
+    )
+    merged: list[list[int]] = []
+    for start, end in intervals:
+        if end <= start:
+            continue
+        if merged and start - merged[-1][1] < merge_gap_ms:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    covered = sum(max(0, min(end, duration_ms) - start) for start, end in merged)
+    return covered / duration_ms
+
+
 def _stamp_segment_identity(
     segments: list[dict[str, Any]],
     *,
@@ -717,29 +769,93 @@ def transcribe(
         raise ASRError("media start is invalid")
     if duration <= 0 or duration > 12 * 60 * 60:
         raise ASRError("media duration is missing or outside the supported range")
+    # AS12 rough 源裁决：默认 platform-first，命中即整讲跳过粗腿；任何未命中
+    # 都整讲回落现有双模链（失败=降级，绝不失败任务），原因走闭集记账。
+    rough_source_request = str(
+        os.environ.get(ASR_ROUGH_SOURCE_ENV) or ASR_ROUGH_SOURCE_PLATFORM
+    ).strip().lower()
+    if rough_source_request not in {ASR_ROUGH_SOURCE_PLATFORM, ASR_ROUGH_SOURCE_SENSEVOICE}:
+        rough_source_request = ASR_ROUGH_SOURCE_PLATFORM
+    platform_rows = payload.get("platform_transcript")
+    platform_rows = platform_rows if isinstance(platform_rows, list) else []
+    platform_state = str(payload.get("platform_transcript_state") or "")
+    rough_fallback_reason = ""
+    use_platform_alternates = False
+    platform_coverage = 0.0
+    if not proofread_enabled:
+        rough_source = "not_applicable"
+    else:
+        if rough_source_request == ASR_ROUGH_SOURCE_SENSEVOICE:
+            rough_fallback_reason = "env_disabled"
+        elif not platform_rows:
+            rough_fallback_reason = (
+                platform_state
+                if platform_state in {"transcript_fetch_failed", "transcript_empty"}
+                else "platform_transcript_missing"
+            )
+        else:
+            platform_coverage = platform_transcript_coverage(
+                platform_rows, int(duration * 1000)
+            )
+            if platform_coverage >= PLATFORM_TRANSCRIPT_MIN_COVERAGE:
+                use_platform_alternates = True
+            else:
+                rough_fallback_reason = "coverage_low"
+        rough_source = (
+            ASR_ROUGH_SOURCE_PLATFORM if use_platform_alternates
+            else ASR_ROUGH_SOURCE_SENSEVOICE
+        )
+        _emit_telemetry(
+            f"stage=rough-source source={rough_source} "
+            f"reason={rough_fallback_reason or 'none'} "
+            f"segments={len(platform_rows) if use_platform_alternates else 0} "
+            f"coverage={round(platform_coverage, 3)}"
+        )
     strategy = str(os.environ.get("COURSELENS_ASR_STRATEGY") or "sequential").strip().lower()
     if strategy not in {"sequential", "parallel"}:
         strategy = "sequential"
-    recognizer_threads = 2 if proofread_enabled and strategy == "parallel" else 4
+    # 平台链下每块只剩精识别单模型，独占全部线程；parallel 策略只属回落链。
+    recognizer_threads = (
+        2 if proofread_enabled and strategy == "parallel" and not use_platform_alternates
+        else 4
+    )
     backends = subtitle_backend_sequence()
     rough, refined = backends
     pool = RecognizerPool(
         sensevoice_dir, paraformer_dir, threads=recognizer_threads
     )
-    if proofread_enabled and strategy == "parallel":
-        pool.get(rough)
-        pool.get(refined)
     prior = dict(payload.get("checkpoint") or {})
     if prior and str(prior.get("mode") or "") != mode:
         raise ASRError("checkpoint subtitle mode does not match the job")
-    rough_segments: list[dict[str, Any]] = list(prior.get(f"raw_{rough}") or [])
-    refined_segments: list[dict[str, Any]] = list(prior.get(f"raw_{refined}") or [])
     total_chunks = max(1, int((duration + PCM_CHUNK_SECONDS - 1) // PCM_CHUNK_SECONDS))
     completed_chunks = max(0, min(total_chunks, int(prior.get("completed_chunks") or 0)))
     # 续跑的检查点必须已携带同序列车型的 raw 段，否则精识别会从
     # completed_chunks 起步而丢失前段输出——缺键宁可显式失败。
     if completed_chunks > 0 and any(f"raw_{name}" not in prior for name in backends):
         raise ASRError("checkpoint raw segments do not match the subtitle backends")
+    # AS12 续跑守卫：rough 源与列车序同属链身份。旧版检查点没有这些键——
+    # 剩余块沿旧链跑完（不混合交替源来源），显式记账 legacy_checkpoint；
+    # 带键但与当前链不匹配则显式失败，宁可重跑也不静默混链。
+    legacy_checkpoint = completed_chunks > 0 and "rough_source" not in prior
+    if legacy_checkpoint and use_platform_alternates:
+        use_platform_alternates = False
+        rough_source = ASR_ROUGH_SOURCE_SENSEVOICE
+        rough_fallback_reason = "legacy_checkpoint"
+    if completed_chunks > 0 and not legacy_checkpoint:
+        if str(prior.get("rough_source") or "") != rough_source:
+            raise ASRError("checkpoint rough source does not match the subtitle chain")
+        prior_backends = prior.get("backends")
+        if prior_backends is not None and list(prior_backends) != list(backends):
+            raise ASRError("checkpoint raw segments do not match the subtitle backends")
+    rough_segments: list[dict[str, Any]] = (
+        normalize_segments(list(platform_rows))
+        if use_platform_alternates
+        else list(prior.get(f"raw_{rough}") or [])
+    )
+    refined_segments: list[dict[str, Any]] = list(prior.get(f"raw_{refined}") or [])
+    if proofread_enabled and strategy == "parallel" and not use_platform_alternates:
+        pool.get(rough)
+        pool.get(refined)
     # Provenance is stamped only when the fingerprint chain covers every chunk
     # of the run.  A legacy checkpoint without chain state makes that
     # impossible, so the output omits provenance entirely and the client
@@ -817,7 +933,12 @@ def transcribe(
                         fingerprint_state, _pcm_file_digest(pcm)
                     )
                 _emit_telemetry(f"stage=asr-start chunk={index} elapsed={_elapsed_ticks()}")
-                if proofread_enabled and strategy == "parallel":
+                if use_platform_alternates:
+                    # AS12：粗腿已由讲级平台文稿顶替，本块仍照常跑精识别。
+                    refined_segments.extend(
+                        pool.transcribe_pcm(pcm, refined, offset_seconds=absolute_offset)
+                    )
+                elif proofread_enabled and strategy == "parallel":
                     with ThreadPoolExecutor(max_workers=2, thread_name_prefix="asr") as executor:
                         rough_future = executor.submit(
                             pool.transcribe_pcm, pcm, rough, offset_seconds=absolute_offset
@@ -844,6 +965,8 @@ def transcribe(
                         "completed_chunks": index + 1,
                         "total_chunks": total_chunks,
                         "mode": mode,
+                        "backends": list(backends),
+                        "rough_source": rough_source,
                         f"raw_{rough}": normalize_segments(rough_segments),
                         f"raw_{refined}": normalize_segments(refined_segments),
                     }
@@ -863,6 +986,8 @@ def transcribe(
                     "completed_chunks": total_chunks,
                     "total_chunks": total_chunks,
                     "mode": mode,
+                    "backends": list(backends),
+                    "rough_source": rough_source,
                     f"raw_{rough}": normalize_segments(rough_segments),
                     f"raw_{refined}": normalize_segments(refined_segments),
                     **value,
@@ -895,7 +1020,9 @@ def transcribe(
             source_hash=fingerprint_state,
             provenance={
                 "producer": PRODUCER_ID,
-                "model": rough,
+                # AS12：平台链下 raw_{rough} 槽位承载平台文稿交替候选，
+                # 诚实标注来源，绝不冒认 sensevoice 识别输出。
+                "model": "platform:transcript" if use_platform_alternates else rough,
                 "config_hash": config_hash,
             },
         )
@@ -911,7 +1038,11 @@ def transcribe(
         )
         final_model = (
             refined if (not proofread_enabled or proofread_degraded)
-            else f"{rough}+{refined}:proofread"
+            else (
+                f"{refined}+platform:proofread"
+                if use_platform_alternates
+                else f"{rough}+{refined}:proofread"
+            )
         )
         _stamp_segment_identity(
             final_segments,
@@ -936,5 +1067,10 @@ def transcribe(
             "threads_per_model": recognizer_threads,
             "strategy": strategy if proofread_enabled else "single-model",
             "start_seconds": start_seconds,
+            "rough_source": rough_source,
+            **(
+                {"rough_source_fallback_reason": rough_fallback_reason}
+                if rough_fallback_reason else {}
+            ),
         },
     }

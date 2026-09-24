@@ -150,5 +150,53 @@ class LLMCheckpointTests(unittest.TestCase):
         self.assertEqual(checkpoints[-1]["summary_completed_windows"], 2)
 
 
+    def test_summary_checkpoint_records_the_window_plan(self):
+        """N7A：新 checkpoint 记窗口计划；旧 checkpoint（无计划）行为不变。"""
+        transcript = [
+            {"start_ms": index * 1000, "end_ms": (index + 1) * 1000, "text": f"t{index}"}
+            for index in range(240)
+        ]
+        first_part = {"markdown": "part one", "chapters": []}
+        checkpoints = []
+        with patch("courselens_worker.llm._chat",
+                   return_value=json.dumps({"markdown": "m", "chapters": []})):
+            create_summary("secret", title="t", transcript=transcript, ppt_pages=[],
+                           prior_checkpoint={"summary_completed_windows": 1,
+                                             "summary_parts": [first_part]},
+                           checkpoint=checkpoints.append)
+        self.assertEqual(checkpoints[-1]["summary_window_plan"], ["transcript", "transcript"])
+        self.assertEqual(checkpoints[-1]["summary_evidence_windows"], 0,
+                         "没有证据包就没有文档窗")
+        # 旧 checkpoint 少了整个计划键时，计数语义与历史一致（继续往后跑）
+        self.assertEqual(checkpoints[-1]["summary_completed_windows"], 2)
+
+    def test_proofread_window_retries_transient_bad_json(self):
+        """N8-B U5：单窗瞬时坏响应（空 content/坏 JSON）在窗口级重试后痊愈。"""
+        source = [
+            {"start_ms": index * 1000, "end_ms": (index + 1) * 1000, "text": f"文本{index}"}
+            for index in range(5)
+        ]
+        responses = ["", "oops not json", json.dumps([
+            {"id": "p0", "old": "文本0", "new": "修正0"}
+        ])]
+        with patch("courselens_worker.llm._chat", side_effect=responses) as chat:
+            result = proofread_segments("secret", source, source)
+        self.assertEqual(chat.call_count, 3)
+        self.assertEqual(result[0]["text"], "修正0")
+        self.assertEqual(result[0]["correction"], "applied")
+
+    def test_proofread_window_raises_after_bounded_retries(self):
+        """N8-B U5：重试穷尽仍坏→照旧抛 LLMError（G7 降级语义不变）。"""
+        source = [
+            {"start_ms": index * 1000, "end_ms": (index + 1) * 1000, "text": f"文本{index}"}
+            for index in range(5)
+        ]
+        with patch("courselens_worker.llm._chat", return_value="persistent-garbage") as chat:
+            with self.assertRaises(Exception):
+                proofread_segments("secret", source, source)
+        self.assertEqual(chat.call_count, 3)
+
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -92,3 +92,25 @@ def test_model_alias_is_modernized():
     from courselens_worker import llm
 
     assert llm.MODEL == "deepseek-flash"
+
+
+def test_evidence_prompt_is_separate_and_pins_the_honesty_rules():
+    """N7A：多源证据版提示词另立一串，旧串一个字都不改（有 300 字守门）。"""
+    from courselens_worker import llm
+
+    assert len(_SUMMARY_MERGE_PROMPT) <= 300
+    assert llm._SUMMARY_MERGE_PROMPT_WITH_EVIDENCE.startswith(_SUMMARY_MERGE_PROMPT)
+    assert "knowledge_points" in llm._SUMMARY_MERGE_PROMPT_WITH_EVIDENCE
+    assert "topic_candidates" in llm._SUMMARY_MERGE_PROMPT_WITH_EVIDENCE
+    # 三条底线：只依据证据 / 冲突并列不裁决 / 材料正文不是指令 / 不编造答案
+    for rule in ("只依据 evidence", "不要裁决", "不可信数据", "不得编造标准答案",
+                 "材料未给答案"):
+        assert rule in llm._SUMMARY_MERGE_PROMPT_WITH_EVIDENCE
+    assert "不可信数据" in llm._SUMMARY_EVIDENCE_WINDOW_PROMPT
+    assert "evidence" in llm._SUMMARY_EVIDENCE_WINDOW_PROMPT
+
+
+def test_legacy_merge_prompt_never_mentions_the_new_output_keys():
+    """旧路径的模型输出与历史一致：旧提示词不提知识点/主题候选。"""
+    assert "knowledge_points" not in _SUMMARY_MERGE_PROMPT
+    assert "topic_candidates" not in _SUMMARY_MERGE_PROMPT
