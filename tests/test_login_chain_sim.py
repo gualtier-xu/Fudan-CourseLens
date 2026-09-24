@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import unittest
 from contextlib import contextmanager
+from unittest.mock import patch
 from urllib.parse import urlparse
 
 from courselens_worker import platform_session as ps
@@ -122,6 +123,38 @@ class LoginChainSimTests(unittest.TestCase):
         # set_mode 每次翻转都会清零计数：这里只对「恢复后的成功跑」计数——
         # 恰一次进入即成功；每次重试独立进入已由挑战页用例（零重试）钉住。
         self.assertEqual(STATS["webvpn_entries"], 1)
+
+    def test_p65_sso_direct_chain_signs_in_without_lck(self):
+        """P65 (a) 链路级：SSO 直通（全链无 lck、直发票）→ 变体验证过 → 成功。"""
+        set_mode("sso_direct")
+        lines = []
+        with self._endpoints():
+            connector = PlatformSession(transport="requests")
+            with patch(
+                "courselens_worker.platform_session._emit_session_telemetry",
+                side_effect=lines.append,
+            ), patch("courselens_worker.platform_session.time.sleep"):
+                connector._login_webvpn_full("account", "password", attempts=1)
+        self.assertTrue(connector._webvpn_ready)
+        self.assertEqual(lines, ["stage=relogin-variant outcome=already-authed"])
+        self.assertEqual(STATS["webvpn_entries"], 1, "已登录变体一次进入即成功")
+
+    def test_p65_stale_sso_ticket_recovers_via_fresh_retry(self):
+        """P65 (b) 链路级：陈旧票据验证不过 → 清态全新 cookie jar 重试一次 → 成功。"""
+        set_mode("sso_then_delivered")
+        lines = []
+        with self._endpoints():
+            connector = PlatformSession(transport="requests")
+            with patch(
+                "courselens_worker.platform_session._emit_session_telemetry",
+                side_effect=lines.append,
+            ), patch("courselens_worker.platform_session.time.sleep"):
+                connector._login_webvpn_full("account", "password", attempts=1)
+        self.assertTrue(connector._webvpn_ready)
+        self.assertEqual(lines, ["stage=relogin-variant outcome=fresh-retry"])
+        self.assertEqual(
+            STATS["webvpn_entries"], 2, "首进入验证败 + 清态后全新一次"
+        )
 
 
 if __name__ == "__main__":
