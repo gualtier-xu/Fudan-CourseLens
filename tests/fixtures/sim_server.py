@@ -20,6 +20,10 @@ Failure modes (one roll per webvpn context entry):
   delivered      clean chain, full login succeeds
   not_delivered  authenticate returns a plain 200 page with no lck
   challenge      authenticate returns a JS challenge interstitial, no lck
+  sso_direct     P65: valid IDP SSO skips the form, issues a ticket with no
+                 lck anywhere in the chain (already-authed variant)
+  sso_then_delivered  P65: first entry serves a stale (rejected) ticket, the
+                 fresh-cookie retry lands on the delivered chain
 """
 
 import json
@@ -37,7 +41,8 @@ from Crypto.PublicKey import RSA
 
 VPN_KEY = b"wrdvpnisthebest!"
 VPN_IV = b"wrdvpnisthebest!"
-MODES = ("delivered", "not_delivered", "challenge")
+MODES = ("delivered", "not_delivered", "challenge",
+         "sso_direct", "sso_then_delivered")
 
 _lock = threading.Lock()
 _mode = {"mode": "delivered"}
@@ -56,7 +61,11 @@ _CHALLENGE_HTML = (
     "<html><head><meta http-equiv='refresh' content='2'></head>"
     "<body><div id='challenge'>risk-check</div>"
     "<script>document.cookie='risk=1';</script></body></html>")
-_PLAIN_LOGIN_HTML = "<html><body><form><input name='password'></form>login page</body></html>"
+_PLAIN_LOGIN_HTML = ("<html><body><form action='/login'>"
+                     "<input name='password'></form>login page</body></html>")
+# P65：陈旧票据的落地页——不是登录表单（无 action 落点）也不是挑战页，
+# 正是「三者皆非」的已登录变体形态。
+_STALE_TICKET_HTML = "<html><body>webvpn session expired</body></html>"
 _USER = {"id": "u1", "account": "tester", "tenant_id": "222", "phone": "13800000000"}
 
 
@@ -186,6 +195,17 @@ class _Handler(BaseHTTPRequestHandler):
             with _lock:
                 STATS["webvpn_entries"] += 1
                 mode = _mode["mode"]
+            if mode == "sso_direct":
+                # P65：IDP SSO 有效——跳过登录表单，不发票据 lck，直发票。
+                ticket = "ST-" + uuid.uuid4().hex
+                with _lock:
+                    _TICKETS[ticket] = att_id
+                self._redirect(f"/webvpn-ticket?ticket={ticket}")
+                return
+            if mode == "sso_then_delivered" and STATS["webvpn_entries"] == 1:
+                # P65：首次进入撞陈旧票据（验证不过），清态重试后走 delivered。
+                self._redirect("/webvpn-ticket?ticket=ST-bogus")
+                return
             if mode in ("not_delivered", "challenge"):
                 self._send(200, _CHALLENGE_HTML if mode == "challenge"
                            else _PLAIN_LOGIN_HTML)
@@ -200,7 +220,7 @@ class _Handler(BaseHTTPRequestHandler):
         with _lock:
             att_id = _TICKETS.get(ticket, "")
             if not ticket or not att_id:
-                self._send(200, _PLAIN_LOGIN_HTML)
+                self._send(200, _STALE_TICKET_HTML)
                 return
         if leg == "webvpn":
             self._redirect("/webvpn/portal",

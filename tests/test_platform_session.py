@@ -922,6 +922,87 @@ class PlatformSessionTests(unittest.TestCase):
             "platform_session_failed",
         )
 
+    def test_p65_already_authed_variant_returns_success_without_lck(self):
+        """P65 (a)：SSO 直通链无 lck、终页=服务门户 → 验证过=登录成功零异常。"""
+        connector = object.__new__(PlatformSession)
+        portal = Mock(status_code=200)
+        portal.headers = {"Location": ""}
+        portal.url = "https://webvpn.fudan.edu.cn/webvpn/portal"
+        portal.content = b"<html><body>portal-ok</body></html>"
+        connector._once = Mock(return_value=portal)
+        lines = []
+        with patch("courselens_worker.platform_session._emit_session_telemetry", side_effect=lines.append), \
+             patch("courselens_worker.platform_session.time.sleep"):
+            connector._login_webvpn("account", "password")
+        self.assertEqual(lines, ["stage=relogin-variant outcome=already-authed"])
+        self.assertEqual(connector._once.call_count, 2, "链一进+验证一探，零多余请求")
+
+    def test_p65_variant_verify_failure_purges_cookies_and_retries_fresh_once(self):
+        """P65 (b)：验证不过 → 清态（强制全新登录流）→ 同一 attempt 全新链一次。"""
+        connector = object.__new__(PlatformSession)
+        connector._userinfo = {"stale": "identity"}
+        connector._course_bearer = "stale-bearer"
+        connector._webvpn_ready = True
+        connector._once = Mock(return_value=self._context_page(
+            "<html><body>webvpn session expired</body></html>"
+        ))
+        connector._verify_webvpn_bounded = Mock(return_value=False)
+        connector._rebuild_sessions = Mock()
+        real_method = PlatformSession._login_webvpn
+        calls = []
+
+        def fake(account, password, *, _fresh_retry=False):
+            calls.append(_fresh_retry)
+            if _fresh_retry:
+                return None  # 全新 cookie jar 下链路拿到 lck：成功
+            return real_method(connector, account, password)
+
+        connector._login_webvpn = fake
+        lines = []
+        with patch("courselens_worker.platform_session._emit_session_telemetry", side_effect=lines.append):
+            connector._login_webvpn("account", "password")
+        self.assertEqual(calls, [False, True], "干净重试恰一次，且有防重入护栏")
+        connector._rebuild_sessions.assert_called_once_with()
+        connector._verify_webvpn_bounded.assert_called_once_with()
+        self.assertIsNone(connector._userinfo, "陈旧身份缓存随清态一起作废")
+        self.assertEqual(connector._course_bearer, "")
+        self.assertFalse(connector._webvpn_ready)
+        self.assertEqual(lines, ["stage=relogin-variant outcome=fresh-retry"])
+
+    def test_p65_challenge_page_still_wins_over_the_variant(self):
+        """P65 (c)：挑战页分类仍是第一分支——会话实际可用也保持挑战码。"""
+        connector = object.__new__(PlatformSession)
+        page = self._context_page(
+            "<html><head><meta http-equiv=\"refresh\" content='2'></head>"
+            "<body><div id=\"challenge\">risk-check</div>"
+            "<script>document.cookie='risk=1';</script></body></html>"
+        )
+        connector._once = Mock(return_value=page)
+        connector._verify_webvpn_bounded = Mock(return_value=True)
+        with self.assertRaises(PlatformSessionError) as captured:
+            connector._login_webvpn("account", "password")
+        self.assertEqual(str(captured.exception), "platform_challenge_required")
+        self.assertEqual(captured.exception.connection_stage, "webvpn_context")
+        connector._verify_webvpn_bounded.assert_not_called()
+
+    def test_p65_unknown_page_after_failed_verify_and_fresh_retry_keeps_closed_set(self):
+        """P65 (d)：三皆非的未知页 → 验证败+干净重试败 → 既有闭集码诚实失败。"""
+        connector = object.__new__(PlatformSession)
+        connector._once = Mock(return_value=self._context_page(
+            "<html><body>maintenance</body></html>"
+        ))
+        connector._verify_webvpn_bounded = Mock(return_value=False)
+        connector._rebuild_sessions = Mock()
+        lines = []
+        with patch("courselens_worker.platform_session._emit_session_telemetry", side_effect=lines.append), \
+             patch("courselens_worker.platform_session.time.sleep"):
+            with self.assertRaises(PlatformSessionError) as captured:
+                connector._login_webvpn("account", "password")
+        self.assertEqual(str(captured.exception), "platform_auth_context_missing")
+        self.assertEqual(lines, ["stage=relogin-variant outcome=fresh-retry"])
+        self.assertEqual(connector._rebuild_sessions.call_count, 1)
+        self.assertEqual(connector._verify_webvpn_bounded.call_count, 2, "首次+干净重试各验证一次")
+
     def test_connection_failure_retries_without_retrying_authentication_errors(self):
         class FlakyConnector(_FakeConnector):
             attempts = 0

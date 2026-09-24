@@ -315,6 +315,20 @@ def _looks_like_challenge_page(body: str) -> bool:
     return any(marker in body for marker in _CHALLENGE_PAGE_MARKERS)
 
 
+def _looks_like_login_form(body: str, url: str = "") -> bool:
+    """P65：登录表单形态判定，全部复用既有判据，不发明新词汇表。
+
+    终页 URL 或页内表单 action 的落点命中 _is_login_target 即视为登录
+    表单。SSO 已登录变体直通服务页，链上不会出现登录表单落点。
+    """
+    if _is_login_target(url):
+        return True
+    return any(
+        _is_login_target(action)
+        for action in re.findall(r"action\s*=\s*['\"]([^'\"]+)['\"]", body)
+    )
+
+
 class PlatformSession:
     """Narrow session capable only of authorizing one requested lecture."""
 
@@ -514,11 +528,14 @@ class PlatformSession:
                     return code, str(data.get("requestType") or "chain_type")
         raise _fail("platform_auth_method_missing")
 
-    def _login_webvpn(self, account: str, password: str) -> None:
+    def _login_webvpn(
+        self, account: str, password: str, *, _fresh_retry: bool = False
+    ) -> None:
         service = f"{WEBVPN_BASE}/login?cas_login=true"
         current = f"{IDP_BASE}/idp/authCenter/authenticate?service={quote(service, safe='')}"
         lck = ""
         final_body = ""
+        final_url = ""
         for _ in range(_MAX_REDIRECTS + 1):
             response = self._once(
                 "GET", current, connection_stage="webvpn_context"
@@ -533,6 +550,7 @@ class PlatformSession:
             if status not in _REDIRECTS or not location:
                 # 终止页（通常 200 正文页）：读有界前缀供挑战页分类。
                 final_body = _challenge_page_sniff(response)
+                final_url = str(response.url or "")
                 response.close()
                 break
             response.close()
@@ -543,6 +561,29 @@ class PlatformSession:
             # 同一挑战页；普通无 lck 页维持既有码（外层登录梯会重试）。
             if _looks_like_challenge_page(final_body):
                 raise _fail("platform_challenge_required", connection_stage="webvpn_context")
+            # P65（第六十五案）：IDP「已登录」变体。runner 启动时已登录过一次，
+            # IDP 的 SSO 会话（TGT cookie，随 self.session 存活）中途仍有效；
+            # 会话失效触发重登时 IDP 跳过登录表单直接发票，整条重定向链不出现
+            # lck（lck 只在出新登录表单时发放）——2026-09-24 真机 chunk 3
+            # 九连败的确定性根源。终页非挑战页且非登录表单时，先验证会话
+            # 实际可用性（票据超时路径「宁可验证不可重放」同款判据）：可用
+            # 即按 webvpn 腿成功语义返回，外层照常走课程腿并登记续登回调。
+            if not _looks_like_login_form(final_body, final_url):
+                if self._verify_webvpn_bounded():
+                    _emit_session_telemetry("stage=relogin-variant outcome=already-authed")
+                    return
+                if not _fresh_retry:
+                    _emit_session_telemetry("stage=relogin-variant outcome=fresh-retry")
+                    # 干净重试：陈旧 SSO/TGT cookie 会把下一条链再次引离新
+                    # 登录表单。重建全新 cookie jar（=强制全新登录流）后，
+                    # 同一次 attempt 内按全新链路再试一次；挑战页分类仍在前，
+                    # 梯尽仍按既有闭集码诚实失败。
+                    self._webvpn_ready = False
+                    self._course_bearer = ""
+                    self._userinfo = None
+                    self._rebuild_sessions()
+                    self._login_webvpn(account, password, _fresh_retry=True)
+                    return
             raise _fail("platform_auth_context_missing")
 
         method_data = _json(self._once(
