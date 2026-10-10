@@ -1,0 +1,65 @@
+{
+  "schema": "courselens.client-update-trust.v2",
+  "enabled": true,
+  "channel": "stable",
+  "platform": "windows",
+  "architecture": "x86_64",
+  "minimum_version": "0.1.0",
+  "minimum_key_epoch": 1,
+  "root_keys": {
+    "root-2026-10": "6OHUTTnJuORX1Y6esDIBgcikuPCl6PaUOIEcAg65eUU="
+  },
+  "release_key_authorizations": [
+    {
+      "schema": "courselens.update-key-authorization.v1",
+      "authorization": {
+        "release_key_id": "release-2026-10-go1",
+        "public_key": "jRvIPz3LGHyGd/u596fVhqCRCtZdXCilbMyVDD6BAFg=",
+        "key_epoch": 1,
+        "valid_from": "2026-10-01T19:22:58+00:00",
+        "expires_at": "2027-10-01T20:22:58+00:00",
+        "status": "active",
+        "channels": [
+          "stable"
+        ],
+        "platforms": [
+          "windows"
+        ]
+      },
+      "signature": {
+        "root_key_id": "root-2026-10",
+        "value": "SkQtneRH1IhNV07nTnVz3Pj5ymOkrbdLv5DxPTMEomXG4EsEwKBy/wgj8nJ9y8Wym7gt00UZMw2rUOQqK8gNDQ=="
+      }
+    }
+  ],
+  "allowed_hosts": [
+    "github.com",
+    "release-assets.githubusercontent.com",
+    "objects.githubusercontent.com"
+  ],
+  "manifest_url": "https://github.com/gualtier-xu/Fudan-CourseLens/releases/latest/download/courselens-windows-manifest.json",
+  "distribution": {
+    "repository": "gualtier-xu/Fudan-CourseLens",
+    "visibility": "public",
+    "auth_model": "none",
+    "tag_namespace": "client-v",
+    "manifest_asset": "courselens-windows-manifest.json",
+    "source_repository_access": false
+  },
+  "production_gates": {
+    "public_release_repository": true,
+    "protected_monorepo_ci": true,
+    "offline_update_root": true,
+    "protected_update_release_key": true,
+    "public_download_safety_implemented": true,
+    "release_artifact_sha256_published": true,
+    "clean_machine_acceptance": true,
+    "real_restart_acceptance": true,
+    "power_loss_recovery_acceptance": true
+  },
+  "protected_environment": "client-release-production",
+  "required_secret_names": [
+    "COURSELENS_UPDATE_RELEASE_SIGNING_KEY",
+    "COURSELENS_RELEASE_PUBLISHER_TOKEN"
+  ]
+}

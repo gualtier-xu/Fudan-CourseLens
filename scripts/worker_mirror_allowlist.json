@@ -1,0 +1,564 @@
+{
+  "schema": "courselens.worker-mirror.allowlist.v1",
+  "exporter_version": "1.0.0",
+  "text_extensions": [
+    ".css",
+    ".html",
+    ".ini",
+    ".js",
+    ".json",
+    ".md",
+    ".py",
+    ".toml",
+    ".txt",
+    ".yaml",
+    ".yml"
+  ],
+  "files": [
+    {
+      "source": "worker/.editorconfig",
+      "destination": ".editorconfig",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/.gitattributes",
+      "destination": ".gitattributes",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/.gitleaks.toml",
+      "destination": ".gitleaks.toml",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/.github/workflows/ci.yml",
+      "destination": ".github/workflows/ci.yml",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/.github/workflows/cloud-daily.yml",
+      "destination": ".github/workflows/cloud-daily.yml",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/.github/workflows/cloud-verify.yml",
+      "destination": ".github/workflows/cloud-verify.yml",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/.github/workflows/echo.yml",
+      "destination": ".github/workflows/echo.yml",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/.github/workflows/llm.yml",
+      "destination": ".github/workflows/llm.yml",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/.github/workflows/mirror-policy.yml",
+      "destination": ".github/workflows/mirror-policy.yml",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/.github/workflows/process.yml",
+      "destination": ".github/workflows/process.yml",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/.github/workflows/publish-mirror.yml",
+      "destination": ".github/workflows/publish-mirror.yml",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/.gitignore",
+      "destination": ".gitignore",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/LICENSE",
+      "destination": "LICENSE",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/README.md",
+      "destination": "README.md",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/__init__.py",
+      "destination": "courselens_worker/__init__.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/__main__.py",
+      "destination": "courselens_worker/__main__.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/asr.py",
+      "destination": "courselens_worker/asr.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/cloud_automation.py",
+      "destination": "courselens_worker/cloud_automation.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/course_knowledge.py",
+      "destination": "courselens_worker/course_knowledge.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/formats.py",
+      "destination": "courselens_worker/formats.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/junk_filter.py",
+      "destination": "courselens_worker/junk_filter.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/glossary.py",
+      "destination": "courselens_worker/glossary.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/lecture_ir.py",
+      "destination": "courselens_worker/lecture_ir.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/llm.py",
+      "destination": "courselens_worker/llm.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/mailbox.py",
+      "destination": "courselens_worker/mailbox.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/ocr.py",
+      "destination": "courselens_worker/ocr.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/platform_session.py",
+      "destination": "courselens_worker/platform_session.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/punct.py",
+      "destination": "courselens_worker/punct.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/protocol.py",
+      "destination": "courselens_worker/protocol.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/runner.py",
+      "destination": "courselens_worker/runner.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/source.py",
+      "destination": "courselens_worker/source.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/docs/technical/README.md",
+      "destination": "docs/technical/README.md",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/pyproject.toml",
+      "destination": "pyproject.toml",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/requirements.txt",
+      "destination": "requirements.txt",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/scripts/check_generated_mirror.py",
+      "destination": "scripts/check_generated_mirror.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/scripts/check_markdown_links.py",
+      "destination": "scripts/check_markdown_links.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/scripts/check_public_boundary.py",
+      "destination": "scripts/check_public_boundary.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/scripts/check_text_encoding.py",
+      "destination": "scripts/check_text_encoding.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/scripts/install_models.py",
+      "destination": "scripts/install_models.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/scripts/punct_inference_proof.py",
+      "destination": "scripts/punct_inference_proof.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/scripts/retranscribe.py",
+      "destination": "scripts/retranscribe.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/scripts/synthetic_asr_smoke.py",
+      "destination": "scripts/synthetic_asr_smoke.py",
+      "mode": "100644"
+    },
+    {
+      "source": "shared/__init__.py",
+      "destination": "shared/__init__.py",
+      "mode": "100644"
+    },
+    {
+      "source": "shared/evidence_contract.py",
+      "destination": "shared/evidence_contract.py",
+      "mode": "100644"
+    },
+    {
+      "source": "shared/protocol/__init__.py",
+      "destination": "shared/protocol/__init__.py",
+      "mode": "100644"
+    },
+    {
+      "source": "shared/protocol/mirror.py",
+      "destination": "shared/protocol/mirror.py",
+      "mode": "100644"
+    },
+    {
+      "source": "shared/protocol/wire.py",
+      "destination": "shared/protocol/wire.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/conftest.py",
+      "destination": "tests/conftest.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/fixtures/sim_server.py",
+      "destination": "tests/fixtures/sim_server.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_login_chain_sim.py",
+      "destination": "tests/test_login_chain_sim.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_answer_chain_hardening.py",
+      "destination": "tests/test_answer_chain_hardening.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_answer_usage_ledger.py",
+      "destination": "tests/test_answer_usage_ledger.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_subtitle_summary_usage_ledger.py",
+      "destination": "tests/test_subtitle_summary_usage_ledger.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_asr.py",
+      "destination": "tests/test_asr.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_asr_diagnostics.py",
+      "destination": "tests/test_asr_diagnostics.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_asr_timing.py",
+      "destination": "tests/test_asr_timing.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_paraformer_backend.py",
+      "destination": "tests/test_paraformer_backend.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_punct_engine_pin.py",
+      "destination": "tests/test_punct_engine_pin.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_v4nonthink.py",
+      "destination": "tests/test_v4nonthink.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_zipformer_backend.py",
+      "destination": "tests/test_zipformer_backend.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_cloud_automation.py",
+      "destination": "tests/test_cloud_automation.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_course_knowledge.py",
+      "destination": "tests/test_course_knowledge.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_courseware_plan.py",
+      "destination": "tests/test_courseware_plan.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_courseware_parity_twin.py",
+      "destination": "tests/test_courseware_parity_twin.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_junk_filter.py",
+      "destination": "tests/test_junk_filter.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_public_boundary.py",
+      "destination": "tests/test_public_boundary.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_asr_telemetry.py",
+      "destination": "tests/test_asr_telemetry.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_glossary.py",
+      "destination": "tests/test_glossary.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_summary_events.py",
+      "destination": "tests/test_summary_events.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_review_views.py",
+      "destination": "tests/test_review_views.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_quality_judge.py",
+      "destination": "tests/test_quality_judge.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_media_prefetch_integrity.py",
+      "destination": "tests/test_media_prefetch_integrity.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_media_prefetch_parallel.py",
+      "destination": "tests/test_media_prefetch_parallel.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_summary_chain_hardening.py",
+      "destination": "tests/test_summary_chain_hardening.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_lecture_ir.py",
+      "destination": "tests/test_lecture_ir.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_llm_checkpoints.py",
+      "destination": "tests/test_llm_checkpoints.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_mailbox.py",
+      "destination": "tests/test_mailbox.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_ocr.py",
+      "destination": "tests/test_ocr.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_ocr_terminology_context.py",
+      "destination": "tests/test_ocr_terminology_context.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_platform_rough_source.py",
+      "destination": "tests/test_platform_rough_source.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_platform_session.py",
+      "destination": "tests/test_platform_session.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_protocol.py",
+      "destination": "tests/test_protocol.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_runner_echo.py",
+      "destination": "tests/test_runner_echo.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_runner_failure_matrix.py",
+      "destination": "tests/test_runner_failure_matrix.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_runner_progress.py",
+      "destination": "tests/test_runner_progress.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_source.py",
+      "destination": "tests/test_source.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_subtitle_correction.py",
+      "destination": "tests/test_subtitle_correction.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_term_proofread.py",
+      "destination": "tests/test_term_proofread.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_timing_anchor.py",
+      "destination": "tests/test_timing_anchor.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_token_fold.py",
+      "destination": "tests/test_token_fold.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_checkpoint_publish.py",
+      "destination": "tests/test_checkpoint_publish.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_workflows.py",
+      "destination": "tests/test_workflows.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_llm_transport_session.py",
+      "destination": "tests/test_llm_transport_session.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_llm_window_progress.py",
+      "destination": "tests/test_llm_window_progress.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_summary_memory_metrics.py",
+      "destination": "tests/test_summary_memory_metrics.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/streaming_asr_poc.py",
+      "destination": "courselens_worker/streaming_asr_poc.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_streaming_asr_poc.py",
+      "destination": "tests/test_streaming_asr_poc.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/streaming_asr.py",
+      "destination": "courselens_worker/streaming_asr.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/streaming_trigger.py",
+      "destination": "courselens_worker/streaming_trigger.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/streaming_summary.py",
+      "destination": "courselens_worker/streaming_summary.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/live_audio_ingest.py",
+      "destination": "courselens_worker/live_audio_ingest.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/courselens_worker/streaming_session.py",
+      "destination": "courselens_worker/streaming_session.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_streaming_asr.py",
+      "destination": "tests/test_streaming_asr.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_streaming_trigger.py",
+      "destination": "tests/test_streaming_trigger.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_streaming_summary.py",
+      "destination": "tests/test_streaming_summary.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_live_audio_ingest.py",
+      "destination": "tests/test_live_audio_ingest.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_streaming_session.py",
+      "destination": "tests/test_streaming_session.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_llm_thinking_pin.py",
+      "destination": "tests/test_llm_thinking_pin.py",
+      "mode": "100644"
+    },
+    {
+      "source": "worker/tests/test_summary_prefix_order_pin.py",
+      "destination": "tests/test_summary_prefix_order_pin.py",
+      "mode": "100644"
+    }
+  ]
+}

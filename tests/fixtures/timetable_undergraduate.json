@@ -1,0 +1,30 @@
+{
+  "studentTableVms": [
+    {
+      "activities": [
+        {
+          "lessonId": 9001,
+          "lessonCode": "MATH120001",
+          "courseName": "高等数学",
+          "teachers": ["张老师"],
+          "room": "H3101",
+          "weekIndexes": [1, 2, 3, 5],
+          "weekday": 1,
+          "startUnit": 1,
+          "endUnit": 2
+        },
+        {
+          "lessonId": 9002,
+          "lessonCode": "COMP130002",
+          "courseName": "程序设计",
+          "teachers": ["李老师", "王老师"],
+          "room": "HGX502",
+          "weekIndexes": [1, 2, 3, 4],
+          "weekday": 7,
+          "startUnit": 8,
+          "endUnit": 9
+        }
+      ]
+    }
+  ]
+}

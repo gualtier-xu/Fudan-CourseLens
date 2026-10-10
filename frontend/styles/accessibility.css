@@ -1,0 +1,113 @@
+/* [hidden] 全局硬化（UIAUDIT-1 F4）：author 级 display 规则（如 .menu-item 的
+   flex）会压过 UA 样式表里 [hidden] 的 display:none，让「退出登录」在未登录
+   账户菜单里与「登录」同现。逐组件打补丁补不完这类地雷——hidden 的语义在
+   本应用里恒为「不展示」，一条 author 级规则统一定死。 */
+[hidden] { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* Skip link（P2-4，D14 无障碍审计）：键盘 Tab 的第一停点「跳到主内容」，
+   基态与 .sr-only 同款视觉隐藏（不占位、不进截图与打印），聚焦显形。
+   显形位置钉在顶栏正下方（--topbar-height 唯一源 tokens.css），不遮顶栏；
+   z-index 70 高于全站最高浮层（.toast-region 60），浮层开着时聚焦也可见。
+   显形走 :focus-visible（同本文件三态焦点政策）：视觉隐藏的链接指针点不到，
+   键盘 Tab 才是它唯一的进入方式。 */
+.skip-link {
+  position: fixed;
+  top: calc(var(--topbar-height) + 8px);
+  left: 8px;
+  z-index: 70;
+  width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.skip-link:focus-visible {
+  width: auto; height: auto; margin: 0; padding: 10px 16px; overflow: visible; clip: auto;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  text-decoration: underline;
+}
+/* 键盘 Tab/编程聚焦滚动时预留顶栏高度，焦点目标不被遮挡 */
+html { scroll-padding-block-start: calc(var(--topbar-height) + 8px); scroll-padding-left: 8px; }
+/* 紧凑键盘焦点环：2px 高对比（3px 大环在小控件与密集列表里放大视觉噪音），
+   44px 命中区与主题 token 不变；指针聚焦不匹配 :focus-visible，不留持续环。 */
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* tabindex="-1" 只是程序化焦点目标（页面壳、分组标题、浮层根、roving 选项卡），
+   永远不在 Tab 序内。Chromium 的 focus-visible 启发式会把「键盘激活后的编程聚焦」
+   也判定为键盘来源，使整个容器/标题出现大环——这里针对性抑制容器级轮廓。
+   真实控件（按钮/链接/输入/选择/滑杆/选项卡）的环不受影响；这不是全局 outline:none。 */
+[tabindex="-1"]:focus, [tabindex="-1"]:focus-visible { outline: none; }
+main:focus, main:focus-visible { outline: none; }
+/* 静态分组容器不再成为程序化焦点目标；此规则是针对性保险，不是全局 outline:none。
+   可操作控件（含下方分组标题这类紧凑键盘目标）始终保留可见焦点。 */
+.settings-group:focus, .settings-group:focus-visible { outline: none; }
+/* 三态焦点政策（NIGHT5-U1）：键盘环 :focus-visible 恒在；指针态由下方 data-input
+   规则归零，分组标题不再单独保留普通 :focus 环（鼠标点击零环）。 */
+.settings-group > h2:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* 兜底①（控件级）：非键盘来源的聚焦一律无轮廓。现代引擎里 :focus-visible 已
+   判别指针/键盘；这条 :focus:not(:focus-visible) 接住 UA 默认环与历史规则漏网
+   处。它是「无环兜底」，不是全局 outline:none——键盘 :focus-visible 不受影响。 */
+:focus:not(:focus-visible) { outline: none; }
+/* 兜底②（粘滞启发式归零）：Chromium 的 focus-visible 启发式在键盘交互后，会把
+   随后的一次指针点击（及其触发的编程聚焦）仍判成键盘来源，留下意外大环。
+   shell.js 的输入模态追踪器把最近一次真实输入记在 <html data-input>
+   （keydown=key / pointerdown=pointer）；指针态下聚焦一律归零环，键盘态交还
+   :focus-visible——Tab 恒环（2px var(--focus)）不变。 */
+:root[data-input="pointer"] :focus,
+:root[data-input="pointer"] :focus-visible { outline: none; }
+/* 指针态下滑杆的键盘强调形（thumb 外圈阴影）同步归零：环不显示时 thumb 也不带
+   键盘态高亮，三态语义一致；键盘态（Tab/方向键到滑杆）不受影响。 */
+:root[data-input="pointer"] .player-ctrl-timeline:focus-visible::-webkit-slider-thumb,
+:root[data-input="pointer"] .player-ctrl-volume:focus-visible::-webkit-slider-thumb {
+  box-shadow: none;
+}
+/* SVG 元素不吃 HTML UA 的 [hidden] 展示规则（Chromium 行为，S09-Q 平台事实）：
+   没有显式规则时，播放/暂停、音量、密码可见性这类「多图标切换」会全部同显。 */
+svg[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  /* iteration-count:1 是 infinite 动画真正压平的必要项：仅压时长时无限动画仍在
+     循环采样（批 3 走查实测 live-pulse 相位随机、圆点多帧不可见）；计 1 次后落回
+     基础样式（静态圆点/toast 终态），§7「全局压至 0.01ms」语义完整成立。 */
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 180ms; animation-timing-function: ease-out; }
+}
+/* 静态壳面光标纪律（根治非输入面 caret 闪烁）：body 级默认隐藏输入光标，
+   真实文本输入（input/textarea/contenteditable）显式恢复——这不是 outline
+   处理，也不影响文本选择与既有 pages.css 的壳面 closed set。 */
+body { caret-color: transparent; }
+input, textarea, [contenteditable]:not([contenteditable="false"]) { caret-color: auto; }
+@media (forced-colors: active) {
+  .icon-button img, .search-trigger img, .player-placeholder img {
+    forced-color-adjust: none;
+    filter: brightness(0);
+  }
+  button, input, select, dialog, .course-row, .lecture-row, .item-row { border: 1px solid ButtonText; }
+  .course-row-main.active, .lecture-row.active, .material-tab.active,
+  .settings-nav button[aria-current], .palette-option.active { outline: 2px solid Highlight; }
+  /* 开关状态块不只靠颜色：on=实填 Highlight + HighlightText 勾，off=ButtonText 描边 */
+  .course-automation-toggle[aria-pressed="true"] .course-automation-box { background: Highlight; border-color: Highlight; color: HighlightText; }
+  .course-automation-toggle .course-automation-box { border-color: ButtonText; }
+  .hlc-capability, .live-room-capability { color: CanvasText; }
+  .wordmark::after { background: Highlight; }
+  .github-phases li[data-phase-state="done"]::before,
+  .github-phases li[data-phase-state="action_required"]::before {
+    forced-color-adjust: none;
+    background: Highlight;
+    border-color: Highlight;
+  }
+  .global-status[data-state], .status-row[data-state], .recovery-panel, .live-room-row, .toast { border-left: 3px solid ButtonText; }
+  .t-bar .fill { background-color: Highlight; }
+  .task-chip-dot, .conn-dot { forced-color-adjust: none; }
+  .conn-dot[data-state="ready"] { background: Highlight; }
+  .conn-dot[data-state="action"] { border-color: Highlight; background: Canvas; }
+  .conn-dot[data-state="error"] { background: Highlight; }
+  .conn-dot[data-state="checking"] { background: GrayText; }
+  .week-day-head.today, .week-day.today { background: Canvas; }
+  .week-block { border: 1px solid ButtonText; forced-color-adjust: none; background: Canvas; }
+  .week-block.now { border-color: Highlight; }
+  .week-block.conflict { border-color: Highlight; }
+  .sw-progress { forced-color-adjust: none; background: GrayText; }
+  .sw-progress-fill { background: Highlight; }
+}
+@media (forced-colors: active) and (prefers-color-scheme: dark) {
+  .icon-button img, .search-trigger img, .player-placeholder img { filter: brightness(0) invert(1); }
+}

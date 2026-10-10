@@ -1,0 +1,10 @@
+{
+  "name": "courselens-visual-baseline",
+  "private": true,
+  "version": "0.1.0",
+  "description": "CourseLens visual regression baseline harness (playwright capture; see docs/technical/visual-baseline.md)",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "playwright": "1.64.0"
+  }
+}

@@ -1,0 +1,13 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+
+# Batch files are restricted to ASCII by scripts/check_text_encoding.py.
+[*.{cmd,bat}]
+end_of_line = crlf
+
+[*.ps1]
+end_of_line = crlf

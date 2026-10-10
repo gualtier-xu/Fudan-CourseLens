@@ -1,0 +1,65 @@
+# Local secrets and environment files
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.pfx
+
+# Python runtime artifacts
+__pycache__/
+*.pyc
+*.py[cod]
+/.venv*/
+.pytest_cache/
+.mypy_cache/
+/.playwright-cli/
+
+# Bundled/local Python runtimes
+/tools/
+
+# Local app data
+/downloads/
+/downloads/credentials.json
+/downloads/test_credentials.json
+/downloads/test_progress_manifest.json
+/downloads/logs/
+/downloads/.tmp/
+
+# Lane scratch directories (per-package .tmp-<lane>/, never committed;
+# keeps credential-bearing scratch out of any future `git add -A`)
+/.tmp-*/
+/downloads/**/*.mp4
+/downloads/**/*.m4v
+/downloads/**/*.webm
+/downloads/**/*.wav
+/downloads/**/*.raw
+
+# Large local model artifacts
+/models/
+/models/_archives/
+/models/sherpa-onnx-*/
+silero_vad.onnx
+*.whl
+*.tar.bz2
+*.part*.meta.json
+
+# Downloaded third-party source archives (the reviewed source snapshot is tracked)
+vendor/*.zip
+vendor/**/*.zip
+
+# Local read-only implementation references
+# The read-only Subscriber reference is kept outside this repository.
+
+# Local server logs
+server_*.log
+/runtime/
+/runtime/data/
+/runtime/cache/
+/runtime/logs/
+/runtime/reports/
+/runtime/server-instance.json
+
+# Local browser and acceptance artifacts
+/output/
+/tests/visual-baseline/node_modules/

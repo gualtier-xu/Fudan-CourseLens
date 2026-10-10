@@ -1,0 +1,59 @@
+{
+  "schema_version": 3,
+  "platform": "windows-x64",
+  "client_mode": "online-only",
+  "catalog": {
+    "repository": "runtime/data/state.db",
+    "schema_version": 2
+  },
+  "github_app": {
+    "client_id": "Iv23li0BrWRzGKRfVyOn",
+    "slug": "fudan-courselens-student-2026"
+  },
+  "worker_mirror": {
+    "root_keys": {
+      "root-2026-09-cleanroom-r3": "EyE4WY36/n4cHJ2SkvxG0PiH/39z2OniEqnOiHw8010="
+    },
+    "paths": {
+      "manifest": "worker-mirror.manifest.json",
+      "manifest_signature": "worker-mirror.manifest.sig",
+      "trust": "worker-mirror-trust.json",
+      "trust_signature": "worker-mirror-trust.sig"
+    },
+    "active": {
+      "repository": "gualtier-xu/Fudan-CourseLens-Worker",
+      "commit": "020b08ab76645fc9aa98990e8d40c7c7e6e89d55",
+      "tree": "00737d4a160ed0330e67a1b1241acbb9e0114405",
+      "manifest_sha256": "c51b4c7b27f1de23df4846e90779ade934750bab6917ad12ebabae93132ccfcb",
+      "signing_key_id": "release-2026-09-cleanroom-r3",
+      "trust_epoch": 1,
+      "protocol_versions": [
+        "2"
+      ]
+    },
+    "previous": {
+      "repository": "gualtier-xu/Fudan-CourseLens-Worker",
+      "commit": "49ef258856a5dfb1f08b990530ef99416ebd1ffe",
+      "tree": "6a2661a2f8744922c525e5bdb74d94f21ee9e410",
+      "manifest_sha256": "8c19ba35f606d70dc12d0ce1682c868442d0e2cca3d58dc8860eab26b272a579",
+      "signing_key_id": "release-2026-09-cleanroom-r3",
+      "trust_epoch": 1,
+      "protocol_versions": [
+        "2"
+      ]
+    }
+  },
+  "python": {
+    "version": "3.10.11",
+    "distribution": "nuget",
+    "install_dir": "tools/python310",
+    "url": "https://api.nuget.org/v3-flatcontainer/python/3.10.11/python.3.10.11.nupkg",
+    "sha256": "7C6F99B160A36A7E09492DFCFF2B0A3A60BB5229CA44CDCC3ECB32871A6144D0",
+    "python_exe_sha256": "3CCE33D75D6FDAE4E004D0BDF149320B3147482A9CAF370079DCB9C191A1B260"
+  },
+  "client_environment": {
+    "install_dir": ".venv-client-py310",
+    "lock_file": "requirements-client-py310.lock.txt",
+    "pip_version": "26.1.2"
+  }
+}

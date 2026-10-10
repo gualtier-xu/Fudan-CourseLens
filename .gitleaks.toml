@@ -1,0 +1,19 @@
+# Gitleaks secret-scanning configuration.
+#
+# Extends the default ruleset, so every default rule stays active for every
+# file and no path is excluded from scanning. The global allowlist
+# suppresses exactly two self-labeled synthetic negative-test secret
+# literals (used by the evidence-benchmark contract tests and the
+# saved-account restore probe to assert secret-like rejection); gitleaks
+# global allowlists cannot scope a regex to a path, so the suppression is
+# content-exact rather than location-exact by design.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "self-labeled synthetic negative-test secret literals (no real credentials)"
+regexes = [
+  '''^sk-s10a-probe-key-1c7e$''',
+  '''^sk-0123456789abcdef012345$''',
+]

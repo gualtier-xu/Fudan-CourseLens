@@ -1,0 +1,225 @@
+/* 闪卡复习（RR-P4FSRS-1）—— 本包独占新文件，全部类名 p4f- 前缀。
+ * 与并行包零接触：不改 pages.css 及任何共享样式文件；
+ * 颜色/间距/圆角只取 tokens.css 既有变量，浅深主题随 token 自动切换；
+ * 焦点环由 accessibility.css 全局 :focus-visible 提供，本地不逐类补环。
+ * 视觉语言对齐全局：navy 强调、金色时间锚、--line 分隔、--radius 圆角。 */
+
+.p4f-deck {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.p4f-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.p4f-head-title {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.p4f-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.p4f-counts strong {
+  color: var(--navy-ink);
+  font-weight: 600;
+}
+
+.p4f-progress {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.p4f-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  cursor: pointer;
+}
+
+.p4f-card:hover {
+  border-color: var(--line-strong);
+}
+
+.p4f-card:active {
+  background: var(--surface);
+}
+
+.p4f-card-kind {
+  align-self: flex-start;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--navy-soft);
+  color: var(--navy-ink);
+  font-size: 0.84375rem;
+  padding: 2px var(--space-2);
+}
+
+.p4f-card-lecture {
+  color: var(--muted);
+  font-size: 0.84375rem;
+}
+
+.p4f-card-text {
+  margin: 0;
+  font-size: 1.03125rem;
+  line-height: 1.7;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+.p4f-card-text.is-back {
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-3);
+}
+
+.p4f-card-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84375rem;
+}
+
+.p4f-flip-hint {
+  color: var(--muted);
+  font-size: 0.84375rem;
+  margin: 0;
+}
+
+.p4f-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* 按钮基配方吃全局 button 规则（components.css：--line-strong 边、--surface-strong
+   底、4px 12px 内距、32px 最小高、圆角/cursor/transition），同屏与其他按钮同族；
+   本地只保留真实差异项：appearance:none（全局无）、navy-ink 字色（全局 --ink）、
+   复习页衬线轨（见 tokens.css 白名单注记）。 */
+.p4f-button {
+  appearance: none;
+  color: var(--navy-ink);
+  font: inherit;
+}
+
+.p4f-button:not([disabled]):hover {
+  border-color: var(--navy);
+}
+
+.p4f-button.is-flip {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--accent-contrast);
+}
+
+/* 悬停态守住白字：全局 button:hover (0,3,1) 会把字翻成 --navy-ink，
+   navy-hover 深底上对比仅 2.10:1——此处 (0,4,0) 特异度压回，对齐
+   button.primary:hover 先例（components.css）；两主题 --accent-contrast
+   均为白（暗底 4.59:1 / 浅底 13.4:1，均达 WCAG ≥4.5:1）。 */
+.p4f-button.is-flip:not([disabled]):hover {
+  background: var(--navy-hover);
+  color: var(--accent-contrast);
+}
+
+/* 按压态守住深底白字：全局 button:active 会把底色洗成画布色，白字在浅色
+   主题下瞬间不可读（对比 1.06:1）——此处 (0,4,0) 特异度压回 navy-hover。 */
+.p4f-button.is-flip:active:not(:disabled) {
+  background: var(--navy-hover);
+  border-color: var(--navy-hover);
+}
+
+.p4f-button[data-rating="1"] {
+  color: var(--danger);
+}
+
+.p4f-button[data-rating="4"] {
+  color: var(--gold-strong);
+}
+
+.p4f-next-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.p4f-next-note strong {
+  color: var(--navy-ink);
+}
+
+.p4f-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-2);
+}
+
+.p4f-evidence-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.84375rem;
+  color: var(--muted);
+}
+
+.p4f-evidence-kind {
+  color: var(--gold-strong);
+}
+
+.p4f-evidence-jump {
+  appearance: none;
+  border: none;
+  background: none;
+  color: var(--navy-ink);
+  font: inherit;
+  font-size: 0.84375rem;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 无边框文字钮：全局 button:hover 只翻边框与字色，此处两者皆无效，需自洗底
+   （对齐 .text-button:hover 先例）。 */
+.p4f-evidence-jump:hover:not(:disabled) {
+  background: var(--navy-soft);
+}
+
+.p4f-empty,
+.p4f-done {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.p4f-empty p,
+.p4f-done p {
+  margin: 0;
+  color: var(--ink);
+}
+
+/* 错误态（原 .p4f-error danger 配方）已迁共享 .error-note（components.css）：
+   VA-P2-03 兄弟 tab 失败态统一配方，与练习失败同源（VISUAL-BACKLOG-1）。 */

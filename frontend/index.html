@@ -1,0 +1,1374 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>CourseLens</title>
+  <link rel="icon" href="/assets/icons/book.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles/tokens.css">
+  <link rel="stylesheet" href="/styles/layout.css">
+  <link rel="stylesheet" href="/styles/components.css">
+  <link rel="stylesheet" href="/styles/pages.css">
+  <link rel="stylesheet" href="/styles/live.css">
+  <link rel="stylesheet" href="/styles/accessibility.css">
+  <script src="/vendor/hlsjs/hls.min.js" defer></script>
+  <script type="module" src="/app.js"></script>
+  <script type="module" src="/modules/greeting-boot.js"></script>
+  <style>
+    /* 断连横幅（BACKEND-DEATH-1③）：色值取主题 token，双主题对比达标 */
+    .service-banner {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 16px;
+    background: var(--danger-soft);
+    color: var(--danger);
+    border-bottom: 1px solid var(--danger);
+    font-size: 0.8125rem; /* 13px ÷ 16，随界面字号档缩放 */
+  }
+    .service-banner[hidden] { display: none; }
+    /* POLISH-O13 O1：确认前疑似态轻提示（首拍探测失败即亮）——中性静色轻横幅，
+       等待可视化；确认断开后由 JS 置 data-state="down" 回 danger 既有形态。 */
+    #service-banner[data-state="probing"] {
+      background: var(--surface);
+      color: var(--muted);
+      border-bottom: 1px solid var(--line);
+    }
+  </style>
+</head>
+<body>
+  <!-- P2-4 skip link（D14 无障碍审计）：键盘 Tab 的第一停点，免穿顶栏 9 控件
+       直达正文；落焦目标 #workspace-main 已 tabindex="-1"。基态视觉隐藏、
+       聚焦显形，显形规则在 styles/accessibility.css 的 .skip-link。 -->
+  <a class="skip-link" href="#workspace-main">跳到主内容</a>
+  <header class="topbar">
+    <button id="wordmark" class="wordmark" type="button" data-goto-study>CourseLens</button>
+    <button id="live-entry" class="live-entry" type="button" data-goto-live aria-label="直播，今晚有直播课时显示红点">直播<span id="live-entry-dot" class="live-entry-dot" hidden></span></button>
+    <span id="topbar-crumbs" class="topbar-crumbs" hidden></span>
+    <span id="global-status" class="global-status" data-state="checking" role="status">正在连接</span>
+    <div class="topbar-actions">
+      <button id="search-trigger" class="search-trigger" type="button" data-open-search aria-haspopup="dialog" aria-controls="palette-root" aria-expanded="false">
+        <img src="/assets/icons/search.svg" alt=""><span class="st-text">搜索</span><kbd>Ctrl K</kbd>
+      </button>
+      <button id="theme-toggle" class="icon-button theme-toggle" type="button" aria-pressed="false" aria-label="深色主题" title="切换到深色主题">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/><circle cx="12" cy="12" r="4"/></svg>
+      </button>
+      <!-- N10B-1（B 车道移交，夜10-A 落地）：初始态也须具名——动态渲染会覆写 -->
+      <button id="update-toggle" class="icon-button update-toggle" type="button" data-update-state="idle" aria-label="客户端更新" title="客户端更新" hidden>
+        <svg data-update-icon="install" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11"/><path d="m7 9 5 5 5-5"/><path d="M5 21h14"/></svg>
+        <svg data-update-icon="restart" hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 4v7h-7"/></svg>
+        <span class="update-dot" data-update-dot hidden></span>
+      </button>
+      <div id="status-capsule" class="status-capsule" role="group" aria-label="状态：连接、任务">
+        <button id="conn-status" class="conn-status" type="button" data-open-conn data-service-action aria-haspopup="dialog" aria-controls="conn-menu" aria-expanded="false" aria-label="连接状态">
+          <span class="conn-dot" data-conn-dot="fudan" data-state="checking"></span>
+          <span class="conn-dot" data-conn-dot="github" data-state="checking"></span>
+        </button>
+        <button id="task-chip" class="btn-tasks" type="button" data-open-tasks aria-haspopup="dialog" aria-controls="tasks-root" aria-expanded="false" aria-label="任务">
+          <span id="task-chip-dot" class="task-chip-dot" hidden></span>
+          <span class="btn-tasks-label">任务</span>
+          <span id="task-chip-count" class="task-chip-count" hidden></span>
+          <span id="task-chip-failed" class="task-chip-failed" hidden>失败</span>
+        </button>
+      </div>
+      <button id="account-button" class="account-button" type="button" data-open-account data-service-action aria-haspopup="dialog" aria-controls="account-menu" aria-expanded="false" aria-label="账户"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 20c1.6-3.4 4.4-5 7.5-5s5.9 1.6 7.5 5"/></svg><span id="account-text">登录</span></button>
+    </div>
+  </header>
+
+  <div id="service-banner" class="service-banner" role="alert" hidden>
+    <!-- 初始静态文本=确认断开文案（JS 首次 apply 起接管，见 shell.js SERVICE_*_TEXT 闭集） -->
+    <span>界面暂时没连上本地服务，正在自动重试…</span>
+  </div>
+
+  <main id="workspace-main" tabindex="-1">
+    <section id="study-page" class="page active" data-page="study">
+      <div id="study-empty" class="empty-state">
+        <p id="empty-greeting" class="empty-greeting">你好。</p>
+        <button id="empty-verse" class="empty-verse" type="button" aria-label="诗联，点击换一句">
+          <span class="empty-verse-text">纸上得来终觉浅，绝知此事要躬行。</span>
+          <span class="empty-verse-hint" aria-hidden="true">换一句</span>
+        </button>
+        <p id="empty-verse-source" class="empty-verse-source">陆游 · 冬夜读书示子聿</p>
+        <!-- NAV-HANG-1③：可访问名恒为「选择课程」——可见文案随 auth 态变
+             （登录后选择课程/重新登录并选择课程），自动化定位与读屏不漂移 -->
+        <button id="study-start-select" class="empty-action" type="button" aria-label="选择课程">选择课程</button>
+        <!-- LANDING-AESTHETIC-1（用户裁决 2026-10-09）：诗页复原——主钮原样原位；
+             U1「继续学习」降级为主钮下一行极轻弱化文字链（13px muted，近乎隐身，
+             不扰诗页留白；样式见 components.css .continue-lecture）。U1 一击直达
+             语义不变：单击即进学习桌（续播位置由播放器既有恢复链自动回放，
+             着陆→内容 ≤2 击红线）；可访问名=「继续学习+课程·讲次」（aria-label，
+             可见文字=「上次：课程·讲次」，弱化视觉不弱化语义）；无历史或目录解析
+             失败时恒隐（纯诗页+主钮），渲染零焦点扰动。 -->
+        <button id="study-continue" class="continue-lecture" type="button" hidden></button>
+        <!-- STUDY-STATS-GFIX-1 F1：本周学习面貌卡三态宿主之一（诗页）。卡唯一节点由
+             study-stats.js 随学习面三态重挂（empty=诗页/select=概览原位/desk=桌首）；
+             首跑引导态文案在真实首跑着陆可见（到卡 0 点击，双门道 GATES-1 F1）。 -->
+        <div id="study-week-card-host-empty"></div>
+      </div>
+
+      <div id="study-select" class="study-select" hidden>
+        <header class="page-header">
+          <div class="page-heading"><h1>学习</h1><span id="catalog-evidence">等待身份验证</span></div>
+          <div class="header-actions">
+            <label class="catalog-term-filter" for="catalog-term-filter">学期<select id="catalog-term-filter" class="select" data-dropdown aria-label="课程目录学期"></select></label>
+            <button id="refresh-catalog" type="button">刷新</button>
+          </div>
+        </header>
+        <section id="catalog-recovery" class="recovery-panel" aria-live="polite" hidden>
+          <div>
+            <h2 id="catalog-recovery-title">课程目录需要处理</h2>
+            <p id="catalog-recovery-impact"></p>
+          </div>
+          <div id="catalog-recovery-actions" class="button-row"></div>
+          <details>
+            <summary>诊断信息</summary>
+            <code id="catalog-diagnostic-code"></code>
+            <button id="copy-catalog-diagnostics" type="button">复制连接诊断</button>
+          </details>
+        </section>
+
+        <div class="home-overview" aria-label="今日概览">
+          <!-- F1（化身走查 20261008）→ LANDING-AESTHETIC-1（用户裁决 2026-10-09）：
+               引导挂起提示行退出着陆页（诗页零打扰；恢复路径保留账户菜单/设置帮助
+               既有入口=不灭），唯一宿主=选课面板概览顶部原位。可见性闭集=引导挂起
+               且选课面板可见（onboarding.js syncHomeResumePrompt 管理；问候空态/
+               学习桌恒隐）。 -->
+          <div id="home-guide-resume" class="button-row home-guide-resume" hidden>
+            <span class="hint">新手引导还没完成，随时可以继续。</span>
+            <button id="home-guide-resume-action" class="text-button" type="button">继续新手引导</button>
+          </div>
+          <div class="home-cards-row">
+            <section class="schedule-card" id="schedule-box" data-state="idle" aria-label="今日与本周安排">
+              <button id="schedule-widget" class="schedule-widget" type="button" aria-haspopup="dialog" aria-controls="schedule-week-dialog" aria-expanded="false">
+                <span class="sw-head"><span class="s-title">今日与本周安排</span><span class="sw-open-hint" aria-hidden="true">周课表 ›</span></span>
+                <span id="schedule-now" class="schedule-now"><span class="sw-empty">正在读取课表…</span></span>
+                <span id="schedule-summary" class="s-summary">正在读取课表…</span>
+              </button>
+              <span id="schedule-widget-state" class="sw-state" role="status" aria-live="polite"></span>
+            </section>
+            <section id="home-live-card" class="home-live-card" data-state="unknown" aria-label="直播入口">
+              <span class="sw-head"><span class="s-title">直播</span><span id="home-live-target" class="hlc-target"></span></span>
+              <div class="hlc-body" role="status" aria-live="polite">
+                <strong id="home-live-label">暂无直播目标</strong>
+                <span id="home-live-capability" class="hlc-capability">直播状态待确认</span>
+                <span id="home-live-time"></span>
+                <span id="home-live-reason">尚未确认课表，暂不能选择直播目标。</span>
+              </div>
+              <div class="hlc-actions">
+                <button id="home-live-action" class="btn-primary" type="button" hidden></button>
+                <button id="home-live-recheck" class="btn-quiet hlc-recheck" type="button" hidden>重新确认</button>
+              </div>
+              <p id="home-live-disclosure" class="live-disclosure"></p>
+            </section>
+          </div>
+          <!-- STUDY-STATS-M1 本周学习面貌（学习统计 v2 默认层）：着陆页零点击即达，
+               三块纵排（周条形/到期待办/掌握度 top3），由 modules/study-stats.js 渲染；
+               取代学习页复习页签恒零死格（study.js loadAnalytics 字段错配，已移除）。
+               STUDY-STATS-GFIX-1 F1：此处=select 态宿主（今日概览原位）；卡随三态
+               重挂 empty=诗页/desk=桌首宿主，选课面板不再是唯一可见面。 -->
+          <section id="study-week-card" class="study-week-card" aria-label="本周学习面貌">
+            <span class="hint p5s-loading">正在读取学习面貌…</span>
+          </section>
+        </div>
+
+        <dialog id="schedule-week-dialog" class="week-dialog" aria-labelledby="schedule-week-dialog-title">
+          <header class="week-dialog-header">
+            <h2 id="schedule-week-dialog-title">周课表</h2>
+            <span class="week-tag" id="schedule-week-tag"></span>
+            <div class="week-dialog-actions">
+              <button class="btn-quiet" type="button" id="schedule-week-prev">上一周</button>
+              <button class="btn-quiet" type="button" id="schedule-week-next">下一周</button>
+              <button class="btn-quiet" type="button" id="schedule-week-current">回到本周</button>
+              <!-- SIMPLIFY-AUDIT-1 S2：周课表手动「刷新」钮退役——弹窗打开即自动读取、
+                   缓存过期一个 episode 自动后台刷新一次（CONN-STALE-R2 链）；错误态
+                   （来源不可用/数据未确认）由状态行内联动作钮兜底，不再常驻手动钮。 -->
+              <button id="close-schedule-dialog" class="icon-button" type="button" aria-label="关闭周课表" title="关闭"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+            </div>
+          </header>
+          <p id="schedule-state" class="schedule-state" role="status" aria-live="polite"></p>
+          <div class="week-scroll">
+            <div class="week-table" id="week-grid" aria-label="周课表网格"></div>
+          </div>
+          <div id="schedule-conflicts" class="schedule-conflicts"></div>
+          <footer class="week-dialog-footer">
+            <details class="tt-settings">
+              <summary>课表设置</summary>
+              <div class="tt-fields">
+                <select class="select" id="timetable-semester" data-dropdown aria-label="学期"></select>
+                <input class="field" type="date" id="timetable-start-date" aria-label="学期起始日" style="width:170px;">
+                <p class="hint tt-date-format-hint">日期框按系统格式显示：月/日/年</p>
+                <button class="btn-quiet" type="button" id="set-timetable-start">设置起始日</button>
+                <a class="button-link" id="export-timetable" href="/api/v3/timetable/export.ics">导出日历文件（ICS）</a>
+              </div>
+            </details>
+          </footer>
+        </dialog>
+
+        <section id="cloud-control-card" class="cloud-control-card" hidden>
+          <div class="cloud-control-head">
+            <span id="cloud-control-state" class="cloud-control-state" data-state="unknown">云自动化状态未知</span>
+            <div id="cloud-control-actions" class="button-row"></div>
+          </div>
+          <p id="cloud-control-revoke-note" class="hint" hidden>撤销云端授权在「设置 → 网络与远程连接」的高级操作里，那里说明了它会删掉什么。</p>
+        </section>
+
+        <div class="course-layout">
+          <aside id="study-course-list" class="course-list" aria-label="课程列表" aria-busy="false"></aside>
+          <span id="course-automation-live" class="sr-only" role="status" aria-live="polite"></span>
+          <section class="lecture-pane">
+            <div class="lecture-head">
+              <button id="study-back-courses" class="text-button" type="button" hidden>‹ 课程</button>
+              <h2 id="study-course-title">选择课程</h2>
+              <span id="study-course-meta"></span>
+              <button id="course-review-open" class="text-button cr-open" type="button" hidden>总体复习</button>
+            </div>
+            <div id="study-lecture-list" class="lecture-list"></div>
+          </section>
+        </div>
+
+        <!-- 课程级总体复习 surface（唯一入口在 .lecture-head，课次卡不新增入口） -->
+        <section id="course-review-surface" class="course-review" aria-labelledby="course-review-title" tabindex="-1" data-tab="topics" hidden>
+          <header class="cr-header">
+            <button id="course-review-exit" class="text-button" type="button">‹ 返回课程</button>
+            <div class="cr-heading">
+              <h2 id="course-review-title">总体复习</h2>
+              <span id="course-review-course"></span>
+            </div>
+            <div class="cr-actions">
+              <button id="course-review-reload" class="icon-button" type="button" aria-label="重新载入总体复习" title="重新载入"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 4v7h-7" stroke-linejoin="round"/></svg></button>
+              <button id="course-review-refresh" class="btn-primary" type="button">更新课程知识</button>
+            </div>
+          </header>
+          <p id="course-review-coverage" class="cr-coverage" hidden></p>
+          <p id="course-review-status" class="cr-status" role="status" aria-live="polite"></p>
+          <p id="course-review-refresh-result" class="cr-refresh-result" role="status" aria-live="polite" hidden></p>
+          <!-- THINK-LADDER-2：课程记忆复核区（候选词确认/忽略 + 自动晋升件撤销）；
+               两清单全空时由模块整区隐藏（无空壳）。 -->
+          <div id="term-candidate-region" hidden></div>
+          <div class="cr-tabs" role="tablist" aria-label="总体复习视图">
+            <button class="cr-tab active" type="button" role="tab" id="cr-tab-topics" data-review-tab="topics" aria-controls="cr-panel-topics" aria-selected="true" tabindex="0">知识脉络</button>
+            <button class="cr-tab" type="button" role="tab" id="cr-tab-lectures" data-review-tab="lectures" aria-controls="cr-panel-lectures" aria-selected="false" tabindex="-1">按课次</button>
+            <button class="cr-tab" type="button" role="tab" id="cr-tab-assessment" data-review-tab="assessment" aria-controls="cr-panel-assessment" aria-selected="false" tabindex="-1">练习与真题</button>
+            <button class="cr-tab" type="button" role="tab" id="cr-tab-flashcards" data-review-tab="flashcards" aria-controls="cr-panel-flashcards" aria-selected="false" tabindex="-1">闪卡复习</button>
+          </div>
+          <div class="cr-panels">
+            <div class="cr-panel" role="tabpanel" id="cr-panel-topics" data-review-panel="topics" aria-labelledby="cr-tab-topics" tabindex="0"></div>
+            <div class="cr-panel" role="tabpanel" id="cr-panel-lectures" data-review-panel="lectures" aria-labelledby="cr-tab-lectures" tabindex="0" hidden></div>
+            <div class="cr-panel" role="tabpanel" id="cr-panel-assessment" data-review-panel="assessment" aria-labelledby="cr-tab-assessment" tabindex="0" hidden></div>
+            <div class="cr-panel" role="tabpanel" id="cr-panel-flashcards" data-review-panel="flashcards" aria-labelledby="cr-tab-flashcards" tabindex="0" hidden></div>
+          </div>
+        </section>
+      </div>
+
+      <div id="study-desk" class="study-desk" hidden>
+        <header class="desk-header">
+          <button id="study-back-select" class="text-button" type="button">‹ 课程与讲次</button>
+        </header>
+        <!-- STUDY-STATS-GFIX-1 F1：本周学习面貌卡三态宿主之一（学习桌首）。续学着陆
+             0 点击即达；≥1000px 三块横排变体（视频 56vh 高度帽下卡与播放器同屏可见）。 -->
+        <div id="study-week-card-host-desk"></div>
+        <div class="desk-columns">
+          <section class="player-pane" aria-label="播放器与生成动作">
+            <header class="section-header"><h1 id="player-title">选择讲次</h1><span id="player-evidence">未选择媒体</span></header>
+            <div id="player-placeholder" class="player-placeholder">
+              <img src="/assets/icons/book.svg" alt="">
+              <p>选择讲次后，媒体将在这里播放。</p>
+            </div>
+            <div id="player-stage-shell" class="player-stage-shell" data-chrome="visible">
+              <div id="player-stage-fit" class="player-stage-fit">
+                <video id="player-stage" preload="metadata" playsinline crossorigin="use-credentials" controlslist="nodownload noremoteplayback" disableremoteplayback tabindex="-1" hidden>
+                  <!-- tabindex=-1：palette 收口按页归锚的编程聚焦目标（ui.js returnFocus）；
+                       负值不入 Tab 序，:focus 环按 [tabindex="-1"] 容器级抑制规则不显环 -->
+                  <track id="player-subtitle-track" kind="subtitles" srclang="zh" label="课程字幕" default>
+                </video>
+                <div id="player-subtitle-overlay" class="player-subtitle-overlay" aria-hidden="true" hidden></div>
+                <div id="player-controls" class="player-controls" role="group" aria-label="播放控制" data-chrome-state="visible" hidden>
+                  <div id="player-timeline" class="player-timeline">
+                    <div id="player-timeline-buffered" class="player-timeline-buffered"></div>
+                    <div id="player-timeline-markers" class="player-timeline-markers"></div>
+                    <div id="player-timeline-flags" class="player-timeline-flags"></div>
+                    <div id="player-timeline-labels" class="player-timeline-labels"></div>
+                    <div id="player-timeline-heat" class="player-timeline-heat"></div>
+                    <div id="player-timeline-assess" class="player-timeline-assess"></div>
+                    <div id="player-timeline-fill" class="player-timeline-fill"></div>
+                    <input id="player-ctrl-timeline" class="player-ctrl-timeline" type="range" min="0" max="0" step="0.1" value="0" aria-label="播放进度" disabled>
+                    <div id="player-timeline-bubble" class="player-timeline-bubble" aria-hidden="true" hidden></div>
+                  </div>
+                  <div class="player-controls-row">
+                    <button id="player-ctrl-play" class="player-ctrl-button" type="button" data-state="paused" aria-label="播放" disabled>
+                      <svg data-play-icon="play" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>
+                      <svg data-play-icon="pause" hidden width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.4z"/></svg>
+                    </button>
+                    <span id="player-ctrl-elapsed" class="player-ctrl-time">0:00</span>
+                    <span id="player-ctrl-duration" class="player-ctrl-time player-ctrl-time-total">0:00</span>
+                    <span class="player-controls-spring" aria-hidden="true"></span>
+                    <div id="player-volume" class="player-volume">
+                      <button id="player-ctrl-mute" class="player-ctrl-button" type="button" data-state="sound-on" aria-label="静音" disabled>
+                        <svg data-volume-icon="on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 9.5v5h3.6l4.9 4V5.5l-4.9 4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6"/><path d="M17.8 6.6a7.6 7.6 0 0 1 0 10.8"/></svg>
+                        <svg data-volume-icon="low" hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 9.5v5h3.6l4.9 4V5.5l-4.9 4z"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6"/></svg>
+                        <svg data-volume-icon="off" hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 9.5v5h3.6l4.9 4V5.5l-4.9 4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+                      </button>
+                      <div id="player-volume-surface" class="player-volume-surface">
+                        <input id="player-ctrl-volume" class="player-ctrl-volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="音量" disabled>
+                      </div>
+                    </div>
+                    <select id="player-ctrl-speed" class="player-ctrl-speed" data-dropdown="media" aria-label="播放速度" disabled>
+                      <option value="0.5">0.5×</option>
+                      <option value="0.75">0.75×</option>
+                      <option value="1" selected>1×</option>
+                      <option value="1.25">1.25×</option>
+                      <option value="1.5">1.5×</option>
+                      <option value="1.75">1.75×</option>
+                      <option value="2">2×</option>
+                      <option value="2.5">2.5×</option>
+                      <option value="3">3×</option>
+                    </select>
+                    <button id="player-subtitle-chip" class="player-subtitle-chip" type="button" hidden title="查看任务进度">字幕生成中</button>
+                    <button id="player-ctrl-bookmark" class="player-ctrl-button player-ctrl-text" type="button" hidden>没听懂</button>
+                    <button id="player-ctrl-subtitle" class="player-ctrl-button player-ctrl-text" type="button" aria-pressed="true" aria-label="关闭字幕" title="点按开关字幕；长按可调字幕样式" hidden>字幕</button>
+                    <button id="player-ctrl-pip" class="player-ctrl-button player-ctrl-text" type="button" aria-pressed="false" aria-label="进入画中画" hidden>画中画</button>
+                    <button id="player-ctrl-theatre" class="player-ctrl-button player-ctrl-text player-ctrl-theatre" type="button" aria-pressed="false" aria-label="开启影院模式" disabled>影院</button>
+                    <button id="player-ctrl-fullscreen" class="player-ctrl-button player-ctrl-text" type="button" aria-pressed="false" aria-label="进入全屏" disabled>全屏</button>
+                  </div>
+                </div>
+                <div id="player-osd-center" class="player-osd-center" aria-hidden="true" data-state="pause" hidden>
+                  <svg data-osd-icon="play" width="30" height="30" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>
+                  <svg data-osd-icon="pause" width="30" height="30" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.4z"/></svg>
+                </div>
+                <div id="player-osd-hint" class="player-osd-hint" aria-hidden="true" hidden></div>
+                <div id="player-stage-spinner" class="player-stage-spinner" aria-hidden="true" hidden>
+                  <span class="player-stage-spinner-ring"></span>
+                  <span class="player-stage-spinner-text">正在缓冲，内容没丢</span>
+                </div>
+                <!-- PERF-C23 舞台级预载提示：讲次选中→媒体就绪间舞台不再无解释空窗
+                     （spinner 事件族预载期不触发，夜批15 R2 C2-3 定谳）；预载启动
+                     500ms 防闪后示，loadedmetadata/error 平滑让位。闭集文案钉于
+                     tests/frontend_stage_preload_behavior.mjs。 -->
+                <div id="player-stage-preload" class="player-stage-preload" role="status" aria-live="polite" hidden>
+                  <span class="player-stage-preload-ring" aria-hidden="true"></span>
+                  <span class="player-stage-preload-primary">正在准备本讲视频…</span>
+                  <span class="player-stage-preload-secondary">视频就绪前，可先看字幕</span>
+                </div>
+              </div>
+              <p id="player-ctrl-status" class="sr-only" role="status"></p>
+            </div>
+            <section id="player-recovery" class="recovery-panel player-recovery" data-state="unknown" aria-live="polite" hidden>
+              <div>
+                <h2 id="player-recovery-title">播放需要处理</h2>
+                <p id="player-recovery-impact"></p>
+              </div>
+              <div id="player-recovery-actions" class="button-row"></div>
+            </section>
+            <div class="player-actions">
+              <button id="generate-subtitle" type="button" aria-describedby="player-action-hint" disabled>生成字幕</button>
+              <button id="generate-notes" type="button" aria-describedby="player-action-hint" disabled>AI处理</button>
+              <button id="insight-erase" class="btn-quiet danger-quiet" type="button" hidden>抹掉本讲热点</button>
+            </div>
+            <p id="player-action-hint" class="hint" role="status">选择讲次后可生成字幕和笔记。</p>
+            <div id="player-task-state" class="status-row" data-state="unknown" hidden>
+              <span id="player-task-text">暂无任务证据</span>
+              <button id="player-task-open-drawer" type="button" hidden data-open-tasks aria-haspopup="dialog" aria-controls="tasks-root" aria-expanded="false">查看进度</button>
+            </div>
+            <div id="live-room-row" class="live-room-row" data-state="unknown" aria-live="polite">
+              <div class="live-room-text">
+                <strong id="live-room-label">暂无直播目标</strong>
+                <span id="live-room-capability" class="live-room-capability">直播状态待确认</span>
+                <span id="live-room-time">选择已授权课程后自动确认</span>
+                <span id="live-room-reason">尚未选择课程，暂时不能确认直播状态。</span>
+              </div>
+              <div class="live-room-actions">
+                <button id="enter-live-room" type="button" disabled hidden>进入直播</button>
+                <button id="live-room-recheck" class="btn-quiet live-room-recheck" type="button" hidden>重新确认</button>
+              </div>
+            </div>
+            <p id="live-room-disclosure" class="live-disclosure"></p>
+          </section>
+          <section class="content-pane" aria-label="学习内容">
+            <div class="materials-tabs" role="tablist" aria-label="学习内容">
+              <button class="material-tab active" type="button" role="tab" id="tab-transcript" data-material-tab="transcript" aria-controls="panel-transcript" aria-selected="true" tabindex="0">字幕</button>
+              <button class="material-tab" type="button" role="tab" id="tab-notes" data-material-tab="notes" aria-controls="panel-notes" aria-selected="false" tabindex="-1">总结</button>
+              <button class="material-tab" type="button" role="tab" id="tab-documents" data-material-tab="documents" aria-controls="panel-documents" aria-selected="false" tabindex="-1">资料</button>
+              <button class="material-tab" type="button" role="tab" id="tab-review" data-material-tab="review" aria-controls="panel-review" aria-selected="false" tabindex="-1">复习</button>
+            </div>
+            <div class="material-panel" role="tabpanel" id="panel-transcript" data-material-panel="transcript" aria-labelledby="tab-transcript" tabindex="0">
+              <header class="section-header"><h2>字幕</h2></header>
+              <!-- SIMPLIFY-AUDIT-1 S2：手动「刷新字幕」图标钮退役——进讲次自动载入、
+                   字幕生成完成经任务事件链热重读（SWEEPFIX-R2 W1），手动钮与自动链冗余。 -->
+              <p id="transcript-mode-note" class="hint" role="status" hidden></p>
+              <div class="transcript-search">
+                <input id="transcript-search-input" class="transcript-search-input" type="search" placeholder="在文稿中找一句话…" aria-label="在文稿中查找" autocomplete="off" enterkeyhint="search">
+                <p id="transcript-search-state" class="hint" role="status" hidden></p>
+                <div id="transcript-search-results" class="transcript-list transcript-search-results" hidden></div>
+              </div>
+              <div id="transcript-list" class="transcript-list"></div>
+              <section class="bookmark-section">
+                <header class="section-header"><h2>我的书签</h2></header>
+                <p id="bookmark-action-state" class="hint" role="status" hidden></p>
+                <div id="bookmark-list" class="item-list" aria-live="polite"></div>
+              </section>
+            </div>
+            <div class="material-panel" role="tabpanel" id="panel-notes" data-material-panel="notes" aria-labelledby="tab-notes" tabindex="0" hidden>
+              <header class="section-header notes-panel-header">
+                <h2>本讲总结</h2>
+                <span class="notes-header-actions">
+                  <span id="quality-chip-mount" hidden></span>
+                  <button id="ask-lecture" class="text-button" type="button">针对本讲提问</button>
+                  <select id="artifact-kind" data-dropdown aria-label="总结视图"><option value="lecture_summary">总结</option><option value="lecture_chapters">章节</option><option value="timestamp_summary">时间戳摘要</option></select>
+                </span>
+              </header>
+              <p id="artifact-notices" class="artifact-notices" role="status" hidden></p>
+              <div id="quality-findings" hidden></div>
+              <section id="artifact-structured" class="structured-summary" hidden>
+                <h3 id="artifact-overview-title" hidden>概览</h3>
+                <p id="artifact-overview" class="prose-output" hidden></p>
+                <h3 id="artifact-takeaways-title" hidden>核心结论</h3>
+                <ul id="artifact-takeaways" class="takeaway-list" hidden></ul>
+                <h3 id="artifact-chapters-title" hidden>章节</h3>
+                <div id="artifact-chapters" class="chapter-list" hidden></div>
+                <div id="assessment-summary-radar" class="assessment-radar" hidden></div>
+                <p id="artifact-source" class="hint" hidden></p>
+              </section>
+              <article id="artifact-content" class="prose-output"></article>
+              <section id="artifact-key-moments" class="structured-summary key-moments" hidden>
+                <h3>关键时刻</h3>
+                <div id="artifact-key-moment-list" class="chapter-list"></div>
+              </section>
+            </div>
+            <div class="material-panel" role="tabpanel" id="panel-documents" data-material-panel="documents" aria-labelledby="tab-documents" tabindex="0" hidden>
+              <header class="section-header"><h2>资料</h2></header>
+              <section class="courseware-surface" id="courseware-surface" aria-labelledby="courseware-title">
+                <h3 id="courseware-title">本讲课件</h3>
+                <div class="courseware-row">
+                  <div class="courseware-info" id="courseware-info" data-tone="">
+                    <p id="courseware-pdf-state" class="hint" role="status" aria-live="polite" aria-atomic="true"></p>
+                    <p id="courseware-pdf-detail" class="hint" hidden></p>
+                  </div>
+                  <div class="courseware-actions">
+                    <a id="courseware-pdf-download" class="courseware-pdf-download" hidden download>下载 PDF</a>
+                    <button id="generate-courseware-pdf" class="btn-primary" type="button" title="从本讲课堂画面整理为可下载的课件 PDF">生成课件 PDF</button>
+                  </div>
+                </div>
+                <details id="courseware-notes" class="courseware-notes" hidden>
+                  <summary>整理说明</summary>
+                  <div class="courseware-notes-body">
+                    <p>页面按课堂画面的出现顺序整理，不等于原始课件页序。</p>
+                    <p>完全相同的重复画面会合并为一页；有改动或批注的版本会全部保留。</p>
+                    <p id="courseware-notes-counts" hidden></p>
+                  </div>
+                </details>
+              </section>
+              <section class="imported-documents" id="imported-documents" aria-labelledby="imported-documents-title" data-empty="true">
+                <header class="imported-documents-head">
+                  <h3 id="imported-documents-title">全部资料</h3>
+                  <select id="document-kind-filter" class="document-kind-filter" data-dropdown aria-label="按类型筛选资料">
+                    <option value="all">全部类型</option>
+                    <option value="document">导入</option>
+                    <option value="courseware">课件</option>
+                    <option value="summary">总结</option>
+                  </select>
+                </header>
+                <h3 class="import-flow-title" id="import-flow-title">导入资料</h3>
+                <div class="import-flow" id="import-flow" role="group" aria-labelledby="import-flow-title">
+                  <select id="document-type-select" data-dropdown aria-label="导入类型">
+                    <option value="other">其他</option>
+                    <option value="courseware">课件</option>
+                    <option value="textbook">教材</option>
+                    <option value="notes">笔记</option>
+                    <option value="exam_paper">真题</option>
+                    <option value="homework">作业</option>
+                  </select>
+                  <label class="file-button">导入<input id="document-input" type="file" accept=".pdf,.pptx,.txt,.md" multiple></label>
+                  <label class="check document-scope-option"><input id="document-scope-course" type="checkbox">作为课程级资料（不挂讲次）</label>
+                </div>
+                <div id="document-list" class="item-list"></div>
+              </section>
+            </div>
+            <div class="material-panel" role="tabpanel" id="panel-review" data-material-panel="review" aria-labelledby="tab-review" tabindex="0" hidden>
+              <header class="section-header"><h2>测验与复习</h2><button id="generate-quiz" type="button">生成测验</button></header>
+              <div id="quiz-list" class="item-list"></div>
+              <section id="exam-context" class="exam-context" hidden>
+                <p id="exam-context-row" class="exam-context-row" role="status"></p>
+                <div id="assessment-desk-radar" class="assessment-radar" hidden></div>
+                <h3 id="exam-today-title">今天建议</h3>
+                <div id="exam-today-list" class="item-list"></div>
+                <p id="exam-today-state" class="hint" role="status" hidden></p>
+              </section>
+              <div id="review-list" class="item-list"></div>
+              <details class="review-secondary">
+                <summary>课程关系</summary>
+                <div class="review-secondary-body">
+                  <button id="analyze-concepts" type="button">分析</button>
+                  <div id="concept-list" class="item-list"></div>
+                </div>
+              </details>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section id="live-page" class="page" data-page="live" hidden>
+      <header class="page-header">
+        <div class="page-heading"><h1>直播</h1><span id="live-evidence">本地安全直播会话</span></div>
+        <div class="header-actions">
+          <button id="live-recheck" class="btn-quiet" type="button">重新确认</button>
+        </div>
+      </header>
+      <div class="live-layout">
+        <div class="live-main">
+          <div id="live-stage" class="live-stage">
+            <video id="live-video" preload="none" playsinline crossorigin="use-credentials" controlslist="nodownload noremoteplayback" disableremoteplayback hidden></video>
+            <span id="live-badge" class="live-badge" hidden>直播中</span>
+            <span id="live-clock" class="live-clock" hidden></span>
+            <button id="live-pill" class="live-pill" type="button" hidden>回到直播中</button>
+            <div id="live-buffering" class="live-buffering" aria-hidden="true" hidden>
+              <span class="live-buffering-ring"></span>
+              <span>正在缓冲，内容没丢</span>
+            </div>
+            <div id="live-cover" class="live-cover">
+              <div id="live-card" class="live-card" role="status" aria-live="polite">
+                <h2 id="live-card-title"></h2>
+                <p id="live-card-body"></p>
+                <p id="live-card-diagnostic" class="live-card-diagnostic" hidden></p>
+                <div id="live-card-actions" class="live-card-actions"></div>
+              </div>
+            </div>
+          </div>
+          <p id="live-hint" class="live-hint" role="status" hidden>网络不太顺，画面会自己恢复；持续卡顿的话可以稍后再来。</p>
+          <div id="live-view-bar" class="live-view-bar" role="group" aria-label="直播视角" hidden></div>
+          <p id="live-view-hint" class="live-view-hint" role="status" hidden>网络不太顺？切到「声音」档会流畅很多。</p>
+          <div id="live-status-line" class="live-status-line" role="status" aria-live="polite"></div>
+        </div>
+        <aside class="live-side" aria-label="今晚直播课程">
+          <section class="live-card-panel">
+            <h2 id="live-course-title">今晚在播</h2>
+            <p id="live-context" class="live-context">直播状态待确认</p>
+            <div id="live-tonight" class="live-tonight"></div>
+          </section>
+          <section id="live-transcript" class="live-card-panel live-transcript" aria-labelledby="live-transcript-title">
+            <header class="live-transcript-head">
+              <h2 id="live-transcript-title">文稿</h2>
+              <button id="live-transcript-toggle" class="btn-quiet live-transcript-toggle" type="button" aria-expanded="false" aria-controls="live-transcript-list" hidden>打开文稿</button>
+            </header>
+            <p id="live-transcript-status" class="live-transcript-status" role="status" aria-live="polite" hidden></p>
+            <div id="live-transcript-list" class="live-transcript-list" role="log" aria-label="直播文稿" hidden tabindex="-1"></div>
+          </section>
+        </aside>
+      </div>
+    </section>
+
+    <section id="settings-page" class="page" data-page="settings" hidden>
+      <header class="page-header">
+        <div class="page-heading"><h1>设置</h1><span id="settings-evidence">本地安全设置</span></div>
+        <div class="header-actions">
+          <button id="settings-return-guide" class="btn-quiet" type="button" hidden>返回新手引导</button>
+          <button id="settings-close" class="btn-quiet" type="button">返回学习</button>
+        </div>
+      </header>
+      <div class="settings-layout">
+        <nav class="settings-nav" aria-label="设置分组">
+          <button type="button" data-settings-target="settings-account-group">账户与连接</button>
+          <!-- SETTINGS-UX-1 B1（化身走查 F2）：外观升独立组——高频设置前置，
+               不再埋在账户组第二小节（group-by-intent + 频率优先）。 -->
+          <button type="button" data-settings-target="settings-appearance-group">外观</button>
+          <button type="button" data-settings-target="settings-datamap-group">你的数据在哪里</button>
+          <button type="button" data-settings-target="settings-ai-group">AI 与处理</button>
+          <button type="button" data-settings-target="settings-network-group">网络与远程连接</button>
+          <!-- SIMPLIFY-AUDIT-1 S1：设置页「课表」组整组退役——学期/起始日/导出 ICS
+               与周课表弹窗底部「课表设置」完全重复，双副本+MutationObserver 同步垫片
+               纯开销；学生的课表心智锚点在周课表弹窗（看课表的地方改课表设置）。 -->
+          <button type="button" data-settings-target="settings-update-group">更新与帮助</button>
+          <button type="button" data-settings-target="settings-reset-group">重置</button>
+        </nav>
+        <div class="settings-content">
+          <section id="settings-account-group" class="settings-group" aria-labelledby="settings-account-heading" tabindex="-1">
+            <h2 id="settings-account-heading" tabindex="-1">账户与连接</h2>
+            <section class="connection-card" aria-labelledby="fudan-connection-title">
+              <header class="connection-card-head">
+                <h3 id="fudan-connection-title">复旦课程平台</h3>
+                <span id="fudan-connection-state" class="status-pill" data-state="checking" aria-live="polite">正在确认</span>
+              </header>
+              <p id="account-session-state" class="account-session-state" role="status">正在确认当前会话</p>
+              <div class="auto-connect-row">
+                <label class="check"><input id="fudan-auto-connect" type="checkbox" role="switch">启动时自动登录</label>
+                <label class="auto-connect-account" for="fudan-auto-connect-account">自动登录账号<select id="fudan-auto-connect-account" class="select" data-dropdown><option value="">选择账号</option></select></label>
+              </div>
+              <p id="fudan-auto-connect-status" class="hint auto-connect-status" role="status" aria-live="polite" hidden></p>
+              <div class="button-row">
+                <button id="open-login" type="button">登录</button>
+                <button id="logout-button" class="danger" type="button" disabled>退出登录</button>
+              </div>
+              <div id="account-list" class="item-list"></div>
+            </section>
+          </section>
+
+          <!-- SETTINGS-UX-1 B1（化身走查 F2）：外观升独立组——主题/字号/托盘行
+               原样迁入，id 零变化；高频设置前置（频率优先+group-by-intent）。 -->
+          <section id="settings-appearance-group" class="settings-group" aria-labelledby="settings-appearance-heading" tabindex="-1">
+            <h2 id="settings-appearance-heading" tabindex="-1">外观</h2>
+            <section>
+              <header class="section-header"><h3>主题与字号</h3></header>
+              <label>主题<select id="settings-theme-mode" data-dropdown aria-label="主题"><option value="auto">自动（19:00–07:00 深色）</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
+              <!-- A11Y-IMPL-4（D14 P1-1 产品步）：界面字号三档，驱动 html 根字号
+                   （rem 地基使其全站生效）。低视力学生的真决策项，遵例外面成档；
+                   闭集与持久化见 modules/settings/ui-font.js。 -->
+              <label>界面字号<select id="settings-ui-font" data-dropdown aria-label="界面字号"><option value="default">默认</option><option value="large">大</option><option value="xlarge">特大</option></select></label>
+              <p class="hint">看不清可以把界面文字整体放大，选完立即生效；只保存在这台电脑上，重置应用时会一并清除。</p>
+              <div id="settings-tray-row" class="native-shell-row" hidden>
+                <label class="check-row"><input id="settings-exit-on-close" type="checkbox"> 关闭窗口时退出 CourseLens</label>
+                <p class="hint">CourseLens 常驻在右下角托盘：点窗口 × 只是把窗口收进托盘，任务照常跑，单击托盘图标随时回来；想让 × 直接退出程序时再勾选它（托盘右键菜单里也有「退出」）。</p>
+              </div>
+            </section>
+          </section>
+
+          <section id="settings-datamap-group" class="settings-group" aria-labelledby="settings-datamap-heading" tabindex="-1">
+            <h2 id="settings-datamap-heading" tabindex="-1">你的数据在哪里</h2>
+            <p class="hint">装新工具之前，先问清楚两件事：数据存在哪，谁能看到。这张地图就是全部答案——外联目标在代码里是一张固定闭集表，表之外没有任何统计、埋点或上报，CourseLens 没有遥测。</p>
+            <!-- SETTINGS-UX-1 B2（化身走查 F7）：隐私节自账户组并入数据透明组
+               （「数据在哪/谁能看」同主题单一入口；id 零变化）。 -->
+            <section>
+              <header class="section-header"><h3>隐私</h3></header>
+              <p class="hint">你的学习资料只保存在这台电脑上；云端代算加密回传、最长保留 30 天、随时可撤销。</p>
+              <button id="privacy-doc-open" class="btn-quiet" type="button">查看《隐私与数据说明》</button>
+              <div id="privacy-evidence" class="evidence-stack"></div>
+            </section>
+            <section>
+              <header class="section-header"><h3>数据流向：三个地方</h3></header>
+              <div id="datamap-flow" class="datamap-flow" aria-label="数据流向三域图"></div>
+            </section>
+            <section>
+              <header class="section-header"><h3>你电脑上现在有哪些学习数据</h3></header>
+              <p id="datamap-counters" class="datamap-counters" role="status" aria-live="polite" aria-busy="true"></p>
+              <p class="hint">明细与删除入口在数据管理页；这里只显示数量，不显示任何课程名或内容。</p>
+            </section>
+            <section>
+              <header class="section-header"><h3>客户端会和哪些服务器通信</h3></header>
+              <p class="hint">只会连接以下 10 个服务，此外不发起任何网络连接。</p>
+              <ul id="datamap-hosts" class="datamap-hosts"></ul>
+            </section>
+            <section>
+              <header class="section-header"><h3>云端保留多久</h3></header>
+              <ul id="datamap-retention" class="datamap-retention"></ul>
+            </section>
+            <section>
+              <header class="section-header"><h3>你随时可以做的事</h3></header>
+              <ul id="datamap-actions" class="datamap-actions"></ul>
+            </section>
+            <p id="datamap-error" class="field-error" role="alert" hidden></p>
+          </section>
+
+          <section id="settings-ai-group" class="settings-group" aria-labelledby="settings-ai-heading" tabindex="-1">
+            <h2 id="settings-ai-heading" tabindex="-1">AI 与处理</h2>
+            <section>
+              <header class="section-header"><h3>学习洞察</h3></header>
+              <button id="player-insight-open" class="btn-quiet" type="button" hidden>查看本讲学习洞察</button>
+              <p id="insight-hint" class="hint" hidden>当前讲次的回看热点与疑问标记；讲次可用时才出现，数据只保存在这台电脑上。</p>
+            </section>
+            <section>
+              <header class="section-header"><h3>DeepSeek</h3></header>
+              <div class="deepseek-fields">
+                <label>API Key<input id="deepseek-key" type="password" autocomplete="off" maxlength="200"></label>
+                <label class="check"><input id="remember-deepseek" type="checkbox">保存在本机</label>
+                <p class="hint">使用 Windows 加密保护，仅当前 Windows 用户可用；不勾选则仅本次启动使用</p>
+                <p id="deepseek-save-state" class="status-pill deepseek-save-pill" role="status" hidden></p>
+                <div class="button-row"><button id="save-deepseek" type="button" class="btn-primary">保存</button><button id="delete-deepseek" class="danger" type="button">移除本机保存</button></div>
+                <div id="deepseek-token-budget" class="deepseek-fields">
+                  <p class="hint">每天最多让 AI 用多少 DeepSeek 额度？选一档，点了立即生效。</p>
+                  <div id="deepseek-budget-presets" role="radiogroup" aria-label="每日 AI 用量档位">
+                    <button type="button" class="budget-preset" role="radio" aria-checked="false" data-budget="100000">
+                      <strong>省着用</strong><span class="budget-amount">10 万 tokens/日</span>
+                    </button>
+                    <button type="button" class="budget-preset" role="radio" aria-checked="false" data-budget="300000">
+                      <strong>日常够用<span class="budget-recommend">推荐</span></strong><span class="budget-amount">30 万 tokens/日</span>
+                    </button>
+                    <button type="button" class="budget-preset" role="radio" aria-checked="false" data-budget="1000000">
+                      <strong>放开用</strong><span class="budget-amount">100 万 tokens/日</span>
+                    </button>
+                    <button type="button" class="budget-preset" role="radio" aria-checked="false" data-budget="0">
+                      <strong>不限</strong><span class="budget-amount">不设每日上限</span>
+                    </button>
+                  </div>
+                  <p class="hint">到了上限：今天不再生成新的 AI 处理，明天自动恢复；已生成的不受影响。</p>
+                  <p id="max-deepseek-tokens-label" class="hint" role="status"></p>
+                  <p id="max-deepseek-tokens-state" class="hint" role="status" hidden></p>
+                  <p id="ai-usage-month" class="hint" role="status"></p>
+                </div>
+              </div>
+            </section>
+            <!-- ⑨b→AS3：书签解释日条数闸整链退役（解释/解答不再有条数门）；
+                 日额度由上方 token 档位卡表达（含「不限」档，哨兵 0） -->
+          </section>
+
+          <section id="settings-network-group" class="settings-group" aria-labelledby="settings-network-heading" tabindex="-1">
+            <h2 id="settings-network-heading" tabindex="-1">网络与远程连接</h2>
+            <section class="connection-card" aria-labelledby="github-connection-title">
+              <header class="connection-card-head">
+                <h3 id="github-connection-title">GitHub 连接</h3>
+                <span id="github-connection-state" class="status-pill" data-state="checking" aria-live="polite">正在确认</span>
+              </header>
+              <details id="github-phases-details" class="github-phases-details">
+                <summary>安装阶段详情</summary>
+                <ol id="github-phases" class="github-phases" aria-label="GitHub 连接阶段">
+                  <li data-phase="authorization"><span class="phase-label">账号授权</span><span class="phase-state-text">待确认</span></li>
+                  <li data-phase="installation"><span class="phase-label">App 安装</span><span class="phase-state-text">待确认</span></li>
+                  <li data-phase="repositories"><span class="phase-label">专属仓库</span><span class="phase-state-text">待确认</span></li>
+                  <li data-phase="channel"><span class="phase-label">加密通道</span><span class="phase-state-text">待确认</span></li>
+                </ol>
+              </details>
+              <div id="remote-evidence" class="evidence-stack"></div>
+              <div id="remote-primary-action" class="button-row"></div>
+              <p id="remote-install-wait" class="hint" role="status" aria-live="polite" hidden></p>
+              <p id="remote-tighten-wait" class="hint" role="status" aria-live="polite" hidden></p>
+              <p id="remote-action-progress" class="hint" role="status" aria-live="polite" hidden></p>
+              <div id="remote-rotate-row" hidden>
+                <button id="remote-rotate-keys" type="button" aria-describedby="remote-rotate-hint">轮换 Worker 密钥</button>
+                <p id="remote-rotate-hint" class="hint">环境缺少 Worker 加密密钥时，重新生成并上传一对新密钥。</p>
+              </div>
+              <div class="auto-connect-row">
+                <label class="check"><input id="github-auto-connect" type="checkbox" role="switch">启动时自动连接</label>
+              </div>
+              <p class="hint github-auto-connect-purpose">打开后：启动时自动在后台确认一次 GitHub 连接；连接正常时无区别。</p>
+              <p id="github-auto-connect-status" class="hint auto-connect-status" role="status" aria-live="polite" hidden></p>
+              <div id="remote-action-error" class="remote-action-error" role="alert" hidden></div>
+              <div id="remote-device-authorization" class="status-row" data-state="unknown" hidden>尚未开始 GitHub 授权</div>
+              <div id="remote-compute-row" class="remote-compute-row" hidden>
+                <div class="remote-compute-text">
+                  <strong>云端处理</strong>
+                  <p id="remote-compute-hint" class="hint"></p>
+                </div>
+                <span id="remote-compute-state" class="status-pill" data-state="unknown" aria-live="polite">正在确认</span>
+              </div>
+              <div id="remote-mailbox-reconcile" class="status-row mailbox-reconcile-card" hidden>
+                <div>
+                  <strong>发现已关闭但未收口的历史任务</strong>
+                  <p class="hint" id="remote-mailbox-reconcile-hint">这些记录不会继续运行，但会阻止远程计算安全检查。修复会保留评论和关闭状态，只移除不可再使用的任务载荷。</p>
+                </div>
+                <button id="remote-reconcile-mailbox" type="button" aria-describedby="remote-mailbox-reconcile-hint">修复历史记录</button>
+                <p id="remote-mailbox-reconcile-state" class="hint" role="status" aria-live="polite" hidden></p>
+              </div>
+              <details class="connection-diagnostics">
+                <summary>高级操作与诊断</summary>
+                <p class="hint">组件状态与底层闭集代码仅用于诊断，不包含课程或账号信息。</p>
+                <div id="cloud-revoke-row" class="button-row" hidden>
+                  <button id="cloud-revoke-credentials" type="button" aria-describedby="cloud-revoke-hint">撤销云端授权</button>
+                  <p id="cloud-revoke-hint" class="hint">停止云自动化，并删除你专属仓库里的云端凭据与状态。本地学习资料不受影响。</p>
+                </div>
+                <div id="remote-component-evidence" class="evidence-stack"></div>
+                <div id="security-evidence" class="evidence-stack"></div>
+                <button id="copy-diagnostics" type="button" aria-describedby="diagnostic-privacy-summary">复制连接诊断</button>
+                <details class="diagnostic-privacy">
+                  <summary>复制前的隐私说明</summary>
+                  <p id="diagnostic-privacy-summary">诊断摘要只复制有限的闭集状态、如有的计数和已净化的版本摘要，不复制原始详情。</p>
+                  <p>不包含课程正文、课程 URL、账号标识、Cookie、凭据、媒体或本地路径。</p>
+                  <p>诊断摘要不是备份，不能用于恢复。</p>
+                </details>
+              </details>
+            </section>
+            <section>
+              <header class="section-header"><h3>网络</h3><button id="diagnose-network" type="button">诊断</button></header>
+              <label>模式<select id="network-mode" data-dropdown><option value="auto">自动（复旦服务直连）</option><option value="direct">关闭代理（全部直连）</option><option value="manual">手动代理（所有服务）</option></select></label>
+              <p class="hint">自动模式：复旦的网站直接连、不走你的代理软件；GitHub、DeepSeek 仍优先走代理。</p>
+              <div id="proxy-url-row" hidden>
+                <label>代理地址<input id="proxy-url" type="url" value="http://127.0.0.1:6268"></label>
+              </div>
+              <!-- MEDIA-VPN-1：媒体流可选系统代理（默认关；仅回放视频这一跳，
+                   登录/目录维持现状）。与上方网络模式互相独立。 -->
+              <label class="check media-stream-proxy-row"><input id="media-stream-proxy" type="checkbox" role="switch">媒体流走系统代理</label>
+              <p class="hint">默认关闭。打开后，仅回放视频的下载会尝试走 Windows 系统代理（没检测到系统代理时不生效）；登录、课表与其余功能维持现状。</p>
+              <button id="save-network" type="button" class="btn-primary">保存</button>
+              <div id="network-evidence" class="evidence-stack"></div>
+              <!-- SETTINGS-UX-1 B3（化身走查 F4）：校外媒体全自动说明收为「网络」节
+                   尾一行，不再独占一节（WEBVPN-AUTO-1：全自动，无用户设定面；
+                   运行时三级取流 MEDIAWEBVPN-3 不变）。与上方网络模式互相独立。 -->
+              <p class="hint">校外播放连不上时，会自动尝试经学校 WebVPN 中转，无需设置；只有直连学校媒体失败时，回放视频这一跳才会改走中转，登录、课表与其余功能维持现状。</p>
+            </section>
+          </section>
+
+          <section id="settings-update-group" class="settings-group settings-update-card" aria-labelledby="settings-update-heading" tabindex="-1">
+            <h2 id="settings-update-heading" tabindex="-1">更新与帮助</h2>
+            <section>
+              <header class="section-header"><h3>客户端更新 <span id="update-state" class="status-pill" aria-live="polite">正在读取</span></h3></header>
+              <!-- UPDATE-PANEL-1（MAC-3 决策 C 落地）：Windows 面原样收进
+                   update-windows-face；mac 宿主由 renderUpdate 切到 update-mac-entry
+                   手动下载入口态，Windows 面逐位不动。
+                   UPDATE-UX-1：Windows 面加下载进度行（零呆等三律）；mac 入口
+                   升级为三态检查面（检查道 update-mac.js），有新版=醒目句+三步
+                   安装+下载页锚，无新版=安静的「已是最新」，失败=诚实降级。 -->
+              <div id="update-windows-face">
+                <!-- SIMPLIFY-AUDIT-1 S5：五事实行（当前版本/通道/可用版本/包大小/
+                     上次检查）收敛为一行人话+上次检查提示——「通道」是开发行话，
+                     学生要的只是「我现在什么版本、有没有新的、多大」。 -->
+                <p id="update-facts-line" class="update-facts-line"></p>
+                <p id="update-last-check" class="hint"></p>
+                <p id="update-progress" class="hint" hidden></p>
+                <details id="update-notes-details" class="update-notes-details">
+                  <summary>本版说明</summary>
+                  <p id="update-notes" class="update-notes">本版说明暂未提供。</p>
+                </details>
+                <p id="update-error" class="field-error" role="alert" hidden></p>
+                <p id="update-recovery" class="hint" role="status" aria-live="polite" hidden></p>
+                <div class="button-row">
+                  <button id="check-update" type="button" class="btn-primary">检查更新</button>
+                  <button id="download-update" type="button" disabled>确认并下载</button>
+                  <button id="install-update" type="button" disabled>确认安装</button>
+                </div>
+                <label class="check update-background-checks-row"><input id="update-background-checks" type="checkbox" role="switch">自动检查更新</label>
+                <p class="hint">默认不静默下载或安装。安装包提供 SHA256 校验单，安装重启后自动完成健康确认；首次运行若看到 Windows 安全提示，属正常现象，按 README 里的引导操作即可。</p>
+              </div>
+              <div id="update-mac-entry" hidden>
+                <p id="update-mac-message" aria-live="polite">macOS 测试版：点「检查更新」看看有没有新版本；安装包在下载页手动获取。</p>
+                <p id="update-mac-version" class="hint" hidden></p>
+                <ol id="update-mac-steps" hidden>
+                  <li>到下载页下载新版 zip，解压得到 CourseLens。</li>
+                  <li>把它拖进「应用程序」，替换旧版本。</li>
+                  <li>第一次打开：在访达里右键点 CourseLens 选「打开」，再点一次「打开」（每台电脑只需一次）。</li>
+                </ol>
+                <div class="button-row">
+                  <button id="update-mac-check" type="button" class="btn-primary">检查更新</button>
+                  <a id="update-mac-download" class="button-link primary" href="https://gualtier-xu.github.io/Fudan-CourseLens/#download" rel="noreferrer">打开下载页</a>
+                </div>
+                <p class="hint">应用内自动更新暂时只支持 Windows；mac 版更新会放在同一个下载页，回来看一眼就行。安装包由 CI 自动构建，还没在真机上深度实测；首次打开若被 macOS 拦一下，右键点 CourseLens 选「打开」，或到 系统设置 → 隐私与安全性 点「仍要打开」。</p>
+              </div>
+            </section>
+            <section>
+              <header class="section-header"><h3>帮助</h3></header>
+              <div id="help-links" class="help-entry-group"><a class="help-entry-row" href="https://github.com/gualtier-xu/Fudan-CourseLens-Worker/issues" target="_blank" rel="noreferrer">问题反馈</a><button id="help-open-guide" class="help-entry-row" type="button">新手引导</button></div>
+              <p class="hint">你的课程资料、字幕和笔记都只存在这台电脑上，不经任何第三方服务器中转；细节见设置页「隐私」节的《隐私与数据说明》。</p>
+              <p class="hint">视频和课件页面做了防右键另存、防拖拽的保护；但它挡的是「顺手保存」，挡不住录屏和开发者工具，这点我们如实说明。</p>
+            </section>
+          </section>
+
+          <section id="settings-reset-group" class="settings-group" aria-labelledby="settings-reset-heading" tabindex="-1">
+            <h2 id="settings-reset-heading" tabindex="-1">重置</h2>
+            <section class="danger-zone" aria-labelledby="client-reset-title">
+              <header class="section-header"><h3 id="client-reset-title">重置应用</h3></header>
+              <p class="hint">重置会清除课程目录、任务、课表、搜索索引、观看进度、书签、测验、复习计划与本机保存的凭据，也会清掉浏览器端小数据（主题、界面字号、课程排序、学期筛选），然后关闭应用；重新打开后需要重新登录。重置不是备份，删除的内容无法恢复。卡住的任务会先被解锁收尾，再执行重置。</p>
+              <p class="hint">字幕、AI 产物与课件等课程派生产物默认保留；重置前会自动在本地生成一份脱敏数据摘要回执。</p>
+              <div class="button-row"><button id="client-reset-open" class="danger" type="button">重置应用…</button></div>
+              <p id="client-reset-result" class="hint" role="status" aria-live="polite" hidden></p>
+              <p id="client-reset-error" class="field-error" role="alert" hidden></p>
+            </section>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section id="data-page" class="page" data-page="data" hidden>
+      <header class="page-header">
+        <div class="page-heading"><h1>数据管理</h1><span id="data-evidence">尚未统计</span></div>
+        <div class="header-actions">
+          <input id="data-search" class="field data-search" type="search" aria-label="搜索课程" placeholder="搜索课程">
+          <label class="data-category-filter" for="data-category-filter">类别<select id="data-category-filter" class="select" data-dropdown aria-label="类别筛选"></select></label>
+          <button id="data-refresh" type="button">刷新</button>
+        </div>
+      </header>
+      <p id="data-summary" class="data-summary" role="status" aria-live="polite" aria-busy="false"></p>
+      <div class="data-summary-orphan-row">
+        <button id="data-orphans-filter" class="text-button" type="button" aria-pressed="false" hidden title="孤儿=不在当前课程目录里的历史课程数据">孤儿</button>
+      </div>
+      <section id="data-recovery" class="recovery-panel" aria-live="polite" hidden>
+        <div>
+          <h2 id="data-recovery-title">数据统计需要处理</h2>
+          <p id="data-recovery-impact"></p>
+        </div>
+        <div id="data-recovery-actions" class="button-row"></div>
+      </section>
+      <!-- SIMPLIFY-AUDIT-1 S4：搬家与备份默认折叠——换电脑级低频功能不再常驻
+           数据页首屏；summary 一击可达，导出/导入与说明随行，状态/错误行留在外侧
+           （迁移进行中折叠面板也不吞状态）。 -->
+      <section id="data-migration" class="data-migration-panel">
+        <details id="data-migration-details">
+          <summary><h2 id="data-migration-title">搬家与备份</h2></summary>
+          <div>
+            <p class="hint">一键把学习数据打成加密搬家包：观看进度、AI 总结与问答、复习卡和间隔重复记录、上传的资料、课件与字幕都在里面。换电脑时在新机导入即可原样安家；平时放 U 盘或网盘就是一份自己的备份。CourseLens 不上传它，也只有设密码的人能打开。</p>
+            <p class="hint">保存的密码和密钥出于安全设计不进包：新机需要重新登录复旦账号、重新连接 GitHub 授权、重新填写 DeepSeek Key（导入完成后会给这份清单）。</p>
+          </div>
+          <div class="button-row">
+            <button id="data-migration-export" type="button">导出搬家包…</button>
+            <button id="data-migration-import" type="button">从搬家包导入…</button>
+          </div>
+        </details>
+        <p id="data-migration-status" class="hint" role="status" aria-live="polite"></p>
+        <p id="data-migration-error" class="field-error" role="alert" hidden></p>
+      </section>
+      <dialog id="data-migration-export-dialog" aria-labelledby="data-migration-export-title" aria-describedby="data-migration-export-hint">
+        <form id="data-migration-export-form" method="dialog">
+          <header><h2 id="data-migration-export-title">导出搬家包</h2></header>
+          <p id="data-migration-export-hint" class="hint">给搬家包设一个密码（至少 8 位）。打开包需要它——导出后请自己记牢，CourseLens 无法找回，也不会上传。</p>
+          <label>密码<input id="data-migration-export-password" type="password" class="field" autocomplete="new-password" minlength="8" required></label>
+          <label>再输一次<input id="data-migration-export-password-confirm" type="password" class="field" autocomplete="new-password" required></label>
+          <p id="data-migration-export-error" class="field-error" role="alert" hidden></p>
+          <div class="dialog-actions">
+            <button type="button" id="data-migration-export-cancel">取消</button>
+            <button type="submit" id="data-migration-export-confirm">打包并下载</button>
+          </div>
+        </form>
+      </dialog>
+      <dialog id="data-migration-import-dialog" aria-labelledby="data-migration-import-title" aria-describedby="data-migration-import-hint">
+        <form id="data-migration-import-form" method="dialog">
+          <header><h2 id="data-migration-import-title">从搬家包导入</h2></header>
+          <p id="data-migration-import-hint" class="hint">选择之前导出的搬家包（.clmig），输入导出时设的密码。导入会以包里的数据为准覆盖本机学习数据，完成后应用会自动关闭，重新打开即安家完成。</p>
+          <label>搬家包文件<input id="data-migration-import-file" type="file" accept=".clmig" required></label>
+          <label>密码<input id="data-migration-import-password" type="password" class="field" autocomplete="current-password" required></label>
+          <p id="data-migration-import-status" class="hint" role="status" aria-live="polite" hidden></p>
+          <p id="data-migration-import-error" class="field-error" role="alert" hidden></p>
+          <div class="dialog-actions">
+            <button type="button" id="data-migration-import-cancel">取消</button>
+            <button type="submit" id="data-migration-import-confirm">校验并导入</button>
+          </div>
+        </form>
+      </dialog>
+      <section id="shell-webview-cache" class="shell-cache-panel" hidden>
+        <div>
+          <h2 id="shell-webview-cache-title">界面缓存</h2>
+          <p class="hint">应用窗口自己产生的临时数据（网页缓存、图片与字体）。清理不影响任何学习数据，登记后会在下次启动应用时生效。</p>
+        </div>
+        <div class="button-row">
+          <span id="shell-webview-cache-size" class="hint"></span>
+          <button id="shell-webview-cache-clear" type="button">清理界面缓存</button>
+        </div>
+      </section>
+      <div id="data-bulk-bar" class="data-bulk-bar">
+        <p id="data-bulk-hint" class="data-bulk-hint" hidden>先勾选课程，再选下方操作</p>
+        <span id="data-selection-count">已选 0 门</span>
+        <div id="data-bulk-actions" class="button-row data-bulk-actions">
+          <!-- P3-3（D14 无障碍审计）：span 上的 aria-label 无 role 会被读屏忽略，
+               四个分组全部补 role="group"（审计时 3 处，「选择管理」组后加入）。 -->
+          <span class="data-action-group" data-bulk-group="safe" role="group" aria-label="安全操作">
+            <span class="data-group-tier">随时可做</span>
+            <button id="data-action-rebuild-search" type="button">重建索引</button>
+            <button id="data-action-export" type="button">导出</button>
+            <button id="data-action-export-study-stats" type="button">导出学习统计</button>
+          </span>
+          <span class="data-action-group" data-bulk-group="space" role="group" aria-label="释放空间">
+            <span class="data-group-tier">释放空间</span>
+            <button id="data-action-purge-derived" type="button">清理派生数据</button>
+            <button id="data-action-remove-copies" type="button">移除本地副本</button>
+          </span>
+          <span class="data-action-group" data-bulk-group="irreversible" role="group" aria-label="不可逆操作">
+            <span class="data-group-tier">不可恢复</span>
+            <button id="data-action-delete-records" class="danger" type="button">删除记录…</button>
+          </span>
+          <span class="data-action-group" data-bulk-group="manage" role="group" aria-label="选择管理">
+            <button id="data-select-all" class="text-button" type="button">全选</button>
+            <button id="data-clear-orphans" type="button" hidden title="孤儿=不在当前课程目录里的历史课程数据">清除全部孤儿</button>
+            <button id="data-action-release-stuck" type="button" title="把一直「进行中/暂停中」的记录和卡住的清理强制收尾；不删除任何学习记录。">解锁卡住的记录</button>
+            <button id="data-clear-selection" class="text-button" type="button">清空选择</button>
+          </span>
+        </div>
+        <details id="data-bulk-explain-details" class="data-bulk-explain-details">
+          <summary>六个按钮各做什么</summary>
+          <p id="data-bulk-explain" class="data-bulk-explain">「重建索引」让搜索更快找到内容；「导出」把学习数据打包带走；「导出学习统计」把学习时长、进度和掌握度汇总成表格文件（JSON+CSV），可直接用 Excel 打开；「清理派生数据」删的是能重新生成的字幕和 AI 产物；「移除本地副本」只删课件文件腾空间；「删除记录」不可恢复，仅删本机学习记录，课程和成绩不受影响。</p>
+        </details>
+      </div>
+      <p id="data-result" class="status-row data-result" role="status" aria-live="polite" hidden></p>
+      <div class="data-layout">
+        <aside id="data-course-list" class="data-course-list" aria-label="课程数据列表" aria-busy="false"></aside>
+        <section id="data-detail" class="data-detail" aria-label="选中课程数据明细"></section>
+      </div>
+    </section>
+
+    <section id="onboarding-page" class="page" data-page="onboarding" hidden>
+      <header class="page-header">
+        <div class="page-heading">
+          <h1>开始使用 CourseLens</h1>
+          <span id="onboarding-progress">第 1 步，共 5 步</span>
+        </div>
+        <div class="header-actions">
+          <button id="onboarding-skip" class="text-button" type="button">跳过引导</button>
+        </div>
+      </header>
+      <div class="onboarding-layout">
+        <nav id="onboarding-toc" class="onboarding-toc" aria-label="引导步骤目录">
+          <button type="button" data-onboarding-step="1">先了解工作方式</button>
+          <button type="button" data-onboarding-step="2">连接复旦课程平台</button>
+          <button type="button" data-onboarding-step="3">确认课程目录</button>
+          <button type="button" data-onboarding-step="4">准备生成能力</button>
+          <button type="button" data-onboarding-step="5">开始学习</button>
+        </nav>
+        <div class="onboarding-content">
+          <p id="onboarding-mobile-progress" class="onboarding-mobile-progress" aria-hidden="true">第 1 步，共 5 步 · 先了解工作方式</p>
+          <p id="onboarding-pending" class="hint" role="status">正在读取引导状态…</p>
+          <section data-onboarding-panel="1" hidden>
+            <h2 tabindex="-1">先了解工作方式</h2>
+            <p class="onboarding-body">CourseLens 运行在你自己的电脑上。在线播放和课程目录依赖复旦课程平台的登录会话；字幕、笔记等生成任务会按你的设置使用加密云端处理，两种连接相互独立、状态分开显示。</p>
+            <p class="onboarding-body">在你明确点击登录、刷新或生成之前，CourseLens 不会自动访问学校平台或发起远程任务。学号、密码和 DeepSeek API Key 只需要在应用内已有的受保护输入框中填写，引导本身不会收集任何秘密。</p>
+            <p class="onboarding-body">字幕、笔记等生成任务使用加密云端处理：完成 GitHub 连接后即可用，不需要额外开启开关；数据处理范围、保留期与撤销路径都写在《隐私与数据说明》里（设置页「隐私」节可查看）。</p>
+          </section>
+          <section id="onboarding-step-2" data-onboarding-panel="2" hidden>
+            <h2 tabindex="-1">连接复旦课程平台</h2>
+            <div id="onboarding-auth-state" class="status-row" data-state="checking"><span id="onboarding-auth-text">正在确认登录状态</span></div>
+            <p id="onboarding-auth-impact" class="hint" role="status" aria-live="polite"></p>
+            <div class="button-row">
+              <button id="onboarding-open-login" type="button">登录复旦课程平台</button>
+              <button id="onboarding-auth-retry" type="button" hidden>重试状态读取</button>
+            </div>
+            <p class="hint">登录使用现有的安全登录窗口；学号与密码不会出现在引导页面。</p>
+          </section>
+          <section id="onboarding-step-3" data-onboarding-panel="3" hidden>
+            <h2 tabindex="-1">确认课程目录</h2>
+            <div id="onboarding-catalog-state" class="status-row" data-state="checking"><span id="onboarding-catalog-text">正在确认课程目录</span></div>
+            <p id="onboarding-catalog-count" class="hint" role="status" aria-live="polite"></p>
+            <div class="button-row">
+              <button id="onboarding-catalog-refresh" type="button">刷新课程目录</button>
+              <button id="onboarding-catalog-retry" type="button" hidden>重试状态读取</button>
+            </div>
+            <p class="hint">刷新只在你点击后访问学校来源；零课程可能是正常结果，不代表失败。</p>
+            <p class="hint">点按课程块可选中对应目录课程；Esc 关闭浮层。</p>
+          </section>
+          <section id="onboarding-step-4" data-onboarding-panel="4" hidden>
+            <h2 tabindex="-1">准备生成能力</h2>
+            <p class="onboarding-body">以下三项是可选能力，全部可以稍后设置，不影响现在完成引导。</p>
+            <div class="onboarding-optional-rows">
+              <div id="onboarding-cloud-row" class="onboarding-optional-row" data-state="ready">
+                <span id="onboarding-cloud-text">云端处理：连接就绪即可用 · 加密代算，云端最长保留 30 天</span>
+                <!-- SIMPLIFY-AUDIT-1 S3：原「打开隐私与连接设置」/「打开远程连接设置」
+                     同跳 settings-network-group，同目的地双钮合并为一钮。 -->
+                <button id="onboarding-cloud-open" type="button" data-onboarding-settings-jump="settings-network-group">打开连接设置</button>
+              </div>
+              <div id="onboarding-remote-row" class="onboarding-optional-row" data-state="checking">
+                <span id="onboarding-remote-text">GitHub / Worker 连接：正在确认</span>
+              </div>
+              <div id="onboarding-deepseek-row" class="onboarding-optional-row" data-state="checking">
+                <span id="onboarding-deepseek-text">DeepSeek API Key：正在确认</span>
+                <button id="onboarding-deepseek-open" type="button" data-onboarding-settings-jump="settings-ai-group">打开 AI 设置</button>
+              </div>
+            </div>
+            <p class="hint">未配置 DeepSeek 时，字幕仍照常生成，并标注「无大模型验证」。</p>
+          </section>
+          <section id="onboarding-step-5" data-onboarding-panel="5" hidden>
+            <h2 tabindex="-1">开始学习</h2>
+            <div id="onboarding-summary" class="onboarding-summary" aria-live="polite"></div>
+            <p class="hint">生成的课件、导入的资料和完成的 AI 总结会自动出现在课程的「资料」页。</p>
+            <p class="hint">高频周切换与会议冲突提示在「学习」页的「今日与本周安排」中。</p>
+            <p class="hint">想知道数据存在哪、谁能看到？<button id="onboarding-datamap-open" class="text-button" type="button" data-onboarding-settings-jump="settings-datamap-group">查看数据地图</button>——不领任务、不打断引导，随时可以回来看。</p>
+            <p class="hint">完成引导后可随时从账户菜单或「设置 → 更新与帮助」重新打开本引导。</p>
+          </section>
+          <p id="onboarding-action-error" class="field-error" role="alert" hidden></p>
+          <div id="onboarding-complete-recovery" class="recovery-panel" role="alert" hidden>
+            <div>
+              <h2>完成状态未能保存</h2>
+              <p id="onboarding-complete-recovery-text">引导完成状态未能保存，请重试。</p>
+            </div>
+            <div class="button-row">
+              <button id="onboarding-complete-retry" type="button">重试</button>
+            </div>
+          </div>
+          <div id="onboarding-dismiss-recovery" class="recovery-panel" role="alert" hidden>
+            <div>
+              <h2>引导状态未能保存</h2>
+              <p id="onboarding-dismiss-recovery-text">引导状态未能保存，下次启动仍会显示。</p>
+            </div>
+            <div class="button-row">
+              <button id="onboarding-dismiss-retry" type="button">重试保存</button>
+              <button id="onboarding-dismiss-leave" type="button">仅本次退出</button>
+            </div>
+          </div>
+          <span id="onboarding-live" class="sr-only" role="status" aria-live="polite"></span>
+          <footer class="onboarding-footer">
+            <button id="onboarding-prev" type="button">上一步</button>
+            <button id="onboarding-next" type="button">下一步</button>
+          </footer>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="tasks-root" class="overlay-root drawer-root" hidden>
+    <div class="overlay-scrim" data-tasks-scrim></div>
+    <aside id="task-drawer" class="task-drawer" role="dialog" aria-modal="true" aria-labelledby="task-drawer-title">
+      <header class="drawer-header">
+        <h2 id="task-drawer-title">任务中心</h2>
+        <span id="task-counts" class="hint">正在读取任务状态</span>
+        <span id="task-completion-summary" class="task-completion-summary" hidden></span>
+        <!-- SIMPLIFY-AUDIT-1 S2：任务抽屉手动「刷新」钮退役——SSE 实时推送
+             （topics=tasks/remote-runs/remote-connection/automation）已即时刷新，
+             打开时再有界对账一次；手动钮与实时链冗余（D-20261007-01 同型反模式）。 -->
+        <button id="close-task-drawer" class="icon-button" type="button" aria-label="关闭任务抽屉" title="关闭"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </header>
+      <div class="remote-row">
+        <span>连接：<strong id="remote-drawer-state">尚未确认</strong></span>
+      </div>
+      <div id="task-list" class="task-list"></div>
+      <span id="task-live" class="sr-only" role="status" aria-live="polite"></span>
+    </aside>
+  </div>
+
+  <div id="palette-root" class="overlay-root palette-root" hidden>
+    <div class="overlay-scrim" data-palette-scrim></div>
+    <div id="palette-panel" class="palette-panel" role="dialog" aria-modal="true" aria-label="搜索">
+      <div class="palette-input-row">
+        <img src="/assets/icons/search.svg" alt="">
+        <input id="palette-input" role="combobox" aria-autocomplete="list" aria-expanded="true"
+               aria-controls="palette-listbox" aria-activedescendant=""
+               autocomplete="off" placeholder="跳转课程、讲次，或搜索全文"
+               aria-label="搜索：跳转课程、讲次，或搜索全文">
+        <span class="kbd">Ctrl K</span>
+      </div>
+      <p id="palette-status" class="palette-status" role="status" aria-live="polite"></p>
+      <div id="palette-head" class="palette-head" hidden>
+        <h2 id="palette-mode-title">全部结果</h2>
+        <span id="palette-index-pill" class="status-pill">索引状态未知</span>
+        <button id="palette-answer" type="button" class="btn-primary">快速回答</button>
+        <button id="palette-answer-deep" type="button" class="btn-primary">深度回答</button>
+        <button id="palette-collapse" type="button" class="btn-quiet">返回紧凑 ←</button>
+      </div>
+      <div class="palette-scroll">
+        <div id="palette-answer-card" class="answer-card" hidden>
+          <div id="palette-answer-label" class="label">证据回答 · 本地拼装</div>
+          <p id="palette-answer-body" class="body"></p>
+          <p id="palette-answer-cites" class="cites"></p>
+          <button id="palette-answer-cancel" type="button" class="btn-quiet" hidden>取消深度回答</button>
+          <p id="palette-answer-caveat" class="caveat"></p>
+        </div>
+        <ul id="palette-listbox" role="listbox" aria-label="搜索结果"></ul>
+      </div>
+      <div class="palette-foot">
+        <span><kbd>↑</kbd> <kbd>↓</kbd> 选择</span>
+        <span><kbd>Enter</kbd> 打开当前项</span>
+        <span><kbd>Esc</kbd> 逐级返回</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="conn-menu" class="conn-menu" role="dialog" aria-modal="true" aria-label="连接状态" tabindex="-1" hidden>
+    <h2>连接状态</h2>
+    <!-- AS4-U2b：校园连接与复旦课程平台合并为一张卡——主行=登录会话，
+         校园网络降为副行（#campus-connection），仅确认中/异常时出现（健康时
+         shell 置 hidden），TUN 提示与「检查校园连接」动作收进该异常态内。 -->
+    <section id="fudan-connection" class="conn-card" aria-label="复旦课程平台">
+      <div class="conn-row">
+        <span class="conn-dot" data-conn-dot="fudan" data-state="checking"></span>
+        <div class="conn-info">
+          <b>复旦课程平台</b>
+          <span data-conn-text="fudan">复旦会话登录中…</span>
+        </div>
+      </div>
+      <div id="campus-connection" class="campus-connection" data-state="checking" hidden aria-label="校园网络">
+        <p id="campus-connection-state">正在确认校园连接</p>
+        <p id="campus-connection-reason" class="hint campus-connection-reason" hidden></p>
+        <p id="campus-connection-regenerated" class="hint campus-connection-regen" hidden>网络设置已变化，正在重新确认校园连接</p>
+        <div id="campus-connection-tun" class="campus-connection-tun" hidden>
+          <p id="campus-connection-tun-text" class="hint"></p>
+          <button id="campus-connection-tun-dismiss" type="button" class="btn-quiet">不再提示</button>
+        </div>
+        <div id="campus-connection-actions" class="button-row campus-connection-actions"></div>
+        <details id="campus-connection-details" class="campus-connection-details">
+          <summary>连接详情</summary>
+          <dl class="campus-connection-facts">
+            <div class="campus-fact"><dt>逻辑路径</dt><dd id="campus-connection-path">尚未确认</dd></div>
+            <div class="campus-fact"><dt>上次检查</dt><dd id="campus-connection-checked">尚未确认</dd></div>
+            <div class="campus-fact"><dt>服务状态</dt><dd id="campus-connection-services">尚未确认</dd></div>
+          </dl>
+          <p class="hint campus-connection-privacy">此处只显示闭集状态与粗粒度结果；不包含代理地址、账号或课程数据。</p>
+        </details>
+        <div id="campus-diagnostics" class="campus-diagnostics" hidden>
+          <dl class="campus-connection-facts">
+            <div class="campus-fact"><dt>检查结果</dt><dd id="campus-diagnostics-summary">尚未检查</dd></div>
+            <div class="campus-fact"><dt>上次检查</dt><dd id="campus-diagnostics-checked">尚未检查</dd></div>
+            <div class="campus-fact"><dt>响应速度</dt><dd id="campus-diagnostics-latency">尚未检查</dd></div>
+            <div class="campus-fact"><dt>备用路径</dt><dd id="campus-diagnostics-fallback">尚未检查</dd></div>
+            <div class="campus-fact"><dt>建议操作</dt><dd id="campus-diagnostics-action">尚未检查</dd></div>
+          </dl>
+          <p class="hint campus-connection-privacy">诊断只发送无凭据探测；不包含代理地址、账号或课程数据。</p>
+        </div>
+        <button id="campus-diagnostics-run" type="button" class="btn-quiet campus-diagnostics-run">检查校园连接</button>
+        <span id="campus-diagnostics-status" class="sr-only" role="status" aria-live="polite"></span>
+        <span id="campus-connection-live" class="sr-only" role="status" aria-live="polite"></span>
+      </div>
+    </section>
+    <div class="conn-row">
+      <span class="conn-dot" data-conn-dot="github" data-state="checking"></span>
+      <div class="conn-info">
+        <b>GitHub 远程连接</b>
+        <span data-conn-text="github">正在确认远程连接</span>
+      </div>
+
+    </div>
+    <p class="conn-foot hint">详细诊断在「设置 → 网络与远程连接」。</p>
+  </div>
+  <span id="conn-live" class="sr-only" role="status" aria-live="polite"></span>
+
+  <span id="update-live" class="sr-only" role="status" aria-live="polite"></span>
+
+  <div id="account-menu" class="account-menu" role="dialog" aria-modal="true" aria-label="账户菜单" hidden>
+    <button id="account-menu-settings" class="menu-item" type="button">设置</button>
+    <button id="account-menu-data" class="menu-item" type="button">数据管理</button>
+    <button id="account-menu-onboarding" class="menu-item" type="button">新手引导</button>
+    <button id="account-menu-login" class="menu-item" type="button">登录</button>
+    <button id="account-menu-logout" class="menu-item" type="button" hidden>退出登录</button>
+  </div>
+
+  <dialog id="login-dialog" aria-labelledby="login-dialog-title" aria-describedby="login-dialog-hint">
+    <form id="login-form" method="dialog">
+      <header><h2 id="login-dialog-title">复旦统一身份认证</h2><button id="close-login" class="icon-button" type="button" aria-label="关闭" title="关闭"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></header>
+      <p id="login-dialog-hint" class="hint">登录后仅显示当前账号授权的课程。</p>
+      <section id="login-saved" class="login-saved" aria-labelledby="login-saved-title" hidden>
+        <div class="login-saved-head"><h3 id="login-saved-title">已保存账号</h3><span class="hint">已存密码 · 本机加密 · 无密码登录</span></div>
+        <div id="login-saved-options" class="login-saved-options" role="group" aria-labelledby="login-saved-title"></div>
+        <p id="login-saved-status" class="hint" role="status" aria-live="polite" hidden></p>
+        <button id="login-use-saved" class="primary login-oneclick" type="button" disabled>一键登录</button>
+        <label class="check login-auto-connect-row"><input id="login-auto-connect" type="checkbox">开启后自动登录<span class="hint login-auto-connect-hint">使用所选账号，下次启动自动登录</span></label>
+        <button id="login-manual-mode" class="login-mode-link" type="button" aria-pressed="false">使用其他账号或手动输入 →</button>
+      </section>
+      <button id="login-back-saved" class="login-mode-link" type="button" hidden>← 返回已保存账号</button>
+      <div id="login-manual-fields" class="login-manual-fields">
+        <label>学号<input id="login-student-id" autocomplete="username" required></label>
+        <label>密码<span class="password-field"><input id="login-password" type="password" autocomplete="current-password" required><button id="toggle-password-visibility" class="icon-button password-toggle" type="button" aria-label="显示密码" aria-pressed="false" aria-controls="login-password" title="显示或隐藏密码"><svg data-eye-icon="on" hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg><svg data-eye-icon="off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4l16 16"/><path d="M10.3 5.9A11 11 0 0 1 12 5.8c6 0 9.5 6.2 9.5 6.2a17.6 17.6 0 0 1-3.2 3.8M6.6 6.7C4 8.4 2.5 12 2.5 12S6 18.2 12 18.2a11.6 11.6 0 0 0 3.5-.5"/><path d="M9.9 9.9a2.8 2.8 0 0 0 4 4"/></svg></button></span></label>
+        <label class="check-row"><input id="remember-account" type="checkbox">保存在本机<span class="hint check-hint">使用 Windows 加密保护，仅当前 Windows 用户可用；不勾选则仅本次启动使用</span></label>
+      </div>
+      <p id="login-status" class="hint" role="status" aria-live="polite" hidden></p>
+      <p id="login-error" class="field-error" role="alert" hidden></p>
+      <div class="dialog-actions" id="login-manual-actions"><button id="cancel-login" type="button">取消</button><button id="login-submit" class="primary" type="submit">登录</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="mailbox-reconcile-dialog" aria-labelledby="mailbox-reconcile-dialog-title" aria-describedby="mailbox-reconcile-dialog-hint">
+    <form id="mailbox-reconcile-form" method="dialog">
+      <header><h2 id="mailbox-reconcile-dialog-title">修复历史任务记录</h2></header>
+      <p id="mailbox-reconcile-dialog-hint" class="hint">将把已关闭且未收口的任务记录标记为已消费。远程计算保持关闭；不会删除任何评论，标题、标签与关闭状态保持不变。</p>
+      <div class="dialog-actions"><button id="mailbox-reconcile-cancel" type="button">取消</button><button id="mailbox-reconcile-confirm" class="primary" type="button">确认修复</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="remote-rotate-dialog" aria-labelledby="remote-rotate-dialog-title" aria-describedby="remote-rotate-dialog-hint">
+    <form id="remote-rotate-form" method="dialog">
+      <header><h2 id="remote-rotate-dialog-title">轮换 Worker 密钥</h2></header>
+      <p id="remote-rotate-dialog-hint" class="hint">将重新生成 Worker 加密密钥，并上传到专属仓库环境；本机不保存私钥。进行中的远程任务需要先结束。</p>
+      <div class="dialog-actions"><button id="remote-rotate-cancel" type="button">取消</button><button id="remote-rotate-confirm" class="primary" type="button">确认轮换</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="client-reset-dialog" aria-labelledby="client-reset-dialog-title" aria-describedby="client-reset-dialog-hint">
+    <form id="client-reset-form" method="dialog">
+      <header><h2 id="client-reset-dialog-title">重置应用</h2></header>
+      <p id="client-reset-dialog-hint" class="hint">重置会清除课程目录、任务、课表、进度、书签、测验、复习计划与本机凭据，也会清掉本应用的浏览器端小数据（主题、界面字号、课程排序、学期筛选），然后关闭应用。输入「重置」以启用确认按钮。</p>
+      <label class="check"><input id="client-reset-delete-derived" type="checkbox">同时删除课程派生产物（字幕 / AI 产物 / 课件）</label>
+      <p class="hint">不勾选时这三类产物会保留；学期轮换后可能以孤儿形式出现在数据管理页。</p>
+      <label class="check"><input id="client-reset-delete-repos" type="checkbox">同时删除 GitHub 专属仓库</label>
+      <p class="hint">将永久删除客户端创建的两个专属仓库（Worker 与 Mailbox）；不勾选时仅在本机退出 GitHub 登录并清除记录。</p>
+      <label>确认<input id="client-reset-confirm-input" type="text" autocomplete="off"></label>
+      <p id="client-reset-dialog-status" class="hint" role="status" aria-live="polite" hidden></p>
+      <p id="client-reset-dialog-error" class="field-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button id="client-reset-cancel" type="button">取消</button>
+        <button id="client-reset-confirm" class="danger" type="button" disabled>确认重置</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="study-detail-dialog" class="study-detail-dialog" aria-labelledby="study-detail-dialog-title">
+    <header class="week-dialog-header">
+      <h2 id="study-detail-dialog-title">全部课程明细</h2>
+      <div class="week-dialog-actions">
+        <button id="close-study-detail-dialog" class="icon-button" type="button" aria-label="关闭全部课程明细" title="关闭"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+    </header>
+    <!-- STUDY-STATS-M2-b 展开层（单入口：默认层掌握度块「看全部课程明细」）：
+         状态行 + FSRS 7 日到期预测条 + 课程→讲明细列表。只进不出：关闭即回
+         默认层，不新增任何常驻导航。 -->
+    <p id="study-detail-state" class="p5s-detail-state" role="status" aria-live="polite"></p>
+    <div id="study-detail-forecast" class="p5s-detail-forecast"></div>
+    <div id="study-detail-courses" class="p5s-detail-courses"></div>
+  </dialog>
+
+  <dialog id="data-confirm-dialog" aria-labelledby="data-confirm-title" aria-describedby="data-confirm-hint">
+    <form id="data-confirm-form" method="dialog">
+      <header><h2 id="data-confirm-title">确认操作</h2></header>
+      <p id="data-confirm-hint" class="hint"></p>
+      <!-- D-20261009-07：文案住专用 span——label 的 textContent 会抹掉全部子
+           元素，直接写在 label 上的文案曾诱使动态改文案时抹掉输入框 -->
+      <label id="data-confirm-label"><span id="data-confirm-label-text">输入课程名确认</span><input id="data-confirm-input" type="text" autocomplete="off"></label>
+      <div class="dialog-actions">
+        <button id="data-confirm-cancel" type="button">取消</button>
+        <button id="data-confirm-confirm" class="primary" type="button" disabled>确认</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="player-keys-dialog" aria-labelledby="player-keys-title">
+    <form method="dialog">
+      <header><h2 id="player-keys-title">播放器快捷键</h2></header>
+      <div class="player-keys-rows">
+        <div class="player-keys-row"><b>空格</b><span>播放 / 暂停</span></div>
+        <div class="player-keys-row"><b>← / →</b><span>快退 / 快进 5 秒（按住 → 临时 3 倍速）</span></div>
+        <div class="player-keys-row"><b>J / L</b><span>快退 / 快进 10 秒</span></div>
+        <div class="player-keys-row"><b>&lt; / &gt;</b><span>降低 / 提高播放速度</span></div>
+        <div class="player-keys-row"><b>K</b><span>播放 / 暂停</span></div>
+        <div class="player-keys-row"><b>M</b><span>静音</span></div>
+        <div class="player-keys-row"><b>F</b><span>全屏</span></div>
+        <div class="player-keys-row"><b>C</b><span>字幕开关</span></div>
+        <div class="player-keys-row"><b>长按「字幕」钮</b><span>调整字幕样式（字号 / 背景深浅 / 贴底位置）</span></div>
+        <div class="player-keys-row"><b>X</b><span>标记「没听懂」</span></div>
+        <div class="player-keys-row"><b>↑ / ↓</b><span>提高 / 降低音量</span></div>
+        <div class="player-keys-row"><b>?</b><span>显示本帮助</span></div>
+        <div class="player-keys-row"><b>Esc</b><span>关闭帮助</span></div>
+      </div>
+      <div class="dialog-actions"><button type="submit" class="btn-primary">知道了</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="player-subtitle-style-dialog" aria-labelledby="player-subtitle-style-title">
+    <form method="dialog">
+      <header><h2 id="player-subtitle-style-title">字幕样式</h2></header>
+      <p class="hint">改动立即生效，只保存在这台电脑上。</p>
+      <div class="subtitle-style-rows">
+        <div class="subtitle-style-row">
+          <span class="subtitle-style-label">字号</span>
+          <div class="subtitle-style-options subtitle-style-group" role="group" aria-label="字幕字号" data-style-key="size">
+            <button type="button" data-style-value="xs">特小</button>
+            <button type="button" data-style-value="sm">小</button>
+            <button type="button" data-style-value="md">中</button>
+            <button type="button" data-style-value="lg">大</button>
+          </div>
+        </div>
+        <div class="subtitle-style-row">
+          <span class="subtitle-style-label">背景深浅</span>
+          <div class="subtitle-style-options subtitle-style-group" role="group" aria-label="字幕背景不透明度" data-style-key="opacity">
+            <button type="button" data-style-value="0">无</button>
+            <button type="button" data-style-value="25">较淡</button>
+            <button type="button" data-style-value="50">较深</button>
+            <button type="button" data-style-value="85">深</button>
+          </div>
+        </div>
+        <div class="subtitle-style-row">
+          <span class="subtitle-style-label">贴底位置</span>
+          <div class="subtitle-style-options subtitle-style-group" role="group" aria-label="字幕贴底位置" data-style-key="offset">
+            <button type="button" data-style-value="bottom">贴边</button>
+            <button type="button" data-style-value="low">低</button>
+            <button type="button" data-style-value="mid">中</button>
+            <button type="button" data-style-value="high">高</button>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-actions"><button type="submit" class="btn-primary">完成</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="player-insight-dialog" aria-labelledby="player-insight-title">
+    <form method="dialog">
+      <header><h2 id="player-insight-title">学习洞察</h2></header>
+      <p class="hint">回看热点默认记录在这台电脑上：进度条会标出你反复回看的位置，帮你回头找难点。记录只保存在这台电脑上，不会上传。</p>
+      <p class="hint">「下次接着播」的续播点始终单独保留，与热点无关。</p>
+      <p class="hint">不想记某一讲？在播放器操作区点「抹掉本讲热点」，只清那一讲。</p>
+      <div class="dialog-actions">
+        <button type="submit" class="btn-primary">完成</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="privacy-doc-dialog" aria-labelledby="privacy-doc-title">
+    <form method="dialog">
+      <header><h2 id="privacy-doc-title">隐私与数据说明</h2></header>
+      <div id="privacy-doc-body" class="privacy-doc-body"></div>
+      <div class="dialog-actions"><button type="submit" class="btn-primary">关闭</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

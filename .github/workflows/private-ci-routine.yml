@@ -1,0 +1,98 @@
+name: Routine PR CI
+
+# Lightweight pull-request path (reusable migration guide section 10.1):
+# Windows tests, frontend harnesses, dependency security, and secret
+# scanning. The full milestone matrix (macOS portability leg and the
+# isolated Windows lifecycle E2E) stays in private-ci.yml and runs on
+# pushes to main and on manual dispatch.
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  windows-quick:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.10"
+          cache: pip
+      - name: Install pinned test runtime
+        run: |
+          python -m pip install --requirement requirements-client-py310.lock.txt
+          python -m pip install --requirement requirements-test-py310.lock.txt
+          python -m pip install --requirement worker/requirements.txt
+      - name: Run client tests
+        run: python -m pytest -q
+      - name: Run Worker tests
+        shell: pwsh
+        run: |
+          $separator = [System.IO.Path]::PathSeparator
+          $env:PYTHONPATH = "worker${separator}."
+          python -m unittest discover -s worker/tests -p 'test_*.py' -q
+      - name: Compile Python
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -m compileall -q credentials.py path_utils.py src shared scripts tests worker/courselens_worker worker/scripts worker/tests
+      - name: Check frontend JavaScript
+        shell: pwsh
+        run: |
+          Get-ChildItem frontend -Recurse -Filter *.js | ForEach-Object { node --check $_.FullName }
+      - name: Run frontend behavior harnesses
+        shell: pwsh
+        run: |
+          Get-ChildItem tests -Filter 'frontend_*_behavior.mjs' | ForEach-Object { node $_.FullName }
+      - name: Check text, links and patches
+        shell: pwsh
+        run: |
+          python scripts/check_text_encoding.py
+          python scripts/check_markdown_links.py
+          python scripts/check_online_only_residue.py
+          git diff --check
+
+  dependency-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.10"
+          cache: pip
+      - name: Audit pinned dependencies and generate SBOMs
+        run: |
+          python -m pip install --disable-pip-version-check pip==26.1.2 pip-audit==2.10.1
+          mkdir -p runtime/reports/dependency-audit
+          python -m pip_audit -r requirements-client-py310.lock.txt --format json --output runtime/reports/dependency-audit/client.json
+          python -m pip_audit -r requirements-test-py310.lock.txt --format json --output runtime/reports/dependency-audit/test.json
+          python -m pip_audit -r worker/requirements.txt --format json --output runtime/reports/dependency-audit/worker.json
+          python -m pip_audit -r requirements-client-py310.lock.txt --format cyclonedx-json --output runtime/reports/dependency-audit/client.cdx.json
+          python -m pip_audit -r requirements-test-py310.lock.txt --format cyclonedx-json --output runtime/reports/dependency-audit/test.cdx.json
+          python -m pip_audit -r worker/requirements.txt --format cyclonedx-json --output runtime/reports/dependency-audit/worker.cdx.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: dependency-audit-and-sbom
+          path: runtime/reports/dependency-audit
+          if-no-files-found: error
+          retention-days: 14
+
+  gitleaks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
