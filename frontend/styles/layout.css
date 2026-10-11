@@ -1,0 +1,364 @@
+/* --topbar-height 唯一源在 tokens.css（合同 §6 顶栏高 52px）；本文件不再重复
+   声明——旧 56px 覆写曾使 tokens 声明失效（批 3 核对收敛项）。 */
+.topbar {
+  height: var(--topbar-height);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.wordmark {
+  font-family: var(--font-editorial);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--navy-ink);
+  position: relative;
+  padding: 6px 1px 4px;
+  white-space: nowrap;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  flex-shrink: 0;
+}
+.wordmark::after {
+  content: "";
+  position: absolute;
+  left: 1px; right: 1px; bottom: 0;
+  height: 2px;
+  background: var(--gold);
+}
+.topbar-crumbs {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topbar-crumbs[hidden] { display: none; }
+.global-status {
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 方向2：搜索是主入口，全局成功句在 ready 时静默（保留占位，右侧控件位置不跳）；
+   checking/actionable/error 保持可见：状态色条 + 文字双通道，不靠颜色单独表达 */
+.global-status[data-state] { border-left: 3px solid var(--state-color, var(--line-strong)); padding-left: 8px; }
+.global-status[data-state="ready"] { visibility: hidden; }
+.topbar-actions { display: flex; align-items: center; gap: var(--space-2); flex: 0 0 auto; }
+/* A4：顶栏图标钮统一墨色（accent 色留给状态点/徽标；深色主题 svg 的 gold
+   是主题态信号，保留），悬停提亮与直播/任务同款 navy-soft */
+.theme-toggle { width: 44px; min-width: 44px; height: 44px; color: var(--ink); }
+.theme-toggle:hover:not(:disabled) { background: var(--navy-soft); }
+.theme-toggle svg { width: 19px; height: 19px; transition: transform var(--motion), color var(--motion); }
+html[data-theme="dark"] .theme-toggle svg { transform: rotate(24deg); color: var(--gold); }
+
+.search-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 34px;
+  padding: 4px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.search-trigger:hover { color: var(--navy-ink); border-color: var(--navy-ink); }
+.search-trigger img { width: 15px; height: 15px; }
+.search-trigger kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--canvas);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.conn-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.conn-status:hover { background: var(--navy-soft); }
+.conn-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.conn-dot[data-state="ready"] { background: var(--navy-ink); }
+.conn-dot[data-state="checking"] { background: transparent; border: 2px solid var(--line-strong); }
+.conn-dot[data-state="off"] { background: var(--line-strong); } /* N5FE-P6：未开启=安静实心灰点，非告警 */
+.conn-dot[data-state="action"] { background: var(--surface-strong); border: 2px solid var(--gold); }
+.conn-dot[data-state="error"] { background: var(--danger); }
+.conn-dot[data-state="error"]::after { content: "!"; color: var(--accent-contrast); font: 700 8px/1.15 var(--font-editorial); }
+/* AS4-U2：复旦会话登录中呼吸提示（shell.js renderConn 挂/摘 conn-breathing）。
+   约 1.6s 一循环的透明度+光环脉动；prefers-reduced-motion 退化为静态点——
+   「复旦会话登录中…」文案行仍在，信息不丢。 */
+.conn-dot.conn-breathing { animation: conn-breath 1.6s ease-in-out infinite; }
+/* LIGHT-THEME-1 越族收口：光环原借恒暗 --stage-accent-soft（stage 族不随主题
+   翻转，页面级顶栏不得依赖）；改主题 gold 同 alpha 洗色——暗色 --gold 与
+   stage 族值逐位同源（视觉零变），亮色为同一暖琥珀、随主题走。 */
+@keyframes conn-breath {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 22%, transparent); }
+  50% { opacity: 0.45; box-shadow: 0 0 0 5px color-mix(in srgb, var(--gold) 22%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .conn-dot.conn-breathing { animation: none; }
+}
+/* 状态区：连接 / 保护告警 / 任务为离散的同高安静控件（不再是一个分段大胶囊），
+   组语义与聚合 aria-label 不变，各自仍是打开原弹层的独立按钮 */
+.status-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+.status-capsule > * { border: 0; border-radius: var(--radius); min-height: 34px; }
+.status-capsule > .btn-tasks { background: transparent; color: var(--ink); }
+.status-capsule > .btn-tasks:hover { background: var(--navy-soft); }
+.status-capsule > [aria-expanded="true"] { background: var(--navy-soft); }
+.btn-tasks {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--navy);
+  color: var(--accent-contrast);
+  letter-spacing: 0;
+  line-height: 1.6;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.btn-tasks:hover { background: var(--navy-hover); }
+.task-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+.task-chip-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius);
+  background: var(--navy-soft);
+  color: var(--navy-ink);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.task-chip-failed {
+  padding: 0 5px;
+  border-radius: var(--radius);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+}
+.account-button {
+  min-height: 34px;
+  padding: 4px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.account-button .icon { display: none; width: 20px; height: 20px; }
+.account-button:hover { border-color: var(--navy-ink); }
+
+main {
+  min-width: 0;
+  height: calc(100dvh - var(--topbar-height));
+  overflow: hidden;
+  outline: 0;
+}
+.page {
+  height: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  overflow: auto;
+  padding: var(--space-4) var(--space-5) var(--space-6);
+}
+.page[hidden] { display: none; }
+.page-header {
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.page-heading { display: flex; align-items: baseline; gap: var(--space-3); min-width: 0; }
+.page-heading span { color: var(--muted); font-size: 0.84375rem; line-height: 1.6; }
+.header-actions, .button-row, .row-actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.section-header {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.overlay-root { position: fixed; inset: 0; z-index: 45; }
+.overlay-root[hidden] { display: none; }
+.overlay-scrim { position: absolute; inset: 0; background: var(--scrim); }
+.drawer-root { display: flex; justify-content: flex-end; }
+.drawer-root[hidden] { display: none; }
+
+@media (max-width: 719px) {
+  /* 375px 保留新增主题键和全部 44×44 触达：压缩容器和字标，不隐藏控制。 */
+  .topbar { gap: 2px; padding: 0 2px; }
+  .topbar-actions { margin-left: auto; gap: 2px; }
+  .wordmark { font-size: 1rem; }
+  .global-status, .topbar-crumbs, .search-trigger .st-text, .search-trigger kbd { display: none; }
+  .search-trigger, .conn-status, .account-button, .btn-tasks { width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; }
+  .account-button .icon { display: block; }
+  .account-button #account-text { display: none; }
+  .btn-tasks { flex-shrink: 0; }
+  .btn-tasks .btn-tasks-label, .btn-tasks .task-chip-count, .btn-tasks .task-chip-failed { display: none; }
+  .search-trigger { display: inline-flex; }
+  .page { padding: var(--space-3) var(--space-3) var(--space-6); }
+  .page-header { align-items: flex-start; flex-direction: column; }
+  .header-actions { width: 100%; }
+}
+
+@media (pointer: coarse) {
+  button, .button-link, .file-button, input, select { min-height: 44px; }
+  .icon-button { width: 44px; min-width: 44px; height: 44px; }
+  .search-trigger, .conn-status, .account-button, .btn-tasks { min-height: 44px; }
+}
+
+/* ---- C4-RESPONSIVE（SWEEP1-C4，P2）：375 最窄档零横向溢出 ------------------
+   ≤719 档（六钮 44 方阵 + 字标 1rem）顶栏内容实测 426px：375 视口 +51px 溢出，
+   任务/账户钮被截出视口。44×6+字标+直播钮在 375 物理不可同容（六钮 264px 已
+   近 3/4 视口），故在 719 档之下再收一档，沿「压缩容器不隐藏控制」既有原则：
+   六钮 38px 方阵、字标 12px、直播钮缩排、状态胶囊内距收紧——375 内容宽
+   ≈359px（今晚有直播红点日 ≈367px），余量 ≥8px。讲次视图播放器钮同步收
+   38px 宽、文字钮 padding 收窄（最坏全钮可见 331px ≤ 播放器行可用 339px），
+   消 SWEEP1-C4 记录的 #player-ctrl-fullscreen 右缘 401px 越界。
+   px 定尺（不用 rem）：本档几何不随「界面字号」档缩放（large/xlarge 下 375
+   同样不溢出；字标 12px/直播钮 12.5px 仍可读）。
+   特异性 .topbar/.player-controls 前缀（0,2,0）：压过 components/pages/live
+   同特异性基线与各 coarse 补偿块（均 (0,1,0)）；粗指针 44px 触达高度由其后
+   coarse∧479 块原位恢复——38px 宽度不可让（44 宽六钮 375 必溢出），高度让
+   触达。>479px（含 480–719 档与 768/1440 主力档）零规则触碰。320–374px
+   （tokens html/body min-width 320 下限）窄于本档验收域，仍会溢出，留档。 */
+@media (max-width: 479px) {
+  .topbar .wordmark { font-size: 12px; }
+  .topbar .live-entry { min-height: 34px; padding: 4px 6px; font-size: 12.5px; gap: 2px; }
+  .topbar .search-trigger,
+  .topbar .theme-toggle,
+  .topbar .update-toggle,
+  .topbar .conn-status,
+  .topbar .btn-tasks,
+  .topbar .account-button { width: 38px; min-width: 38px; height: 38px; min-height: 38px; }
+  .topbar .status-capsule { gap: 2px; }
+  .player-controls .player-ctrl-button { min-width: 38px; }
+  .player-controls .player-ctrl-text { padding: 0 4px; font-size: 12.5px; }
+  .player-controls .player-ctrl-time { font-size: 12.5px; }
+  .player-controls .player-ctrl-speed { font-size: 12.5px; }
+  .player-controls .player-controls-spring { min-width: 2px; }
+}
+@media (max-width: 479px) and (pointer: coarse) {
+  .topbar .search-trigger,
+  .topbar .theme-toggle,
+  .topbar .update-toggle,
+  .topbar .conn-status,
+  .topbar .btn-tasks,
+  .topbar .account-button { height: 44px; min-height: 44px; }
+}
+
+/* ---- 夜10-A APP-SHAPE-2：原生窗口壳集成 UI ---------------------------------- */
+/* 设置页「关闭窗口时最小化到托盘」开关行：桥未就绪/浏览器形态 hidden 不占位 */
+.native-shell-row { margin-top: var(--space-3); }
+.native-shell-row .check-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+.native-shell-row .check-row input { accent-color: var(--navy-ink); } /* VISUAL-3：--accent 幻影 token 清理（未定义恒走 navy-ink，像素等价） */
+/* 数据管理页「界面缓存」面板：与 recovery-panel 同族观感但属壳域，独立类 */
+.shell-cache-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin: 0 0 var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+.shell-cache-panel h2 { margin: 0; font-size: 0.9375rem; }
+.shell-cache-panel .hint { margin: 4px 0 0; }
+.shell-cache-panel .button-row { margin: 0; align-items: center; }
+.shell-cache-panel[hidden] { display: none; }
+/* 数据管理页「搬家与备份」面板（D12 P0）：与 recovery-panel/shell-cache-panel
+   同族观感；两行提示 + 两按钮 + 状态/错误行，全程零新设置项。
+   SIMPLIFY-AUDIT-1 S4：面板默认折叠（details/summary），换电脑级低频功能
+   不再常驻首屏；summary 一击可达。 */
+.data-migration-panel {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+.data-migration-panel summary { width: fit-content; cursor: pointer; }
+.data-migration-panel summary h2 { display: inline; }
+.data-migration-panel h2 { margin: 0; font-size: 0.9375rem; }
+.data-migration-panel .hint { margin: 4px 0 0; }
+.data-migration-panel .button-row { margin: var(--space-3) 0 0; }
+.data-migration-panel .field-error { margin: var(--space-2) 0 0; }
+
+/* ---- 全局统一细滚动条（UIAUDIT-1 F14）：内嵌列表（搜索面板结果、数据管理
+   课程列表等）曾裸用浏览器默认粗款带箭头滚动条，与壳面观感断裂。此处一处
+   定义全应用生效；颜色走主题 token，深浅色自适应；Firefox 走标准属性。 ---- */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--muted); }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-button { display: none; }

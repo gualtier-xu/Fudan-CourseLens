@@ -1,0 +1,1167 @@
+{
+  "contract": "evidence.v1",
+  "description": "Deterministic synthetic benchmark skeleton for the evidence.v1 contract: Mandarin/English code-switch, numbers/units/formula-like text, overlap, silence/empty hypothesis, a 600-second boundary, repeated slide identity with separate events, correction states including a rejected proposal, checkpoint interruption metadata, empty measurement tables, and negative-case mutations. No real course names, media, accounts, URLs, secrets, or provider calls.",
+  "document": {
+    "checkpoints": [
+      {
+        "detail": "synthetic alignment pass completed after retry",
+        "id": "chk:4b15f7e9502c",
+        "payload_sha256": null,
+        "position_ms": null,
+        "seq": 3,
+        "stage": "align",
+        "status": "complete"
+      },
+      {
+        "detail": null,
+        "id": "chk:a427eab7c94f",
+        "payload_sha256": "ad9bb7512961288ac20c68b8259a406bda0290286cf56da2c3341cc7face3ae9",
+        "position_ms": 30000,
+        "seq": 1,
+        "stage": "asr_segment_0003",
+        "status": "complete"
+      },
+      {
+        "detail": "synthetic interruption before the segment write completed",
+        "id": "chk:c172c43783ea",
+        "payload_sha256": null,
+        "position_ms": 33000,
+        "seq": 2,
+        "stage": "asr_segment_0004",
+        "status": "interrupted"
+      }
+    ],
+    "contract": "evidence.v1",
+    "corrections": [
+      {
+        "actor": "rule",
+        "id": "cor:d77d06ecc781",
+        "reason": "synthetic rejection: rewrite strips punctuation without evidence",
+        "state": "rejected",
+        "target": "seg:11584872f0dc",
+        "text": "Lets start with the first topic gradient descent."
+      },
+      {
+        "actor": "llm",
+        "end_ms": 36000,
+        "id": "cor:493a5a968c90",
+        "reason": "synthetic boundary tightening; token time points are stale and require realignment",
+        "start_ms": 30600,
+        "state": "needs_alignment",
+        "target": "seg:641cf80b6a70"
+      },
+      {
+        "actor": "user",
+        "id": "cor:76d1266b7c35",
+        "reason": "synthetic hyphenation fix accepted by review",
+        "state": "timing_preserved",
+        "target": "seg:f447a4add8c3",
+        "text": "这个模型的 loss function 使用 cross-entropy。"
+      }
+    ],
+    "cues": [
+      {
+        "derived_from": {
+          "id": "seg:ccd5aaf1cba8",
+          "kind": "segment"
+        },
+        "end_ms": 8000,
+        "id": "cue:42bda8d57889",
+        "lang": "zh-CN",
+        "lines": [
+          "今天我们讨论第3章，",
+          "剂量是50毫克每升。"
+        ],
+        "start_ms": 0
+      },
+      {
+        "derived_from": {
+          "id": "seg:11584872f0dc",
+          "kind": "segment"
+        },
+        "end_ms": 14000,
+        "id": "cue:4f9ef7641706",
+        "lang": "en-US",
+        "lines": [
+          "Let's start with the first topic:",
+          "gradient descent."
+        ],
+        "start_ms": 8200
+      },
+      {
+        "derived_from": {
+          "id": "cor:76d1266b7c35",
+          "kind": "correction"
+        },
+        "end_ms": 22000,
+        "id": "cue:3e08b1c89cb5",
+        "lang": "zh-CN",
+        "lines": [
+          "这个模型的 loss function 使用 cross-entropy。"
+        ],
+        "start_ms": 15000
+      },
+      {
+        "derived_from": {
+          "id": "seg:fc00a6454989",
+          "kind": "segment"
+        },
+        "end_ms": 30000,
+        "id": "cue:428452117930",
+        "lang": "zh-CN",
+        "lines": [
+          "根据公式 E=mc^2，",
+          "圆周率约等于3.14159。"
+        ],
+        "start_ms": 23000
+      },
+      {
+        "derived_from": {
+          "id": "seg:e9124de2639c",
+          "kind": "segment"
+        },
+        "end_ms": 52000,
+        "id": "cue:601741d04b71",
+        "lang": "en-US",
+        "lines": [
+          "The sample weighs 2.5 kilograms",
+          "at 98.6 degrees."
+        ],
+        "start_ms": 46000
+      },
+      {
+        "derived_from": {
+          "id": "seg:c75f5d88afc0",
+          "kind": "segment"
+        },
+        "end_ms": 600000,
+        "id": "cue:c25eee1a9920",
+        "lang": "zh-CN",
+        "lines": [
+          "本节课到此结束。"
+        ],
+        "start_ms": 594000
+      }
+    ],
+    "fingerprints": {
+      "config_hash": "2524968e29aca0c56bf073d5356aa43cafa6f0c570112d46b149769e479004ba",
+      "media_sha256": "92366bd93ed781c49608f0ce0aa11bc9a5434b689763647552837cfb6204c183",
+      "model": "synthetic-asr-model-v1",
+      "producer": "courselens-synthetic-producer"
+    },
+    "measurements": {
+      "tables": [
+        {
+          "definition": "corrected spans still in state needs_alignment after the realignment pass divided by all corrected spans",
+          "dims": {},
+          "direction": "lower_is_better",
+          "family": "alignment",
+          "id": "mtr:38dbabef4f69",
+          "metric": "alignment_failure_rate",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "mean absolute error in milliseconds between hypothesis anchors and reference anchors over time-matched spans",
+          "dims": {},
+          "direction": "lower_is_better",
+          "family": "alignment",
+          "id": "mtr:7c208c973678",
+          "metric": "boundary_mae_ms",
+          "scope": null,
+          "unit": "ms",
+          "value": null
+        },
+        {
+          "definition": "95th percentile absolute anchor error in milliseconds over time-matched spans",
+          "dims": {},
+          "direction": "lower_is_better",
+          "family": "alignment",
+          "id": "mtr:ffaaef40f4a3",
+          "metric": "boundary_p95_ms",
+          "scope": null,
+          "unit": "ms",
+          "value": null
+        },
+        {
+          "definition": "voiced reference duration covered by non-empty hypotheses divided by total voiced reference duration",
+          "dims": {},
+          "direction": "higher_is_better",
+          "family": "alignment",
+          "id": "mtr:c4f2c80e282c",
+          "metric": "speech_coverage",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "character error rate = (substitutions + deletions + insertions) / reference character count; rows with zero reference characters stay null",
+          "dims": {},
+          "direction": "lower_is_better",
+          "family": "asr_text",
+          "id": "mtr:3db261c37ef9",
+          "metric": "cer",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "share of negated scopes (e.g. 不 / 无 / 未 / not / without) whose polarity is preserved in the hypothesis",
+          "dims": {},
+          "direction": "higher_is_better",
+          "family": "asr_text",
+          "id": "mtr:46398bffb7c8",
+          "metric": "negation_accuracy",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "share of numeric items (integers, decimals, percentages, scientific notation) transcribed exactly",
+          "dims": {},
+          "direction": "higher_is_better",
+          "family": "asr_text",
+          "id": "mtr:1dd5e4dc1bda",
+          "metric": "numeric_accuracy",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "share of scope term-list occurrences transcribed with an exact surface match in the hypothesis",
+          "dims": {},
+          "direction": "higher_is_better",
+          "family": "asr_text",
+          "id": "mtr:b075ca599db3",
+          "metric": "terminology_accuracy",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "share of scope unit-list items (SI units, currencies, percentages) transcribed exactly",
+          "dims": {},
+          "direction": "higher_is_better",
+          "family": "asr_text",
+          "id": "mtr:f38d9ae61022",
+          "metric": "unit_accuracy",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "hypothesis content with no reference support divided by total hypothesis content",
+          "dims": {},
+          "direction": "lower_is_better",
+          "family": "asr_text",
+          "id": "mtr:bbc052832127",
+          "metric": "unsupported_addition_rate",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "word error rate = (substitutions + deletions + insertions) / reference whitespace-delimited word count; rows with zero reference words stay null",
+          "dims": {},
+          "direction": "lower_is_better",
+          "family": "asr_text",
+          "id": "mtr:62304acebd80",
+          "metric": "wer",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "largest serialized checkpoint payload in bytes across pipeline stages for the producing run",
+          "dims": {},
+          "direction": "information",
+          "family": "checkpoint",
+          "id": "mtr:ec0dabdfd66a",
+          "metric": "checkpoint_size_bytes",
+          "scope": null,
+          "unit": "bytes",
+          "value": null
+        },
+        {
+          "definition": "wall-clock seconds from interruption detection to resumed equivalent progress",
+          "dims": {},
+          "direction": "lower_is_better",
+          "family": "checkpoint",
+          "id": "mtr:f9a59f2ec619",
+          "metric": "recovery_time_s",
+          "scope": null,
+          "unit": "s",
+          "value": null
+        },
+        {
+          "definition": "provider-reported billing estimate in US dollars for the producing run",
+          "dims": {},
+          "direction": "information",
+          "family": "cost",
+          "id": "mtr:862d2c5e4cd9",
+          "metric": "api_cost_usd",
+          "scope": null,
+          "unit": "usd",
+          "value": null
+        },
+        {
+          "definition": "sum of provider-reported input and output counts for the producing run; usage counts only, never credential material",
+          "dims": {},
+          "direction": "information",
+          "family": "cost",
+          "id": "mtr:7c1517b19238",
+          "metric": "api_tokens_total",
+          "scope": null,
+          "unit": "count",
+          "value": null
+        },
+        {
+          "definition": "net durable bytes written by the producing run divided by 1 MiB",
+          "dims": {},
+          "direction": "lower_is_better",
+          "family": "performance",
+          "id": "mtr:797cd7c693b2",
+          "metric": "disk_delta_mb",
+          "scope": null,
+          "unit": "MB",
+          "value": null
+        },
+        {
+          "definition": "peak resident set size of the producing process in mebibytes",
+          "dims": {},
+          "direction": "lower_is_better",
+          "family": "performance",
+          "id": "mtr:2db68b234138",
+          "metric": "rss_peak_mb",
+          "scope": null,
+          "unit": "MB",
+          "value": null
+        },
+        {
+          "definition": "real-time factor = producer wall-clock processing time divided by media duration",
+          "dims": {},
+          "direction": "lower_is_better",
+          "family": "performance",
+          "id": "mtr:859db6965cbc",
+          "metric": "rtf",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "95th percentile of characters per second across display cues (one unit per CJK character, one per latin word)",
+          "dims": {},
+          "direction": "lower_is_better",
+          "family": "presentation",
+          "id": "mtr:837c53533f0d",
+          "metric": "cue_cps_p95",
+          "scope": null,
+          "unit": "chars_per_second",
+          "value": null
+        },
+        {
+          "definition": "display cues whose duration exceeds the presentation limit divided by total display cues",
+          "dims": {},
+          "direction": "lower_is_better",
+          "family": "presentation",
+          "id": "mtr:fef2923db8bc",
+          "metric": "cue_duration_violation_rate",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "cue lines whose rendered width exceeds the display limit divided by total cue lines",
+          "dims": {},
+          "direction": "lower_is_better",
+          "family": "presentation",
+          "id": "mtr:31aac47a7628",
+          "metric": "cue_line_width_violation_rate",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "subtitle error rate: edit distance over cue blocks and line segmentations normalized by reference cue length",
+          "dims": {},
+          "direction": "lower_is_better",
+          "family": "presentation",
+          "id": "mtr:2c06c7b7f16e",
+          "metric": "suber",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "answers fully entailed by their cited evidence units divided by all non-refusal answers",
+          "dims": {},
+          "direction": "higher_is_better",
+          "family": "qa",
+          "id": "mtr:5a0fb438bc60",
+          "metric": "qa_faithfulness",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "answers refused for insufficient evidence divided by all questions; the target rate is product policy, so direction is informational",
+          "dims": {},
+          "direction": "information",
+          "family": "qa",
+          "id": "mtr:17b1c1178604",
+          "metric": "qa_refusal_rate",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "quiz items a prepared student can answer from the cited evidence alone divided by all generated items",
+          "dims": {},
+          "direction": "higher_is_better",
+          "family": "quiz",
+          "id": "mtr:8368acb022f2",
+          "metric": "quiz_answerability",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "generated answers matching adjudicated reference answers divided by answerable items",
+          "dims": {},
+          "direction": "higher_is_better",
+          "family": "quiz",
+          "id": "mtr:1d556ff7aa56",
+          "metric": "quiz_correctness",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "quiz items that are answerable from cited evidence with a single determinate answer divided by all generated items",
+          "dims": {},
+          "direction": "higher_is_better",
+          "family": "quiz",
+          "id": "mtr:666d59357b21",
+          "metric": "quiz_validity",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "retrieval answers citing at least the minimum required evidence units divided by all retrieval answers",
+          "dims": {},
+          "direction": "higher_is_better",
+          "family": "retrieval",
+          "id": "mtr:ea879940874a",
+          "metric": "retrieval_evidence_sufficiency",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        },
+        {
+          "definition": "mean reciprocal rank of the first reference-relevant evidence unit across queries",
+          "dims": {},
+          "direction": "higher_is_better",
+          "family": "retrieval",
+          "id": "mtr:d06a608cf68c",
+          "metric": "retrieval_mrr",
+          "scope": null,
+          "unit": "score",
+          "value": null
+        },
+        {
+          "definition": "reference-relevant evidence units retrieved within the top k divided by all relevant units; k is recorded in scope",
+          "dims": {},
+          "direction": "higher_is_better",
+          "family": "retrieval",
+          "id": "mtr:b161828a2cb8",
+          "metric": "retrieval_recall_at_k",
+          "scope": null,
+          "unit": "ratio",
+          "value": null
+        }
+      ]
+    },
+    "slides": {
+      "entities": [
+        {
+          "deck_id": "synthetic-deck-001",
+          "id": "slent:d95f915b89e9",
+          "page": 1
+        },
+        {
+          "content_sha256": "d4d83003a3a2e3995f75937e327cbb435b8ca92781174d4cb8ae6be95f577609",
+          "deck_id": "synthetic-deck-001",
+          "id": "slent:d7ccdd9442fb",
+          "page": 2,
+          "region": {
+            "h": 720,
+            "w": 1280,
+            "x": 0,
+            "y": 0
+          },
+          "title": "Synthetic slide 2"
+        },
+        {
+          "deck_id": "synthetic-deck-001",
+          "id": "slent:a263b6912c27",
+          "page": 3
+        }
+      ],
+      "events": [
+        {
+          "end_ms": 20000,
+          "entity": "slent:d95f915b89e9",
+          "id": "slevt:007ec0478bd9",
+          "start_ms": 0
+        },
+        {
+          "end_ms": 30500,
+          "entity": "slent:d7ccdd9442fb",
+          "id": "slevt:6135578f7a1d",
+          "start_ms": 20000
+        },
+        {
+          "end_ms": 52000,
+          "entity": "slent:d7ccdd9442fb",
+          "id": "slevt:6dfbddb102e2",
+          "start_ms": 46000
+        },
+        {
+          "end_ms": 594000,
+          "entity": "slent:a263b6912c27",
+          "id": "slevt:bbaa5d834015",
+          "start_ms": 52000
+        }
+      ]
+    },
+    "source": {
+      "duration_ms": 600000,
+      "id": "src:3647512d14e9",
+      "kind": "recording",
+      "origin": "native_upload",
+      "source_sha256": "feba0c295b57680781d546d9ca1fdd7f067289438e19ec07df858827cb2696ba",
+      "title": "Synthetic Lecture Fixture 001"
+    },
+    "speech": {
+      "segments": [
+        {
+          "confidence": 0.93,
+          "end_ms": 8000,
+          "id": "seg:ccd5aaf1cba8",
+          "lang": "zh-CN",
+          "no_speech": false,
+          "source_hash": null,
+          "start_ms": 0,
+          "text": "今天我们讨论第3章，剂量是50毫克每升。",
+          "tokens": [
+            [
+              "今天",
+              0,
+              900
+            ],
+            [
+              "我们",
+              900,
+              1500
+            ],
+            [
+              "讨论",
+              1500,
+              2300
+            ],
+            [
+              "第3章",
+              2300,
+              3300
+            ],
+            [
+              "，",
+              3300,
+              3400
+            ],
+            [
+              "剂量",
+              3400,
+              4100
+            ],
+            [
+              "是",
+              4100,
+              4400
+            ],
+            [
+              "50毫克每升",
+              4400,
+              6200
+            ],
+            [
+              "。",
+              6200,
+              6600
+            ]
+          ]
+        },
+        {
+          "confidence": 0.95,
+          "end_ms": 14000,
+          "id": "seg:11584872f0dc",
+          "lang": "en-US",
+          "no_speech": false,
+          "source_hash": null,
+          "start_ms": 8200,
+          "text": "Let's start with the first topic: gradient descent.",
+          "tokens": [
+            [
+              "Let's",
+              8200,
+              8700
+            ],
+            [
+              "start",
+              8700,
+              9100
+            ],
+            [
+              "with",
+              9100,
+              9400
+            ],
+            [
+              "the",
+              9400,
+              9600
+            ],
+            [
+              "first",
+              9600,
+              10000
+            ],
+            [
+              "topic:",
+              10000,
+              10600
+            ],
+            [
+              "gradient",
+              10600,
+              11400
+            ],
+            [
+              "descent.",
+              11400,
+              12400
+            ]
+          ]
+        },
+        {
+          "confidence": 0.9,
+          "end_ms": 22000,
+          "id": "seg:f447a4add8c3",
+          "lang": "zh-CN",
+          "no_speech": false,
+          "source_hash": null,
+          "start_ms": 15000,
+          "text": "这个模型的 loss function 使用 cross entropy。",
+          "tokens": [
+            [
+              "这个模型的",
+              15000,
+              17200
+            ],
+            [
+              "loss",
+              17200,
+              17800
+            ],
+            [
+              "function",
+              17800,
+              18500
+            ],
+            [
+              "使用",
+              18500,
+              19300
+            ],
+            [
+              "cross",
+              19300,
+              19900
+            ],
+            [
+              "entropy",
+              19900,
+              20600
+            ],
+            [
+              "。",
+              20600,
+              21200
+            ]
+          ]
+        },
+        {
+          "confidence": 0.88,
+          "end_ms": 30000,
+          "id": "seg:fc00a6454989",
+          "lang": "zh-CN",
+          "no_speech": false,
+          "source_hash": null,
+          "start_ms": 23000,
+          "text": "根据公式 E=mc^2，圆周率约等于3.14159。",
+          "tokens": null
+        },
+        {
+          "confidence": 0.91,
+          "end_ms": 36000,
+          "id": "seg:641cf80b6a70",
+          "lang": "zh-CN",
+          "no_speech": false,
+          "source_hash": null,
+          "start_ms": 30500,
+          "text": "我们再来看第二张幻灯片上的图表。",
+          "tokens": null
+        },
+        {
+          "confidence": 0.87,
+          "end_ms": 39000,
+          "id": "seg:77ae4282d475",
+          "lang": "en-US",
+          "no_speech": false,
+          "source_hash": null,
+          "start_ms": 33000,
+          "text": "As shown on the slide, the curve flattens.",
+          "tokens": null
+        },
+        {
+          "confidence": null,
+          "end_ms": 45000,
+          "id": "seg:083bac27b4a1",
+          "lang": "zh-CN",
+          "no_speech": true,
+          "source_hash": null,
+          "start_ms": 40000,
+          "text": "",
+          "tokens": null
+        },
+        {
+          "confidence": 0.94,
+          "end_ms": 52000,
+          "id": "seg:e9124de2639c",
+          "lang": "en-US",
+          "no_speech": false,
+          "source_hash": null,
+          "start_ms": 46000,
+          "text": "The sample weighs 2.5 kilograms at 98.6 degrees.",
+          "tokens": null
+        },
+        {
+          "confidence": 0.9,
+          "end_ms": 600000,
+          "id": "seg:c75f5d88afc0",
+          "lang": "zh-CN",
+          "no_speech": false,
+          "source_hash": null,
+          "start_ms": 594000,
+          "text": "本节课到此结束。",
+          "tokens": null
+        }
+      ]
+    },
+    "units": [
+      {
+        "content": {
+          "why": "synthetic repeated slide identity with a separate occurrence event"
+        },
+        "id": "unit:cad3549dcfc1",
+        "kind": "key_moment",
+        "spans": [
+          {
+            "id": "slevt:6dfbddb102e2",
+            "kind": "slide_event"
+          },
+          {
+            "id": "seg:e9124de2639c",
+            "kind": "segment"
+          }
+        ],
+        "time": {
+          "end_ms": 52000,
+          "start_ms": 46000
+        },
+        "title": "Synthetic slide 2 second showing"
+      },
+      {
+        "content": {
+          "summary": "synthetic summary of loss functions and a famous formula",
+          "terms": [
+            "cross entropy",
+            "E=mc^2"
+          ]
+        },
+        "id": "unit:1de4df01336d",
+        "kind": "knowledge_unit",
+        "spans": [
+          {
+            "id": "seg:f447a4add8c3",
+            "kind": "segment"
+          },
+          {
+            "id": "seg:fc00a6454989",
+            "kind": "segment"
+          }
+        ],
+        "time": {
+          "end_ms": 30000,
+          "start_ms": 15000
+        },
+        "title": "Synthetic loss-function concept"
+      },
+      {
+        "content": {
+          "body": "synthetic reviewer note referencing an accepted user correction"
+        },
+        "id": "unit:cfafda275fe0",
+        "kind": "note",
+        "spans": [
+          {
+            "id": "cor:76d1266b7c35",
+            "kind": "correction"
+          }
+        ],
+        "time": null,
+        "title": null
+      },
+      {
+        "content": {
+          "answer": "E=mc^2",
+          "question": "Which formula does the synthetic lecture mention?"
+        },
+        "id": "unit:a7b78adc2b1e",
+        "kind": "qa",
+        "spans": [
+          {
+            "id": "seg:fc00a6454989",
+            "kind": "segment"
+          }
+        ],
+        "time": null,
+        "title": null
+      },
+      {
+        "content": {
+          "answer_index": 1,
+          "explanation": "stated verbatim in the cited evidence segment",
+          "options": [
+            "1.2 kilograms",
+            "2.5 kilograms",
+            "3.5 kilograms",
+            "98.6 kilograms"
+          ],
+          "question": "What does the synthetic sample weigh?"
+        },
+        "id": "unit:456e2d539f45",
+        "kind": "quiz_item",
+        "spans": [
+          {
+            "id": "seg:e9124de2639c",
+            "kind": "segment"
+          }
+        ],
+        "time": null,
+        "title": null
+      },
+      {
+        "content": null,
+        "id": "unit:29b6f5eccdf8",
+        "kind": "section",
+        "spans": [
+          {
+            "id": "seg:ccd5aaf1cba8",
+            "kind": "segment"
+          },
+          {
+            "id": "seg:11584872f0dc",
+            "kind": "segment"
+          }
+        ],
+        "time": {
+          "end_ms": 14000,
+          "start_ms": 0
+        },
+        "title": "Synthetic section 1"
+      }
+    ]
+  },
+  "fixture": "evidence_benchmark_v1",
+  "measurement_expectations": {
+    "all_values_null": true
+  },
+  "negative_cases": [
+    {
+      "expect_code": "contract_missing",
+      "name": "contract_missing",
+      "remove": [
+        "contract"
+      ]
+    },
+    {
+      "expect_code": "contract_unsupported",
+      "name": "contract_unsupported",
+      "set": [
+        "contract"
+      ],
+      "value": "evidence.v9"
+    },
+    {
+      "expect_code": "anchor_negative",
+      "name": "segment_start_negative",
+      "set": [
+        "speech",
+        "segments",
+        0,
+        "start_ms"
+      ],
+      "value": -1
+    },
+    {
+      "expect_code": "anchor_descending",
+      "name": "segment_anchors_descending",
+      "set": [
+        "speech",
+        "segments",
+        0,
+        "start_ms"
+      ],
+      "value": 9000
+    },
+    {
+      "expect_code": "anchor_out_of_range",
+      "name": "segment_beyond_600s_duration",
+      "set": [
+        "speech",
+        "segments",
+        8,
+        "end_ms"
+      ],
+      "value": 600001
+    },
+    {
+      "expect_code": "id_malformed",
+      "name": "segment_id_malformed",
+      "set": [
+        "speech",
+        "segments",
+        0,
+        "id"
+      ],
+      "value": "seg:zzz"
+    },
+    {
+      "expect_code": "id_mismatch",
+      "name": "segment_id_mismatch",
+      "set": [
+        "speech",
+        "segments",
+        0,
+        "id"
+      ],
+      "value": "seg:000000000000"
+    },
+    {
+      "expect_code": "type_invalid",
+      "name": "segment_anchor_boolean",
+      "set": [
+        "speech",
+        "segments",
+        0,
+        "start_ms"
+      ],
+      "value": true
+    },
+    {
+      "expect_code": "anchor_descending",
+      "name": "token_points_descending",
+      "set": [
+        "speech",
+        "segments",
+        0,
+        "tokens"
+      ],
+      "value": [
+        [
+          "甲",
+          5000,
+          null
+        ],
+        [
+          "乙",
+          3000,
+          null
+        ]
+      ]
+    },
+    {
+      "expect_code": "value_invalid",
+      "name": "no_speech_with_text",
+      "set": [
+        "speech",
+        "segments",
+        6,
+        "text"
+      ],
+      "value": "unexpected hypothesis"
+    },
+    {
+      "clone": [
+        "speech",
+        "segments",
+        0
+      ],
+      "expect_code": "duplicate_id",
+      "name": "duplicate_segment_identity"
+    },
+    {
+      "expect_code": "status_unsupported",
+      "name": "correction_state_unsupported",
+      "set": [
+        "corrections",
+        2,
+        "state"
+      ],
+      "value": "applied"
+    },
+    {
+      "expect_code": "reference_missing",
+      "name": "correction_target_missing",
+      "set": [
+        "corrections",
+        2,
+        "target"
+      ],
+      "value": "seg:000000000000"
+    },
+    {
+      "expect_code": "empty_correction",
+      "name": "correction_timing_preserved_without_change",
+      "set": [
+        "corrections",
+        2,
+        "text"
+      ],
+      "value": "这个模型的 loss function 使用 cross entropy。"
+    },
+    {
+      "expect_code": "invalid_derivation",
+      "name": "cue_derives_from_rejected_correction",
+      "set": [
+        "cues",
+        0,
+        "derived_from"
+      ],
+      "value": {
+        "id": "cor:d77d06ecc781",
+        "kind": "correction"
+      }
+    },
+    {
+      "expect_code": "value_invalid",
+      "name": "cue_empty_lines",
+      "set": [
+        "cues",
+        0,
+        "lines"
+      ],
+      "value": []
+    },
+    {
+      "expect_code": "value_invalid",
+      "name": "unit_empty_spans",
+      "set": [
+        "units",
+        0,
+        "spans"
+      ],
+      "value": []
+    },
+    {
+      "expect_code": "value_unsupported",
+      "name": "unit_kind_unsupported",
+      "set": [
+        "units",
+        0,
+        "kind"
+      ],
+      "value": "flashcard"
+    },
+    {
+      "expect_code": "reference_missing",
+      "name": "unit_span_reference_missing",
+      "set": [
+        "units",
+        0,
+        "spans",
+        0,
+        "id"
+      ],
+      "value": "seg:000000000000"
+    },
+    {
+      "expect_code": "reference_missing",
+      "name": "slide_event_entity_missing",
+      "set": [
+        "slides",
+        "events",
+        0,
+        "entity"
+      ],
+      "value": "slent:000000000000"
+    },
+    {
+      "expect_code": "status_unsupported",
+      "name": "checkpoint_status_unsupported",
+      "set": [
+        "checkpoints",
+        0,
+        "status"
+      ],
+      "value": "partial"
+    },
+    {
+      "expect_code": "metric_unknown",
+      "name": "measurement_family_unknown",
+      "set": [
+        "measurements",
+        "tables",
+        0,
+        "family"
+      ],
+      "value": "made_up_family"
+    },
+    {
+      "expect_code": "secret_like",
+      "name": "provider_key_in_text",
+      "set": [
+        "speech",
+        "segments",
+        1,
+        "text"
+      ],
+      "value": "call api_key: sk-0123456789abcdef012345"
+    },
+    {
+      "expect_code": "secret_like_key",
+      "name": "credential_field_name",
+      "set": [
+        "speech",
+        "segments",
+        0,
+        "password"
+      ],
+      "value": "irrelevant"
+    }
+  ],
+  "synthetic": true
+}

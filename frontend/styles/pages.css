@@ -1,0 +1,2354 @@
+/* 学习页：三态渐进披露 */
+.study-select[hidden], .study-desk[hidden] { display: none; }
+
+/* 课程与讲次选择：居中两栏主从。
+   目录列与上方「今日概览」卡片共用同一页面内容网格：不再给 course-layout 单独
+   收 1080px 宽度上限，左右边界与上方卡片边缘严格对齐（桌面 1440px 封宽由 .page 承担）。 */
+.course-layout {
+  display: grid;
+  grid-template-columns: 400px minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+.course-list, .lecture-pane { min-width: 0; }
+.course-list { max-height: calc(100dvh - 420px); overflow: auto; }
+.catalog-term-filter { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.84375rem; white-space: nowrap; }
+.catalog-term-filter .select { min-width: 132px; }
+.lecture-head { padding: 4px 2px var(--space-2); }
+.lecture-head h2 { font-size: 1.25rem; letter-spacing: 0; color: var(--navy-ink); }
+.lecture-head span { display: block; margin-top: 4px; color: var(--muted); font-size: 0.84375rem; line-height: 1.6; }
+.lecture-list { max-height: calc(100dvh - 480px); overflow: auto; }
+
+/* 今日概览：课表小组件与直播卡并排（窄屏堆叠） */
+.home-overview { margin: -8px 0 var(--space-5); }
+.home-cards-row {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+.schedule-card, .home-live-card {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: var(--space-3) var(--space-4) var(--space-2);
+}
+
+/* STUDY-STATS-M1 本周学习面貌卡（学习统计 v2 默认层；p5s- 前缀独占，
+   复用全局 token 与 .schedule-card 同族卡面语言，零新视觉语言）。 */
+.study-week-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: var(--space-3) var(--space-4) var(--space-3);
+}
+.p5s-title { letter-spacing: 0; }
+.p5s-loading { color: var(--muted); }
+.p5s-guide { color: var(--muted); margin: 0; line-height: 1.6; }
+.p5s-summary { color: var(--muted); font-size: 0.84375rem; line-height: 1.6; font-variant-numeric: tabular-nums; }
+.p5s-block { display: flex; flex-direction: column; gap: var(--space-1); }
+
+/* STUDY-STATS-GFIX-1 F1：三态宿主变体——同一张卡（同 token 同卡面语言），
+   只换宿主与方向。诗页宿主：定宽由宿主承担（.empty-state 格点项 shrink-to-fit，
+   百分比宽度对收缩父级不解析），卡随宿主居中、文字复位左对齐（空态全局
+   text-align:center 的局部逆）。 */
+#study-week-card-host-empty { width: min(560px, 100%); justify-self: center; }
+#study-empty .study-week-card {
+  margin-top: var(--space-3);
+  text-align: left;
+}
+/* 学习桌宿主：≥1000px 三块横排（与 desk-columns 双栏同拍；视频 56vh 高度帽下
+   卡与播放器同屏双可见，续学着陆 0 点击即达）；窄屏随 desk-columns 回退纵排。 */
+@media (min-width: 1000px) {
+  .study-desk .study-week-card {
+    margin-top: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2) var(--space-5);
+    align-items: start;
+  }
+  .study-desk .study-week-card > .p5s-title { grid-column: 1 / 2; grid-row: 1; align-self: center; }
+  .study-desk .study-week-card > .p5s-summary {
+    grid-column: 2 / 4;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+    text-align: right;
+  }
+  .study-desk .study-week-card > .p5s-block { grid-row: 2; }
+}
+.p5s-block-title {
+  color: var(--navy-ink);
+  font-size: 0.84375rem;
+  font-weight: 600;
+  border-top: 1px solid var(--line);
+  padding-top: var(--space-2);
+}
+.p5s-week { display: flex; gap: var(--space-2); }
+.p5s-day {
+  flex: 1 1 0;
+  min-width: 26px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 44px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--track);
+}
+.p5s-day[data-state="active"] { border-color: var(--line-strong); }
+.p5s-day[data-state="future"] { border-style: dashed; background: transparent; }
+.p5s-day-today { border-color: var(--navy-ink); }
+/* 亮度=填充条高度（时长决定亮度；同 sw-progress 进度条语言，纯高度零渐变——
+   S09-D：渐变手法全站唯一保留给播放器控制台可读性 scrim）。 */
+.p5s-day-fill {
+  position: absolute;
+  inset: auto 0 0 0;
+  background: var(--navy);
+  opacity: 0.82;
+}
+/* F5（STUDY-STATS-GFIX-1）：标签与填充条成对取色——active 格标签叠 navy 填充条
+   （opacity .82）之上，须配填充条上的恒亮对比色而非表面色：暗色旧取暗表面
+   --surface-strong 叠混合填充 ≈2.1:1（AA 需 4.5）。--accent-contrast 双主题恒
+   白：light 与原值像素等价（白字/深蓝 ≈7.2:1），dark ≈7.0:1。
+   idle/future 不叠填充条，维持 muted（light 最弱 4.75、dark 实算过 AA）。 */
+.p5s-day-label { position: relative; color: var(--accent-contrast); font-size: 0.6875rem; line-height: 1.4; padding-bottom: 2px; }
+.p5s-day[data-state="idle"] .p5s-day-label, .p5s-day[data-state="future"] .p5s-day-label { color: var(--muted); }
+.p5s-empty { color: var(--muted); margin: 0; line-height: 1.6; }
+.p5s-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.p5s-row:hover { background: var(--navy-soft); }
+.p5s-row-text { color: var(--ink); line-height: 1.6; }
+.p5s-row-action { margin-left: auto; color: var(--navy-ink); font-size: 0.84375rem; white-space: nowrap; }
+.p5s-mastery { display: flex; flex-direction: column; gap: var(--space-1); }
+.p5s-mastery-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+  line-height: 1.6;
+}
+.p5s-mastery-course { color: var(--ink); font-weight: 600; }
+.p5s-mastery-evidence { color: var(--muted); font-size: 0.84375rem; overflow-wrap: anywhere; }
+.p5s-tier {
+  flex: none;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+.p5s-tier[data-tier="薄弱"] { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
+.p5s-tier[data-tier="待巩固"] { border-color: var(--gold-strong); color: var(--gold-strong); }
+.p5s-tier-gray { border-style: dashed; color: var(--muted); background: transparent; }
+
+/* STUDY-STATS-M2-b 展开层（单入口 dialog；全部复用全局 token 与周卡同族语言）。 */
+.study-detail-dialog {
+  width: min(880px, 96vw);
+  max-height: 90vh;
+  overflow: auto;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-strong);
+  color: var(--ink);
+}
+.study-detail-dialog::backdrop { background: var(--scrim); }
+.p5s-detail-state { margin: 0 0 var(--space-2); color: var(--muted); font-size: 0.84375rem; line-height: 1.6; }
+.p5s-detail-state:empty { display: none; }
+.p5s-detail-forecast { margin-bottom: var(--space-3); }
+.p5s-detail-entry {
+  align-self: flex-start;
+  margin-top: var(--space-1);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--navy-ink);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.p5s-detail-entry:hover { background: var(--navy-soft); }
+.p5s-course-partial { color: var(--muted); font-size: 0.84375rem; }
+.p5s-course { border-top: 1px solid var(--line); padding-top: var(--space-2); margin-top: var(--space-2); }
+.p5s-course-summary {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  cursor: pointer;
+  list-style: none;
+}
+.p5s-course-summary::-webkit-details-marker { display: none; }
+.p5s-course-summary::before {
+  content: "▸";
+  color: var(--muted);
+  flex: none;
+}
+.p5s-course[open] .p5s-course-summary::before { content: "▾"; }
+.p5s-course-meta { margin-left: auto; color: var(--muted); font-size: 0.84375rem; text-align: right; }
+.p5s-course-evidence { margin: var(--space-1) 0 0; }
+.p5s-lectures { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-2); }
+.p5s-lecture {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.p5s-lecture-label { color: var(--ink); line-height: 1.6; overflow-wrap: anywhere; }
+.p5s-lecture-facts { margin-left: auto; display: flex; gap: var(--space-3); flex-wrap: wrap; justify-content: flex-end; }
+.p5s-lecture-fact { color: var(--muted); font-size: 0.84375rem; line-height: 1.6; font-variant-numeric: tabular-nums; }
+.p5s-forecast-count { font-weight: 600; }
+.schedule-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 2px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--radius);
+}
+.schedule-widget:hover .sw-open-hint { color: var(--navy-ink); }
+.sw-head { display: flex; align-items: baseline; gap: var(--space-3); }
+.s-title { font-size: 1.03125rem; font-weight: 600; letter-spacing: 0; color: var(--navy-ink); }
+.sw-open-hint { margin-left: auto; color: var(--muted); font-size: 0.84375rem; white-space: nowrap; }
+.schedule-now { display: flex; flex-direction: column; gap: 2px; min-height: 64px; }
+.sw-mode {
+  width: fit-content;
+  padding: 1px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+  letter-spacing: 0;
+}
+.sw-mode.sw-live {
+  border-color: var(--gold-strong);
+  color: var(--gold-strong);
+}
+.sw-title-line { font-size: 1.125rem; font-weight: 600; letter-spacing: 0; color: var(--navy-ink); }
+.sw-meta, .sw-time { color: var(--muted); font-size: 0.84375rem; line-height: 1.6; font-variant-numeric: tabular-nums; }
+.sw-empty { color: var(--muted); font-size: 0.84375rem; line-height: 1.6; }
+.sw-progress {
+  display: block;
+  height: 4px;
+  margin-top: 6px;
+  border-radius: var(--radius);
+  background: var(--track);
+  overflow: hidden;
+}
+.sw-progress-fill { display: block; height: 100%; border-radius: var(--radius); background: var(--navy); transition: width var(--motion) ease-out; }
+.sw-remaining { color: var(--gold-strong); font-size: 0.84375rem; line-height: 1.6; font-variant-numeric: tabular-nums; }
+/* 状态区是小组件按钮的兄弟节点（动作按钮不得嵌进打开器按钮），用上边距延续原 6px 行距 */
+.sw-state { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin: 6px 0 0; color: var(--muted); font-size: 0.84375rem; line-height: 1.6; }
+.sw-state:empty { display: none; }
+.s-summary { color: var(--muted); font-size: 0.84375rem; line-height: 1.6; }
+.home-live-card { display: flex; flex-direction: column; gap: 8px; }
+.hlc-target { margin-left: auto; color: var(--muted); font-size: 0.84375rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hlc-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hlc-body strong { font-size: 1rem; font-weight: 600; letter-spacing: 0; color: var(--navy-ink); }
+.hlc-body span { color: var(--muted); font-size: 0.84375rem; line-height: 1.6; overflow-wrap: anywhere; }
+.home-live-card[data-state="live"] { border-color: var(--gold-strong); }
+.home-live-card[data-state="live"] .hlc-body strong { color: var(--gold-strong); }
+/* §7 只动 opacity/transform：直播涟漪改为圆点自身缩放 + 淡出（原 box-shadow
+   扩散环废除）。reduced-motion 下全局规则计 1 次后落回静态实心圆点。 */
+.home-live-card[data-state="live"] .hlc-body strong::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: live-pulse 1.6s ease-out infinite;
+}
+@keyframes live-pulse {
+  0% { transform: scale(1); opacity: 1; }
+  70% { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+.home-live-card .hlc-actions { display: flex; align-items: center; gap: var(--space-2); }
+.home-live-card .btn-primary { min-height: 36px; padding: 5px 16px; }
+.hlc-recheck, .live-room-recheck { min-height: 32px; padding: 4px 10px; font-size: 0.875rem; }
+.hlc-capability { color: var(--navy-ink); }
+
+/* 周课表浮层：原生 dialog + 七列时间轴 */
+.week-dialog {
+  width: min(1200px, 96vw);
+  max-height: 90vh;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-strong);
+  color: var(--ink);
+}
+.week-dialog::backdrop { background: var(--scrim); }
+.week-dialog-header { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-2); }
+.week-dialog-header h2 { font-size: 1.125rem; letter-spacing: 0; color: var(--navy-ink); }
+.week-dialog-actions { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-left: auto; }
+.schedule-state { margin: 0 0 12px; color: var(--muted); font-size: 0.84375rem; line-height: 1.6; }
+.schedule-state:empty { display: none; }
+.week-tag {
+  color: var(--muted);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+.week-scroll { overflow: auto; max-height: calc(90vh - 190px); border: 1px solid var(--line); border-radius: var(--radius); }
+.week-table {
+  display: grid;
+  grid-template-columns: 56px repeat(7, minmax(104px, 1fr));
+  grid-template-rows: auto 1fr;
+  min-width: 840px;
+}
+.week-corner { grid-row: 1; grid-column: 1; border-bottom: 1px solid var(--line); }
+.week-day-head {
+  grid-row: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+}
+.week-day-head .wd-name { color: var(--navy-ink); font-weight: 600; }
+.week-day-head.today { background: var(--navy-soft); }
+.week-day-head.today .wd-name { color: var(--navy-ink); }
+.wd-today-pill {
+  margin-left: auto;
+  padding: 0 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--gold-strong);
+  color: var(--navy-ink);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+.week-axis {
+  grid-row: 2;
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+}
+.week-slot-label {
+  height: 52px;
+  flex: none;
+  padding: 2px 8px 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+.week-canvas {
+  grid-row: 2;
+  grid-column: 2 / -1;
+  display: flex;
+  align-items: stretch;
+}
+.week-day {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  border-left: 1px solid var(--line);
+}
+.week-day.today { background-color: var(--navy-soft); }
+.week-day-lines { position: absolute; inset: 0; pointer-events: none; }
+.week-slot-line { position: absolute; left: 0; right: 0; border-top: 1px solid var(--line); }
+.week-block {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+  padding: 4px 8px;
+  border: 0;
+  border-left: 3px solid var(--navy);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  color: var(--ink);
+  text-align: left;
+  cursor: default;
+  box-shadow: var(--shadow);
+}
+.week-block:not(.past):not(.plain) { cursor: pointer; }
+div.week-block { cursor: default; }
+button.week-block:hover { background: var(--navy-soft); }
+.wb-time { color: var(--muted); font-size: 0.75rem; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.wb-name { font-size: 0.84375rem; font-weight: 600; letter-spacing: 0; color: var(--navy-ink); line-height: 1.4; }
+.wb-room { color: var(--muted); font-size: 0.75rem; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wb-tag { font-size: 0.75rem; line-height: 1.4; letter-spacing: 0; }
+.wb-tag.next { color: var(--gold-strong); }
+.wb-tag.done { color: var(--muted); }
+.wb-tag.now { color: var(--gold-strong); }
+.wb-tag.conflict { color: var(--danger); }
+.week-block.past { opacity: 0.68; border-left-color: var(--line-strong); }
+.week-block.conflict { border-left-color: var(--danger); background: var(--danger-soft); }
+.week-block.conflict .wb-name::after { content: " ！"; color: var(--danger); font-weight: 700; }
+.week-block.now { border-left-color: var(--gold-strong); background: var(--surface-strong); }
+.week-block.now .wb-name { color: var(--gold-strong); }
+.week-dialog-footer { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-3); }
+.week-dialog-footer .hint { margin-left: auto; }
+.conflict-note {
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='14' height='14'><path d='M12 4 21 19H3z' fill='none' stroke='%23B45309' stroke-width='1.8' stroke-linejoin='round'/><path d='M12 10v4' stroke='%23B45309' stroke-width='1.8' stroke-linecap='round'/></svg>") 0 50% / 14px 14px no-repeat;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 8px 0 0;
+  padding: 0 10px;
+  color: var(--danger);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+}
+.conflict-note svg { width: 14px; height: 14px; flex: none; }
+.schedule-conflicts:empty { display: none; }
+.tt-settings { margin-top: 4px; }
+.tt-settings > summary { cursor: pointer; width: fit-content; color: var(--muted); }
+.tt-fields { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
+/* 窄视口下学期/起始日字段可收缩换行，不横向溢出（1000px 验收） */
+.tt-fields .select, .tt-fields .field { min-width: 0; max-width: 100%; }
+/* A9：原生 date input 按系统区域格式渲染（本机=月/日/年），旁注一行免学生误解；
+   保留原生控件不自绘选择器 */
+.tt-date-format-hint { flex-basis: 100%; margin: 0; }
+
+/* 学习桌：≥1000px 播放器在左、内容在右 */
+.study-desk { display: grid; gap: var(--space-4); }
+.desk-header { min-height: 40px; display: flex; align-items: center; }
+.desk-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+@media (min-width: 1000px) {
+  .desk-columns { grid-template-columns: minmax(0, 1.7fr) minmax(360px, 1fr); }
+}
+.player-pane, .content-pane { min-width: 0; }
+
+/* POLISH-O13 O2：#player-evidence 空串条件渲染——讲次载入成功态 JS 写空串
+   （player-core.js「普通成功态保持安静」既有裁决），空节点不得再进渲染/无障碍树；
+   「未选择媒体」「需要登录」有话则照常显示。 */
+#player-evidence:empty { display: none; }
+
+.player-placeholder {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 56vh;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-panel);
+  background: var(--canvas); /* VISUAL-3：--surface-muted 幻影 token 清理（像素等价） */
+  color: var(--muted);
+}
+.player-placeholder[hidden] { display: none; }
+.player-placeholder img { width: 28px; height: 28px; opacity: 0.6; }
+/* 字幕 overlay 与视频共用同一几何：fit 包装层承担宽度上限并作为 overlay 的定位上下文，
+   video 撑满 fit 层；shell 只作全屏目标与定位容器。
+   .player-pane video 选择器保持不变（播放器舞台规则仍由它定义）。 */
+/* 控制面选中态政策（PLAYER-INTERACT-REPAIR-1 单元二）：点击不产生文本选择
+   高亮；触屏点按无高亮闪底。焦点环只属 :focus-visible（键盘），见下。 */
+.player-stage-shell {
+  position: relative;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.player-stage-fit { position: relative; width: min(100%, calc(56vh * 16 / 9)); }
+/* 影院模式：页面内放大媒体区（不进入浏览器全屏），学习桌宽屏下横跨两栏 */
+.player-stage-shell.theatre .player-stage-fit { width: min(100%, calc(78vh * 16 / 9)); }
+/* N6L S1 U3：学习桌播放器的「回到直播中」pill 样式随直播段移交 styles/live.css */
+@media (min-width: 1000px) {
+  .player-pane:has(.player-stage-shell.theatre) { grid-column: 1 / -1; }
+}
+.player-pane video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--video-stage);
+}
+.player-pane video[hidden] { display: none; }
+/* ---- 一方沉浸式控制台（S09-D）：控制条常驻视频矩形内部底缘，timeline 在
+   ---- 顶行、紧凑按钮占其下一行。黑幕只承担画面上的可读性（功能性 scrim，
+   ---- 全站唯一渐变）。chrome 用恒暗 token 族（tokens.css --stage-*，批β）：
+   ---- 刻意不随主题反转，:root 一次定义且暗色无覆盖分支=按构造恒常（R14）。
+   ---- 页面壳层（placeholder/错误面/周边文本）仍随亮暗主题。 ---- */
+.player-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  /* 行距 0 + 可见轨在行内下移 4px：播放条贴近下方按钮行（2026-09-21 用户反馈；
+     32px 命中区保留，只收紧视觉空隙）。UXP1 走查：外框上下收窄（40→34）+
+   底缘留白 6→3px——整块更贴视频底部，遮挡更少；触控 44px 下限另由
+   coarse/窄屏媒体查询保底不受影响。 */
+  gap: 0;
+  /* 等距视觉平衡（用户拍板 2026-09-22，二次微调：两侧各≈11px 留呼吸感）——
+     以可见轨线为基准，文字上端到轨线 = 文字下端到底缘 */
+  padding: 16px 10px 6px;
+  border: 0;
+  border-radius: 0 0 var(--radius-panel) var(--radius-panel);
+  background: var(--stage-controls-scrim);
+  color: var(--stage-ink);
+}
+.player-controls[hidden] { display: none; }
+/* 播放中指针静止 2.5s 自动收起：透明+下移淡出；visibility 让隐藏的 chrome
+   整体离开可达性树与 Tab 序（JS 的钉住条件保证焦点所在时绝不隐藏） */
+.player-controls[data-chrome-state="hidden"] {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity var(--motion-fast) ease, transform var(--motion-fast) ease, visibility 0s linear var(--motion-fast);
+}
+.player-controls[data-chrome-state="visible"] {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  pointer-events: auto;
+  transition: opacity var(--motion-fast) ease, transform var(--motion-fast) ease, visibility 0s;
+}
+.player-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 34px;
+}
+.player-controls-spring { flex: 1 1 0; min-width: var(--space-2); }
+.player-ctrl-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 34px;
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--stage-ink);
+  line-height: 1.6;
+  transition: background-color var(--motion-fast), color var(--motion-fast);
+}
+/* 用户拍板（2026-09-22）：控制选项取消悬浮/选中背景色（淡海军蓝/淡橙），
+   并压掉全局 button:hover 的 border-color/color 翻转（悬浮出现边框的根因）。
+   补充E②：悬浮指示改为金 accent 高对比色——--stage-accent-strong 对黑底
+   （--stage-bg #071D33）对比度 ≈10.8:1（≥4.5:1 钉在 workbench 数字验收），
+   恒暗 chrome 亮暗主题同值；选中态保持同族金色（悬停=预览，按下=锁定）。 */
+.player-ctrl-button:hover:not([disabled]) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--stage-accent-strong);
+}
+.player-ctrl-speed:hover:not(:disabled) { color: var(--stage-accent-strong); }
+.player-ctrl-button[aria-pressed="true"] { background: transparent; color: var(--stage-accent-strong); }
+.player-ctrl-button[disabled] { opacity: 0.45; }
+.player-ctrl-button[data-state="playing"] svg[data-play-icon="play"] { display: none; }
+.player-ctrl-button[data-state="playing"] svg[data-play-icon="pause"] { display: block; }
+.player-ctrl-button[data-state="low"] svg[data-volume-icon="on"] { display: none; }
+.player-ctrl-button[data-state="low"] svg[data-volume-icon="low"] { display: block; }
+.player-ctrl-button[data-state="muted"] svg[data-volume-icon="on"] { display: none; }
+.player-ctrl-button[data-state="muted"] svg[data-volume-icon="low"] { display: none; }
+.player-ctrl-button[data-state="muted"] svg[data-volume-icon="off"] { display: block; }
+.player-ctrl-text { font-size: 0.875rem; min-width: 0; padding: 0 8px; }
+.player-ctrl-time {
+  min-width: 4ch;
+  font-size: 0.84375rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: rgb(var(--stage-ink-rgb) / 85%);
+}
+/* 时长总长跟在已播之后，以分隔符连成一组「0:05 / 10:00」 */
+.player-ctrl-time-total { text-align: left; color: rgb(var(--stage-ink-rgb) / 60%); }
+.player-ctrl-time-total::before { content: "/"; margin: 0 4px 0 1px; color: rgb(var(--stage-ink-rgb) / 45%); }
+/* timeline 是 overlay 顶行：整行贴可读性 scrim 上缘。
+   S10-A 单一几何模型：--player-thumb-size 是唯一几何常量。Chromium 原生
+   range thumb 的行程在两端各内缩 thumb 半径，因此可见轨与已播填充按同一
+   常量内缩 thumb 半径，宽度按 (100% − thumb) × 进度比 计——0%/100% 处轨端
+   与填充端缘都和 thumb 圆心精确重合（无空隙/早停/裁剪/溢出），1440px 与
+   390px、指针与键盘、拖动中都成立。JS 只写 --play-ratio（0..1），不掺像素。 */
+.player-timeline {
+  --player-thumb-size: 14px;
+  /* 可见轨中心在带盒内的纵向偏移（相对 50%）：轨线贴带盒底缘（中心=高-2px），
+     与下方文字行形成上下等距（用户拍板 2026-09-22：文字上端到控制条=文字下端
+     到底缘）。窄屏/触控 44px 带盒在媒体查询里覆写为 20px。 */
+  --player-track-offset: 10px;
+  position: relative;
+  height: 32px;
+}
+.player-timeline::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--player-thumb-size) / 2);
+  right: calc(var(--player-thumb-size) / 2);
+  top: calc(50% + var(--player-track-offset));
+  height: 4px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: rgb(var(--stage-ink-rgb) / 28%);
+}
+.player-timeline-fill {
+  position: absolute;
+  left: calc(var(--player-thumb-size) / 2);
+  top: calc(50% + var(--player-track-offset));
+  height: 4px;
+  transform: translateY(-50%);
+  width: calc((100% - var(--player-thumb-size)) * var(--play-ratio, 0));
+  border-radius: 2px;
+  background: var(--stage-accent);
+}
+/* N5PR-P4：悬停/拖动时可见轨视觉增高 4→6px（150ms 过渡）；命中区由
+   .player-ctrl-timeline 的 32px 恒定承担，与视觉分离，绝不随 hover 变化。 */
+.player-timeline::before,
+.player-timeline-fill,
+.player-timeline-buffered { transition: height var(--motion-fast) ease; }
+.player-timeline:hover::before,
+.player-timeline[data-scrubbing="true"]::before,
+.player-timeline:hover .player-timeline-fill,
+.player-timeline[data-scrubbing="true"] .player-timeline-fill,
+.player-timeline:hover .player-timeline-buffered,
+.player-timeline[data-scrubbing="true"] .player-timeline-buffered { height: 6px; }
+/* N5PR-P4：悬停/拖动时间气泡——几何只读 --player-thumb-size 模型推导
+   （与填充条同一内缩公式），transform 定位不写 currentTime。 */
+.player-timeline-bubble {
+  position: absolute;
+  bottom: calc(50% - var(--player-track-offset) + 9px);
+  left: calc(var(--player-thumb-size) / 2 + (100% - var(--player-thumb-size)) * var(--bubble-ratio, 0));
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(var(--stage-ink-rgb) / 18%);
+  background: var(--stage-surface);
+  color: var(--stage-ink);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.player-timeline-bubble[hidden] { display: none; }
+/* N5PR-P4：中央缓冲指示（waiting >300ms 防闪窗后出现；恢复面板互斥）。
+   转圈 800ms infinite——reduced-motion 下 iteration 被全局规则压为 1 次，
+   落回静态圆环，文案仍在。 */
+.player-stage-spinner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 22px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(var(--stage-ink-rgb) / 18%);
+  background: var(--stage-surface);
+  color: var(--stage-ink);
+  pointer-events: none;
+}
+.player-stage-spinner[hidden] { display: none; }
+.player-stage-spinner-ring {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid rgb(var(--stage-ink-rgb) / 25%);
+  border-top-color: var(--stage-ink);
+  animation: player-spinner-rotate 800ms linear infinite;
+}
+@keyframes player-spinner-rotate { to { transform: rotate(360deg); } }
+.player-stage-spinner-text { font-size: 0.84375rem; }
+/* PERF-C23 舞台级预载提示：讲次选中→媒体元数据就绪间的舞台状态面（spinner
+   事件族预载期不触发，见夜批15 R2 C2-3）。同舞台恒暗族（--stage-*，:root
+   冻结字面常量，双主题按构造恒常）；转圈复用 player-spinner-rotate 800ms
+   （reduced-motion 全局 .01ms 规则压平→静态环，文案仍在）；让位走
+   opacity var(--motion) 过渡（reduce 压平=瞬时让位），.is-leaving 由
+   stage-preload.js 在内容就绪时挂上、兜底 240ms 后摘除。
+   定位：预载期 video 未挂载，stage-shell/fit 塌缩为 0 高（实测 20261007），
+   top:50% 失锚——由 stage-preload.js 在亮起前以占位盒实测半高写入
+   --preload-stage-half，从 fit 底边（swap 前后恒定：预载期=占位盒底、就绪后=
+   视频底）上推半高，把提示锚在可见舞台竖直中心；就绪让位时卡原地淡出、
+   视频自下方浮现，不随布局 swap 跳位。 */
+.player-stage-preload {
+  position: absolute;
+  left: 50%;
+  bottom: var(--preload-stage-half, 0px);
+  transform: translate(-50%, 50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 22px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(var(--stage-ink-rgb) / 18%);
+  background: var(--stage-surface);
+  color: var(--stage-ink);
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity var(--motion) ease;
+}
+.player-stage-preload[hidden] { display: none; }
+.player-stage-preload.is-leaving { opacity: 0; }
+.player-stage-preload-ring {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid rgb(var(--stage-ink-rgb) / 25%);
+  border-top-color: var(--stage-ink);
+  animation: player-spinner-rotate 800ms linear infinite;
+}
+.player-stage-preload-primary { font-size: 0.84375rem; }
+.player-stage-preload-secondary { font-size: 0.75rem; color: rgb(var(--stage-ink-rgb) / 72%); }
+/* L96' 续播提示条（PLAYER-OPT-1 20261008）：非模态浮层，同舞台恒暗族
+   （--stage-* 构造恒常，零新视觉语言）；锚在甲板上方居中（spinner 同族
+   transform），不挡画面主体与控制台；「从头看」钮是浮层内唯一交互件，
+   Tab 可达、指针点击后由学习桌 capture 接线归还焦点。
+   阴影走 --shadow-raised token（workbench 阴影闭集，RECON-SHADOW-1
+   20261009 对齐）：本设计语言浮起阴影 token 恒 none=平面+描边划界，
+   与相邻 .player-stage-preload 同族，禁再发明字面投影值。 */
+.player-resume-banner {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(92%, 460px);
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(var(--stage-ink-rgb) / 18%);
+  background: var(--stage-surface);
+  color: var(--stage-ink);
+  box-shadow: var(--shadow-raised);
+  z-index: 6;
+}
+.player-resume-banner[hidden] { display: none; }
+.player-resume-text { font-size: 0.84375rem; font-variant-numeric: tabular-nums; }
+.player-resume-restart {
+  flex: none;
+  padding: 4px 12px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(var(--stage-ink-rgb) / 30%);
+  background: transparent;
+  color: var(--stage-ink);
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+.player-resume-restart:hover { background: rgb(var(--stage-ink-rgb) / 10%); }
+/* 焦点环走 accessibility.css 全局 :focus-visible 规则（--focus 环），浮层零自定义环 */
+.player-ctrl-timeline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  /* 复位全局 input 规则（components.css 的 padding/border/min-height）：承袭
+     会把 thumb 行程内缩约 2×(padding+border)，已播/未播分界线与滑块圆心
+     系统性错位（PLAYER-INTERACT-REPAIR-1 单元二④根因）。 */
+  padding: 0;
+  border: 0;
+  min-height: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+}
+.player-ctrl-timeline:disabled { opacity: 0.45; }
+.player-ctrl-timeline::-webkit-slider-runnable-track { height: 32px; background: transparent; }
+.player-ctrl-timeline::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: var(--player-thumb-size);
+  height: var(--player-thumb-size);
+  margin-top: 19px;
+  border-radius: 50%;
+  border: 1px solid var(--stage-bg);
+  background: var(--stage-ink);
+}
+.player-controls :focus-visible { outline-color: var(--stage-ink); }
+/* 键盘焦点指示贴在可见滑块上（2px 高对比环 + 深色衬底），而不是围着透明
+   40px 命中区画 3px 大框；指针按下不匹配 :focus-visible，Tab 导航才显示。
+   只移除时间轴这一处的大框，不是全局 outline:none。 */
+.player-ctrl-timeline:focus-visible { outline: none; }
+.player-ctrl-timeline:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px var(--stage-bg), 0 0 0 4px var(--stage-ink);
+}
+/* 音量滑杆与时间轴同款：键盘焦点指示贴在可见 thumb 上，不在透明命中区外
+   再画一圈外围框（同一非交互外围框根因的镜像）；仅此一处移除大框，
+   键盘焦点环本身保留。 */
+.player-ctrl-volume:focus-visible { outline: none; }
+.player-ctrl-volume:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px var(--stage-bg), 0 0 0 4px var(--stage-ink);
+}
+/* S8-3（PB-1 D2 无头实测）：Chromium 不把 :focus-visible 限定的 thumb 伪元素
+   阴影落进 computed/渲染——上面两条自绘环从未真正显示，键盘用户在
+   outline:none 之后零焦点指示。补贴内缘 outline 环兜底（offset -2px 沿可见
+   滑条，不在透明命中区外画大框）；指针态仍由 accessibility.css 的
+   data-input 三态政策归零。 */
+.player-ctrl-timeline:focus-visible,
+.player-ctrl-volume:focus-visible {
+  outline: 2px solid var(--stage-ink);
+  outline-offset: -2px;
+}
+/* 静音与音量是一个组件：桌面悬停/焦点、显式点击展开小音量面（触屏走点击）；
+   展开时钉住控制台可见。收起不移动焦点。 */
+.player-volume {
+  /* U③：音量面渐显/渐隐放慢约一倍（150ms→300ms，由 --motion-fast 派生）——
+     悬停弹出不再「闪一下」，手感与控制台其他过渡区分 */
+  --motion-volume: calc(var(--motion-fast) * 2);
+  position: relative;
+  display: inline-flex;
+}
+.player-volume-surface {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid rgb(var(--stage-ink-rgb) / 18%);
+  border-radius: var(--radius);
+  /* 甲2：深色玻璃——半透明 stage 底 + blur，与倍速面板同材质 */
+  background: var(--stage-surface);
+  background: color-mix(in srgb, var(--stage-surface) 88%, transparent);
+  backdrop-filter: blur(14px) saturate(1.08);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity var(--motion-volume) ease, visibility 0s linear var(--motion-volume);
+}
+.player-volume[data-open="true"] .player-volume-surface {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity var(--motion-volume) ease, visibility 0s;
+}
+.player-ctrl-volume {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 76px;
+  height: 28px;
+  margin: 0;
+  /* 与时间轴同款复位：全局 input padding/border/min-height 不承袭（滑杆族同病同修） */
+  padding: 0;
+  border: 0;
+  min-height: 0;
+  background: transparent;
+}
+.player-ctrl-volume:disabled { opacity: 0.45; }
+.player-ctrl-volume::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(var(--stage-ink-rgb) / 28%);
+}
+.player-ctrl-volume::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 50%;
+  border: 1px solid var(--stage-bg);
+  background: var(--stage-ink);
+}
+.player-ctrl-speed {
+  min-height: 34px;
+  padding: 0 var(--space-1);
+  /* 用户拍板（2026-09-22）：控制组件不画常驻/悬浮/选中边框 */
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--stage-ink);
+}
+.player-ctrl-speed:disabled { opacity: 0.45; }
+/* D8：字幕生成中 chip（字幕钮左侧的状态入口，点击开任务抽屉） */
+.player-subtitle-chip {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgb(var(--stage-ink-rgb) / 35%);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--stage-ink);
+  font-size: 0.78125rem;
+  white-space: nowrap;
+}
+/* 同拍板+E②：chip 悬浮不翻转边框，文字走高对比金 accent */
+.player-subtitle-chip:hover:not(:disabled) {
+  border-color: rgb(var(--stage-ink-rgb) / 35%);
+  color: var(--stage-accent-strong);
+  background: transparent;
+}
+.player-subtitle-chip[hidden] { display: none; }
+/* D2「没听懂」标记层（PLAYER-UX-1③ 重设计）：标记层 pointer-events:none，
+   标记点单独可点。视觉统一为「窄标线」语言：锚定轨线中心的小竖线，主题色。 */
+.player-timeline-flags { position: absolute; inset: 0; pointer-events: none; }
+/* D-20261009-08：交互标记层提到 seek input 之上。此前 flags/assess/markers
+   均 z-index auto 且 DOM 先序于 input#player-ctrl-timeline（inset:0 恒 32px
+   命中带）——整带标记被 input 盖住，鼠标点按被夺为 seek（键盘路径完好）。
+   三层容器本就 pointer-events:none、命中面=子标记自身（14×24 竖带/2px 章节线），
+   提层后 input 仍拥有标记带以外的全部 seek 命中区；拖动中的指针捕获不经过
+   标记层（SEEK-DRAG-1「拖动不逐格提交、释放才提交」语义不受影响）。 */
+.player-timeline-markers,
+.player-timeline-flags,
+.player-timeline-assess { z-index: 2; }
+/* D4/D5/D6/D7 预留层：与标记层同级的纯展示轨（后续单元填充渲染规则） */
+.player-timeline-labels,
+.player-timeline-heat { position: absolute; inset: 0; pointer-events: none; }
+/* D5：标签段（默认三类）：轨道在可见轨下缘，层次低于考点带；颜色用金色
+   系透明度分层（exam 最醒目），不引入红色轰炸（学生焦虑缓解，视觉克制） */
+.player-label-segment {
+  position: absolute;
+  left: calc(var(--player-thumb-size) / 2 + (100% - var(--player-thumb-size)) * var(--seg-from, 0));
+  width: max(calc((100% - var(--player-thumb-size)) * (var(--seg-to, 0) - var(--seg-from, 0))), 6px);
+  top: calc(50% + 12px);
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+  border: 0;
+  padding: 0;
+  pointer-events: auto;
+  background: rgb(var(--stage-ink-rgb) / 45%);
+}
+.player-label-exam { background: var(--stage-accent-strong); height: 4px; }
+.player-label-homework { background: var(--stage-accent); }
+.player-label-roll_call { background: rgb(var(--stage-ink-rgb) / 45%); }
+.player-label-segment:focus-visible { outline: 2px solid var(--stage-ink); outline-offset: 1px; }
+/* D6：考点带（微高亮底色，非红色轰炸）+ 难点刻度（八桶聚合 ≤8 枚菱形点） */
+.player-timeline-assess { position: absolute; inset: 0; pointer-events: none; }
+/* D7：回看热点带（热度=回看次数加权透明度；只在这台电脑上，悬停讲人话） */
+.player-timeline-heat { position: absolute; inset: 0; pointer-events: none; }
+.player-heat-band {
+  position: absolute;
+  left: calc(var(--player-thumb-size) / 2 + (100% - var(--player-thumb-size)) * var(--seg-from, 0));
+  width: max(calc((100% - var(--player-thumb-size)) * (var(--seg-to, 0) - var(--seg-from, 0))), 6px);
+  top: calc(50% + 18px);
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--stage-accent);
+}
+.player-exam-band {
+  position: absolute;
+  left: calc(var(--player-thumb-size) / 2 + (100% - var(--player-thumb-size)) * var(--seg-from, 0));
+  width: max(calc((100% - var(--player-thumb-size)) * (var(--seg-to, 0) - var(--seg-from, 0))), 6px);
+  top: calc(50% - 8px);
+  height: 4px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--stage-accent-soft);
+}
+/* PLAYER-UX-1③ 时间轴标记统一「窄标线」语言。旧形态（8×8 菱形/9×9 圆点）
+   被全局 button{min-height:32px} 顶成 8×32/9×32 大斜杠——min-height 恒赢
+   height（截图实证「白色斜杠状大标记」）。新形态：命中区 14×24 竖带
+   （min-width/min-height 显式归零抵消全局钮规），视觉=::before 3×12 主题色
+   标线锚定轨线中心；悬停/聚焦加粗增高；进度填充与轨带在标记下层，标线
+   不遮播放进度。密集防遮：assess 层维持八桶聚合（≤8 枚+计数 title），
+   flag 层由 5s 创建去重挡近邻。 */
+.player-assess-tick {
+  position: absolute;
+  left: calc(var(--player-thumb-size) / 2 + (100% - var(--player-thumb-size)) * var(--tick-ratio, 0));
+  top: calc(50% + var(--player-track-offset));
+  width: 14px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+  min-width: 0;
+  min-height: 0;
+  border-radius: 2px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  pointer-events: auto;
+}
+.player-assess-tick::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background: var(--stage-accent-strong);
+  transition: height var(--motion-fast) ease, width var(--motion-fast) ease;
+}
+.player-assess-tick:hover::before { width: 4px; height: 16px; }
+.player-assess-bookmark::before { background: var(--stage-accent); }
+.player-assess-tick:focus-visible { outline: 2px solid var(--stage-ink); outline-offset: 2px; }
+/* PLAYER-UX-1③：标记容器=轨线上的 14×24 命中竖带（同 assess tick 语言） */
+.player-flag-marker {
+  position: absolute;
+  left: calc(var(--player-thumb-size) / 2 + (100% - var(--player-thumb-size)) * var(--chapter-ratio, 0));
+  top: calc(50% + var(--player-track-offset));
+  width: 14px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+/* U⑤：标记点=窄标线按钮；悬停/键盘焦点加粗标线并浮出操作菜单（解释/懂了/删除） */
+.player-flag-dot {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 2px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.player-flag-dot::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border-radius: 2px;
+  background: var(--stage-accent-strong);
+  transition: height var(--motion-fast) ease, width var(--motion-fast) ease;
+}
+.player-flag-dot:hover::before,
+.player-flag-dot:focus-visible::before { width: 4px; height: 16px; }
+.player-flag-dot:focus-visible { outline: 2px solid var(--stage-ink); outline-offset: 1px; }
+.player-flag-menu {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  display: none;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(var(--stage-ink-rgb) / 18%);
+  /* 甲2：深色玻璃，与倍速/音量面同材质 */
+  background: var(--stage-surface);
+  background: color-mix(in srgb, var(--stage-surface) 88%, transparent);
+  backdrop-filter: blur(14px) saturate(1.08);
+  white-space: nowrap;
+  z-index: 3;
+}
+.player-flag-marker:hover .player-flag-menu,
+.player-flag-marker:focus-within .player-flag-menu,
+.player-flag-marker[data-hover="1"] .player-flag-menu { display: inline-flex; }
+.player-flag-action {
+  padding: 3px 10px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--stage-ink);
+  font-size: 0.78125rem;
+  cursor: pointer;
+}
+.player-flag-action:hover { background: rgb(var(--stage-ink-rgb) / 14%); }
+.player-flag-action:focus-visible { outline: 2px solid var(--stage-ink); outline-offset: 1px; }
+/* D3 字幕样式面板应用链：overlay 三属性经 CSS 变量换肤（本文件在
+   components.css 之后加载，同特异性以其为准）；bottom 与 components.css
+   同为「安全区+档位」加算（PLAYER-UX-1② 后 chrome visible=72px 轨带上缘档 /
+   hidden=20px 档，player-core 恒写 --sub-bottom）——绝对替换会击穿两态
+   安全区（WP1-D2）；renderSubtitleOverlay（cue 渲染逻辑）零改动。 */
+.player-subtitle-overlay {
+  bottom: calc(var(--subtitle-overlay-safe, 104px) + var(--sub-bottom, 0%));
+  background: rgb(7 29 51 / var(--sub-bg-alpha, 0.78));
+  font-size: var(--sub-font-size, 17px);
+}
+/* N10B-SUP-1 贴边档分态规则与 components.css 同步（本文件后加载，同特异性
+   以其为准——贴边规则也须在此镜像，否则被本文件加算公式覆盖回退）。 */
+.player-subtitle-overlay[data-sub-edge="1"] { bottom: var(--subtitle-overlay-safe, 104px); }
+.player-stage-shell[data-chrome="hidden"] .player-subtitle-overlay[data-sub-edge="1"] { bottom: 0px; }
+/* 样式面板：三行闭集按钮组；选中态 aria-pressed 同步 */
+.subtitle-style-rows { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 4px; }
+.subtitle-style-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.subtitle-style-label { font-size: 0.84375rem; }
+.subtitle-style-options { display: inline-flex; gap: 6px; }
+.subtitle-style-options button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  /* 甲2：悬停/选中态过渡一致（--motion 档，reduced-motion 全局压平） */
+  transition: border-color var(--motion) ease, background-color var(--motion) ease, color var(--motion) ease;
+}
+.subtitle-style-options button:hover:not(.active) { border-color: var(--navy-ink); color: var(--navy-ink); }
+/* LIGHT-THEME-1 一致性收敛：选中态归 navy 选中族（=budget-preset[aria-checked]/
+   cr-chip.active 同配方）。旧值 gold-strong 边+--stage-accent-soft 底是页面级
+   控件唯一越族借用恒暗 stage token 之处（stage 族 :root 一次定义不随主题翻转，
+   tokens.css 审计 R14 注记只豁免播放器语境）；hover 已走 navy-ink，active
+   却走 gold 的族内自相矛盾一并收口。双主题经 token 自动同源。 */
+.subtitle-style-options button.active {
+  border-color: var(--navy);
+  background: var(--navy-soft);
+  color: var(--navy-ink);
+  font-weight: 600;
+}
+@media (max-width: 719px) {
+  /* 窄屏：触控目标升到 44px；时间轴保持整行（overlay 顶行）；
+     影院是低优先级入口，收进响应式呈现之外（全屏仍可直达）；
+     音量经静音按钮的点击式音量面触达，不再常驻。 */
+  .player-ctrl-button { min-width: 44px; min-height: 44px; }
+  .player-ctrl-speed { min-height: 44px; }
+  .player-ctrl-text { padding: 0 6px; }
+  .player-ctrl-theatre { display: none; }
+  .player-ctrl-time { font-size: 0.84375rem; min-width: 3ch; }
+  .player-controls { padding: 18px 6px 4px; }
+  .player-timeline { height: 44px; }
+  .player-ctrl-timeline { height: 44px; }
+  .player-timeline { --player-track-offset: 16px; }
+  .player-ctrl-timeline::-webkit-slider-runnable-track { height: 44px; }
+  .player-ctrl-timeline::-webkit-slider-thumb { margin-top: 31px; }
+}
+@media (pointer: coarse) {
+  .player-ctrl-button { min-width: 44px; min-height: 44px; }
+  .player-timeline { height: 44px; }
+  .player-ctrl-timeline { height: 44px; }
+  .player-timeline { --player-track-offset: 16px; }
+  .player-ctrl-timeline::-webkit-slider-runnable-track { height: 44px; }
+  .player-ctrl-timeline::-webkit-slider-thumb { margin-top: 31px; }
+}
+/* 强制高色对比（forced-colors）：沉浸式 overlay 回归系统配色；黑幕与音量面
+   用 Canvas 底、ButtonText 描边；键盘焦点环改用 Highlight 贴时间轴内缘。
+   本块在 components.css 的同名媒体查询之后加载（页面样式顺序），同特异性
+   下以其为准。 */
+@media (forced-colors: active) {
+  .player-controls { border: 0; background: Canvas; color: CanvasText; }
+  .player-volume-surface { border: 1px solid ButtonText; background: Canvas; }
+  .player-controls[data-chrome-state="hidden"] { visibility: hidden; }
+  .player-timeline-fill { background: Highlight; forced-color-adjust: none; }
+  .player-ctrl-timeline:focus-visible { outline: 2px solid Highlight; outline-offset: -2px; }
+  .player-osd-center, .player-osd-hint { border: 1px solid ButtonText; background: Canvas; color: CanvasText; }
+  .player-timeline-bubble, .player-stage-spinner, .player-stage-preload { border: 1px solid ButtonText; background: Canvas; color: CanvasText; }
+}
+/* ---- N5PR-P3 操作反馈 OSD：中央 pulse + 轻提示。纯展示层：无焦点、不进
+   Tab 序、pointer-events:none；显隐绝不参与控制台钉住（chromePinned 不读
+   OSD 状态，1500ms 恒等钉不受影响）。动效时长全部走 --motion-fast（150ms），
+   prefers-reduced-motion 由 accessibility.css 全局 .01ms 规则压平。 ---- */
+.player-osd-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgb(var(--stage-ink-rgb) / 18%);
+  background: var(--stage-surface);
+  color: var(--stage-ink);
+  pointer-events: none;
+  animation: player-osd-in var(--motion-fast) ease;
+}
+.player-osd-center[hidden] { display: none; }
+.player-osd-center[data-state="play"] [data-osd-icon="pause"] { display: none; }
+.player-osd-center[data-state="pause"] [data-osd-icon="play"] { display: none; }
+@keyframes player-osd-in {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.82); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.player-osd-hint {
+  position: absolute;
+  left: 50%;
+  /* D1（CUI-1）OSD 避让：轻提示原 96px 会压在可见控制条的「没听懂」钮上
+     （840ms 保持期内重叠）；上移到整条控制甲板（padding16+按钮行+轨行）上方。 */
+  bottom: 132px;
+  transform: translateX(-50%);
+  max-width: 82%;
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  /* U②：轻提示亮/暗主题适配——走主题 tokens（中央 pulse 仍恒常暗底），
+     两种主题下都在 navy 舞台上保持文字对比 */
+  border: 1px solid var(--line);
+  background: var(--surface-strong);
+  color: var(--ink);
+  font-size: 0.84375rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  animation: player-osd-hint-in var(--motion-fast) ease;
+}
+.player-osd-hint[hidden] { display: none; }
+@keyframes player-osd-hint-in {
+  from { opacity: 0; transform: translate(-50%, 4px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+.player-recovery { margin: var(--space-3) 0 0; }
+.player-actions {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-2) 0;
+}
+#player-task-state { margin-top: var(--space-2); }
+.live-room-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 52px;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--state-color, var(--line-strong));
+  border-radius: var(--radius-panel);
+  background: var(--surface-strong);
+}
+.live-room-row[hidden] { display: none; }
+.live-room-text { min-width: 0; display: grid; gap: 2px; }
+.live-room-row strong { font-weight: 600; }
+.live-room-row span { overflow-wrap: anywhere; color: var(--muted); font-size: 0.84375rem; line-height: 1.6; }
+.live-room-capability { color: var(--navy-ink); }
+.live-room-actions { display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+#enter-live-room { min-height: 36px; }
+/* LIVE-DISCLOSURE-1：直播早期功能小字（主页直播卡/学习页直播行两处同源，
+   文案闭集=live-state.js LIVE_DISCLOSURE_TEXT）——静态弱化提示：muted
+   token + 0.75rem 最小字号档，双主题 AA 实测达标。 */
+.live-disclosure { margin: 0; color: var(--muted); font-size: 0.75rem; line-height: 1.6; overflow-wrap: anywhere; }
+#live-room-disclosure { margin-top: var(--space-2); }
+
+/* 四个一级标签 */
+.materials-tabs { display: flex; gap: var(--space-4); border-bottom: 1px solid var(--line); padding: 6px 2px 0; }
+/* 材料面板：单一紧凑小节头（发丝底线 + 统一节奏），用留白与分隔而非卡片套卡片 */
+.material-panel > .section-header {
+  min-height: 34px;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-3);
+}
+/* 静态壳面（视频台/占位/转写/行壳/面板容器）不出现输入光标；这不影响
+   可编辑控件与文本选择，也不是 outline 处理 */
+.player-stage-shell, .player-placeholder, .transcript-list,
+.course-row, .lecture-row, .material-panel { caret-color: transparent; }
+.material-tab {
+  min-height: 38px;
+  padding: 6px 2px 13px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  letter-spacing: 0;
+  cursor: pointer;
+}
+.material-tab:hover:not(:disabled) { color: var(--ink); border-bottom-color: transparent; }
+.material-tab.active { border-bottom-color: var(--navy); color: var(--ink); font-weight: 600; }
+.material-panel[hidden] { display: none; }
+.material-panel:focus-visible { outline-offset: 4px; }
+.review-secondary { margin-top: var(--space-3); border-top: 1px solid var(--line); padding-top: var(--space-2); }
+.review-secondary > summary { width: fit-content; cursor: pointer; color: var(--muted); }
+.review-secondary-body { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
+
+.transcript-list { max-height: 46vh; overflow: auto; }
+/* C1-R16（调研采纳，CSS-only 试点）：长列表行离屏跳过 layout/paint——
+   只加行级不加滚动容器（避免 overflow×contain 交互怪癖）；contain-intrinsic-size
+   的 auto 关键字记住上次渲染高度，估值行高仅作首帧兜底防滚动条跳动 */
+.transcript-row { content-visibility: auto; contain-intrinsic-size: auto 56px; }
+.item-list > * { content-visibility: auto; contain-intrinsic-size: auto 72px; }
+.transcript-row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: 11px var(--space-2);
+  border-bottom: 1px solid var(--line);
+  border-radius: var(--radius);
+  transition: background var(--motion-fast);
+}
+/* §6 列表行 hover：半透明 wash（透明底上叠加，不实底替换）。明 = 暖墨 3%、
+   暗 = 暖米白 4%；字面量系 §6 明文规格（无对应 token）。 */
+.transcript-row:hover { background: rgb(33 30 25 / 3%); }
+html[data-theme="dark"] .transcript-row:hover { background: rgb(236 231 219 / 4%); }
+.transcript-row p { font-size: 1.03125rem; line-height: 1.75; overflow-wrap: anywhere; }
+/* CLIENT-UI-1：激活金线 2px→3px——「激活行=navy-soft 底+inset 金线」语义在
+   course-row-main/data-course-row 恒 3px，字幕活动行是同语义唯一 2px 孤值，
+   同族同宽（B.1 一致性命中） */
+.transcript-row.active { background: var(--navy-soft); box-shadow: inset 3px 0 0 var(--gold); }
+.transcript-row.active p { color: var(--navy-ink); }
+.transcript-row .icon-button { justify-self: end; align-self: center; }
+/* ---- 文稿检索 Phase A（G5/P10 缺口④）：单课子串检索视图。命中行复用
+   transcript 行样式（时间戳+文本，无书签钮）；mark 用 navy-soft/navy-ink，
+   与 active 行同一强调语言、双主题随 token 翻转。 ---- */
+.transcript-search { display: grid; gap: var(--space-2); margin: 0 0 var(--space-2); }
+.transcript-search-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--canvas);
+  color: var(--ink);
+  font: inherit;
+}
+.transcript-search-input::placeholder { color: var(--muted); }
+.transcript-search-input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+  border-color: var(--line-strong);
+}
+.transcript-search-results[hidden] { display: none; }
+.transcript-hit { grid-template-columns: auto 1fr; }
+.transcript-hit p mark {
+  background: var(--navy-soft);
+  color: var(--navy-ink);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.timestamp-button {
+  min-height: 30px;
+  padding: 4px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--gold-strong);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.875rem;
+}
+.timestamp-button:hover:not(:disabled) { border-color: var(--line-strong); }
+.bookmark-section { margin-top: var(--space-4); }
+.bookmark-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--line);
+}
+.bookmark-details { min-width: 0; }
+.bookmark-details p { margin: 0 0 var(--space-1); overflow-wrap: anywhere; }
+.bookmark-status { color: var(--muted); font-size: 0.84375rem; line-height: 1.6; }
+/* UIAUDIT-1 F8：状态字与动作钮间距按 space-2 节奏（曾 6px 破行内韵律） */
+.bookmark-review-button { margin-top: var(--space-2); padding: 4px 10px; font-size: 0.875rem; }
+/* PLAYER-UX-1④：行级删除钮——安静次级样式，武装确认态转警示色
+   （两步轻确认，沿用 button.danger.confirming 的既有主题变量惯例）。
+   UIAUDIT-1 F10：静止态从灰文改为 danger 色相低强度——行级破坏性动作
+   与抽屉/设置的红描边同色相（形随载体：卡面描边、行内文字）。 */
+.bookmark-delete-button {
+  margin-top: var(--space-2);
+  padding: 4px 10px;
+  font-size: 0.875rem;
+  border: 0;
+  background: transparent;
+  color: var(--danger);
+  opacity: 0.72;
+}
+.bookmark-delete-button:hover:not(:disabled) { color: var(--danger); background: var(--danger-soft); opacity: 1; }
+/* LIGHT-THEME-1 一致性收敛：武装态归全局实心 danger 语言（=button.danger.confirming
+   /danger-quiet[data-confirming] 同族）。旧值 danger-soft 底与 hover 完全同形——
+   武装（等第二次击）与「正悬停」不可分辨，两步确认的武装可辨识性落空；
+   且 hover 规则 (0,3,0) 压过旧 confirming (0,2,0)，悬停武装钮也只见软底。
+   补 :hover 复合选择器 (0,4,0) 使实心武装对 hover/active 稳定。 */
+.bookmark-delete-button.confirming,
+.bookmark-delete-button.confirming:hover:not(:disabled) {
+  background: var(--danger);
+  color: var(--accent-contrast);
+  opacity: 1;
+}
+.item-list { display: block; }
+.item-row { flex-direction: column; }
+.item-row strong { font-weight: 600; overflow-wrap: anywhere; }
+/* 证据跳转动作（测验/复习行内「查看依据」）：安静次级按钮，与书签复习按钮同级 */
+.evidence-jump-button { margin-top: 6px; padding: 4px 10px; font-size: 0.875rem; align-self: flex-start; }
+/* 证据回答卡内的引用动作按钮：行内紧凑，未映射引用保持纯文本 */
+.citation-action { margin-right: var(--space-2); padding: 2px 8px; font-size: 0.84375rem; }
+
+/* ---- 资料：本讲课件（稳定两列行布局 + 窄屏堆叠，无卡片堆叠/装饰） ---- */
+.courseware-surface { margin: 0 0 var(--space-3); }
+/* 甲-4 视觉分组：两区块用既有 review-secondary 同款细线分隔，间距走 --space token */
+.imported-documents { border-top: 1px solid var(--line); padding-top: var(--space-3); }
+.courseware-surface h3, .imported-documents h3 { margin: 0 0 var(--space-2); font-size: 1rem; color: var(--navy-ink); }
+.courseware-row { display: flex; gap: var(--space-3); align-items: flex-start; }
+.courseware-info {
+  flex: 1 1 240px; min-width: 0;
+  border-left: 3px solid transparent;
+  padding-left: var(--space-2);
+}
+.courseware-info[data-tone="paused"] { border-left-color: var(--gold); }
+.courseware-info[data-tone="failed"] { border-left-color: var(--danger); }
+.courseware-info .hint { margin: 0 0 4px; overflow-wrap: anywhere; }
+.courseware-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.courseware-actions > button, .courseware-actions > .courseware-pdf-download { min-height: 44px; }
+.courseware-pdf-download {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  color: var(--navy-ink);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+.courseware-pdf-download:hover { border-color: var(--navy-ink); }
+.courseware-notes { margin: var(--space-2) 0 0; }
+.courseware-notes summary {
+  width: fit-content;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  cursor: pointer;
+}
+.courseware-notes-body p { margin: 2px 0; color: var(--muted); font-size: 0.84375rem; line-height: 1.6; overflow-wrap: anywhere; }
+/* 资料：列表筛选 + 导入流程组（走查拍板 甲-2：控件归位，空态只留主导入钮） */
+.imported-documents-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.imported-documents-head h3 { margin: 0; }
+.document-kind-filter { max-width: 180px; }
+/* MT-P3-14（夜批15 R5 E12）：导入对（类型下拉+导入钮）原仅 aria-label 无可见节标签，
+   学生须猜「先选类型再导入」；补 13.5px ink 小节标题（「本讲课件」「全部资料」的
+   h3 档降级为小节级，对比远超 muted 下限），可见标签即组可访问名（aria-labelledby）。 */
+.imported-documents .import-flow-title {
+  margin: var(--space-2) 0 0;
+  font-size: 0.84375rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.import-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.import-flow .file-button { margin: 0; }
+.import-flow .document-scope-option { margin: 0; font-size: 0.84375rem; color: var(--muted); }
+/* 空态收形：筛选与课程级选项退场，导入钮升为主操作（data-empty 由渲染层同步） */
+.imported-documents[data-empty="true"] .document-kind-filter { display: none; }
+.imported-documents[data-empty="true"] .document-scope-option { display: none; }
+.imported-documents[data-empty="true"] .import-flow { border-bottom-color: transparent; }
+.imported-documents[data-empty="true"] .file-button {
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--navy);
+  color: var(--accent-contrast);
+}
+.imported-documents[data-empty="true"] .file-button:hover { background: var(--navy-hover); color: var(--accent-contrast); }
+@media (max-width: 480px) {
+  .courseware-row { flex-direction: column; }
+  .courseware-actions { flex-direction: row; flex-wrap: wrap; align-items: stretch; width: 100%; }
+}
+
+/* ---- AI 学习工作台：结构化总结 / 测验揭示 / 复习步骤 / 考试上下文 ---- */
+/* 总结头：标题 + 针对本讲提问 + 视图切换；375px 换行不溢出 */
+.notes-panel-header { flex-wrap: wrap; row-gap: 6px; }
+.notes-header-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+.notes-header-actions .select { max-width: 100%; }
+/* 结构化总结：阅读正文沿用 editorial 衬线（tokens.css 阅读清单的扩展），控件保持 UI 字体 */
+.structured-summary p, .structured-summary li { font-family: var(--font-editorial); }
+.structured-summary h3 {
+  margin: var(--space-3) 0 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+}
+.structured-summary h3:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.structured-summary[hidden], .key-moments[hidden] { display: none; }
+.takeaway-list { margin: 0; padding-left: 1.4em; display: grid; gap: 2px; font-size: 1.03125rem; line-height: 1.75; overflow-wrap: anywhere; }
+/* RR-ANCHORFE-1：takeaway 时间戳锚沿用章节行同款按钮，克制内联 */
+.takeaway-list li.takeaway-anchored { display: flex; gap: var(--space-2); align-items: baseline; }
+.takeaway-list .timestamp-button { flex: none; min-width: 48px; min-height: 24px; align-self: baseline; }
+.chapter-list { display: block; }
+.chapter-row { display: flex; gap: var(--space-3); align-items: baseline; padding: 9px var(--space-2); border-bottom: 1px solid var(--line); }
+.chapter-row .timestamp-button { flex: none; min-width: 48px; }
+.chapter-body { min-width: 0; }
+.chapter-title { font-weight: 600; overflow-wrap: anywhere; }
+.chapter-summary { color: var(--muted); font-size: 0.84375rem; line-height: 1.6; overflow-wrap: anywhere; }
+/* 测验答案揭示：答案默认折叠，按钮 aria-expanded 同步 */
+.answer-reveal-button { margin-top: 6px; padding: 4px 10px; font-size: 0.875rem; align-self: flex-start; }
+.quiz-answer { margin: var(--space-1) 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* 复习计划步骤：类型 · 课程讲次 · 预计分钟 · 状态 + 理由，一行双列换行不溢出 */
+.review-steps { width: 100%; display: block; margin-top: var(--space-1); }
+.review-step { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px var(--space-3); padding: 8px 2px; border-top: 1px solid var(--line); }
+.review-step-kind { flex: none; color: var(--navy-ink); font-weight: 600; font-size: 0.84375rem; }
+.review-step-meta, .review-step-reason { color: var(--muted); font-size: 0.84375rem; line-height: 1.6; overflow-wrap: anywhere; }
+.review-step .evidence-jump-button { margin-top: 0; }
+.review-plan-note { color: var(--muted); }
+/* 考试上下文：安静的一行附注 + 今天建议分组（普通复习的子区，不是第二模式） */
+.exam-context { margin: var(--space-3) 0 0; }
+.exam-context[hidden] { display: none; }
+.exam-context-row {
+  margin: 0 0 var(--space-2);
+  padding: 4px 10px;
+  border-left: 3px solid var(--gold);
+  border-radius: var(--radius);
+  background: var(--navy-soft);
+  color: var(--ink);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+.exam-context h3 { margin: 0 0 var(--space-1); font-size: 1rem; letter-spacing: 0; color: var(--navy-ink); }
+/* 触达补偿（coarse 指针）：本包学习内容面的紧凑按钮 ≥44px。components.css 的
+   button{min-height:32px} 在 layout.css 的全局 coarse 规则之后加载并覆盖它；
+   这里按相同媒体条件在本包交互上恢复 44px，不改动全局规则。批 2 起含重绘后的
+   学习页签（基线 38px，同类覆盖序）。 */
+@media (pointer: coarse) {
+  .answer-reveal-button, .evidence-jump-button, .review-step .evidence-jump-button,
+  .timestamp-button, #ask-lecture, .exam-context button, .material-tab {
+    min-height: 44px;
+  }
+}
+
+/* 设置页：左粘性导航 + 右连接卡片流 */
+.settings-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+  max-width: 1080px;
+}
+.settings-nav {
+  position: sticky;
+  top: 0;
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) 0;
+  background: var(--canvas);
+}
+.settings-nav button {
+  text-align: left;
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.settings-nav button:hover { color: var(--ink); background: var(--surface); }
+/* AS11「悬浮不添边框」同款豁免：全局 button:hover 的 border-color 翻转漏进
+   导航平钮，悬停项带出 navy 左饰条被误读成第二个选中项；悬浮语义由 hover 底
+   承担，左饰条只属 aria-current（全局政策不动）。 */
+.settings-nav button:hover:not(:disabled) { border-left-color: transparent; }
+.settings-nav button[aria-current="true"] {
+  color: var(--navy-ink);
+  border-left-color: var(--navy);
+  background: var(--navy-soft);
+  font-weight: 600;
+}
+.settings-content { display: grid; gap: var(--space-6); min-width: 0; }
+.settings-group { scroll-margin-top: var(--space-3); }
+.settings-group > h2, .settings-update-card > h2 {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-3);
+  font-size: 1.125rem;
+  letter-spacing: 0;
+  color: var(--navy-ink);
+}
+.settings-group > section { padding: var(--space-3) 0; }
+.settings-group > section + section { border-top: 1px solid var(--line); margin-top: 10px; padding-top: var(--space-4); }
+/* SETTINGS-UX-1 A2（化身走查 F3）：学习洞察空态收纳——非讲次态（入口钮与
+   说明行均 hidden）时整节退场，不留孤标题+分隔线；讲次态任一可见即恢复。
+   渲染方 player-core（恰域外）不动，纯呈现层收纳。 */
+#settings-ai-group > section:first-of-type:not(:has(> button:not([hidden]))):not(:has(> p:not([hidden]))) { display: none; }
+.settings-group h3 { margin-bottom: 4px; color: var(--ink); }
+.settings-group label { color: var(--muted); }
+.settings-group details { margin-top: var(--space-2); }
+.settings-group summary { cursor: pointer; color: var(--muted); width: fit-content; }
+/* 帮助区入口组（NIGHT2-W4）：「问题反馈/新手引导」收进同一张卡片，
+   整行即 44px 命中区；行间发丝线分隔，悬停只换底色不加下划线 */
+.help-entry-group {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  overflow: hidden;
+}
+.help-entry-group .help-entry-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font: inherit;
+  text-decoration: none; /* A10：同组统一整行卡片形态，链接不带下划线（与既有 hover 注记一致） */
+  cursor: pointer;
+}
+.help-entry-group .help-entry-row + .help-entry-row { border-top: 1px solid var(--line); }
+.help-entry-group .help-entry-row:hover { background: var(--canvas); } /* VISUAL-3 幻影 token 清理 */
+/* 危险区（客户端重置）：勾选项与确认输入保持同一左缘；弹窗宽度收敛长文案 */
+.settings-group .danger-zone label.check { color: var(--ink); }
+#client-reset-dialog { width: min(480px, calc(100vw - 32px)); }
+#client-reset-dialog label { display: block; color: var(--ink); }
+#client-reset-dialog label.check { display: flex; align-items: center; gap: 8px; color: var(--ink); }
+/* 账户连接卡片：一等卡，承载复旦/GitHub 连接状态、自动连接开关与主操作 */
+.settings-group > section.connection-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface-strong);
+  padding: var(--space-4);
+}
+.settings-group > section.connection-card + section { margin-top: var(--space-4); }
+.connection-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.connection-card-head h3 { margin: 0; font-size: 1rem; }
+.status-pill[data-state="ready"] { color: var(--navy-ink); border-color: var(--navy); }
+.status-pill[data-state="action_required"] { color: var(--gold-strong); border-color: var(--gold-strong); }
+.status-pill[data-state="degraded"], .status-pill[data-state="error"],
+.status-pill[data-state="failed"] { color: var(--danger); border-color: var(--danger); }
+/* GitHub 连接阶段：授权 → 专属仓库 → App 安装 → 加密通道（文字承载状态，不单靠颜色） */
+/* 乙-2（#38）：四相位诊断向信息收进折叠，summary 沿用 muted fit-content 模式 */
+.github-phases-details { margin: 0 0 var(--space-2); }
+.github-phases-details > summary { width: fit-content; cursor: pointer; font-size: 0.84375rem; line-height: 1.6; color: var(--muted); }
+.github-phases {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px var(--space-4);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+}
+.github-phases li { display: inline-flex; align-items: center; gap: 6px; font-size: 0.84375rem; color: var(--muted); }
+.github-phases li::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+}
+.github-phases li[data-phase-state="done"] { color: var(--ink); }
+.github-phases li[data-phase-state="done"]::before { background: var(--navy-ink); border-color: var(--navy-ink); }
+.github-phases li[data-phase-state="action_required"] { color: var(--gold-strong); }
+.github-phases li[data-phase-state="action_required"]::before { background: var(--gold-strong); border-color: var(--gold-strong); }
+.github-phases .phase-state-text { color: var(--muted); }
+.auto-connect-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-2);
+}
+.auto-connect-account { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--muted); }
+.auto-connect-account select { min-height: 34px; }
+.auto-connect-status[data-state="error"] { color: var(--danger); }
+.auto-connect-status[data-state="action_required"] { color: var(--gold-strong); }
+.settings-update-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface-strong);
+  padding: var(--space-4);
+}
+.settings-update-card > h2 { border-bottom: 0; }
+.settings-update-card > section + section { margin-top: var(--space-3); border-top: 1px solid var(--line); padding-top: var(--space-3); }
+.evidence-stack { color: var(--muted); }
+.account-session-state { color: var(--muted); }
+
+@media (max-width: 999px) {
+  .course-layout { grid-template-columns: 1fr; gap: var(--space-3); }
+  .home-cards-row { grid-template-columns: minmax(0, 1fr); }
+  .settings-layout { grid-template-columns: 1fr; gap: var(--space-3); }
+  /* SETTINGS-UX-1 A4（化身走查 F8）：单列断点下导航收为横向胶囊行——
+     7 个全宽按钮纵排 ~280px 把真内容推出首屏；胶囊行 ~2 行 ≤90px。
+     选中态沿用既有 navy-soft 底+navy-ink+600 字重语言（同色不同向）。 */
+  .settings-nav {
+    position: static;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: var(--space-2) 0;
+  }
+  .settings-nav button {
+    width: auto;
+    min-height: 32px;
+    padding: 4px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius); /* 美学合同圆角闭集：胶囊感由底色+边承担，与 status-pill 同 token */
+    background: var(--surface);
+  }
+  .settings-nav button:hover:not(:disabled) { border-left-color: var(--line); }
+  .settings-nav button[aria-current="true"] { border-color: var(--navy); }
+  .desk-columns { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 719px) {
+  .course-list { max-height: none; }
+  .lecture-list { max-height: none; }
+  .transcript-list { max-height: none; }
+  .player-pane video { width: 100%; }
+  .player-stage-fit { width: 100%; } /* 窄屏沿用原意图：突破 56vh 上限，视频满宽 */
+  .player-placeholder { aspect-ratio: 16 / 9; }
+  .prose-output { max-width: none; }
+  .week-dialog { padding: var(--space-3); }
+  .week-scroll { max-height: calc(90vh - 150px); }
+}
+
+/* 新手引导：安静步骤目录 + 阅读列；教程状态与产品 readiness 分离 */
+.onboarding-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+  max-width: 960px;
+}
+.onboarding-toc { position: sticky; top: 0; display: grid; gap: 2px; }
+.onboarding-toc button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+}
+.onboarding-toc button:hover { color: var(--ink); background: var(--surface); }
+/* AS11「悬浮不添边框」同款豁免（与 .settings-nav 同族）：悬停项不得带出
+   navy 左饰条被误读成当前步（全局 button:hover 政策不动）。 */
+.onboarding-toc button:hover:not(:disabled) { border-left-color: transparent; }
+.onboarding-toc button[aria-current="step"] {
+  background: var(--navy-soft);
+  border-left-color: var(--gold);
+  color: var(--navy-ink);
+  font-weight: 600;
+}
+/* A3：已走到的步骤带 ✓ 完成记号；✓ 恒用 gold 一档（UIAUDIT-1 F2：✓ 曾随
+   按钮文字色在 navy-ink/ink 两档漂移，同语义双色收敛为单一完成语义色） */
+.onboarding-toc button.is-done { color: var(--ink); }
+.onboarding-toc button.is-done::after { content: "✓"; margin-left: 8px; font-weight: 600; color: var(--gold); }
+/* UIAUDIT-1 F1 防御：与 is-done 规则同特异度、声明在后——即便两态并存
+   （aria-current 与 is-done 同钮）当前步文字色也恒为高亮档，排除半失效高亮 */
+.onboarding-toc button[aria-current="step"] { color: var(--navy-ink); }
+.onboarding-content { min-width: 0; max-width: 720px; }
+.onboarding-content h2 {
+  margin-bottom: var(--space-2);
+  font-size: 1.15rem;
+  letter-spacing: 0;
+  color: var(--navy-ink);
+}
+.onboarding-content h2:focus:not(:focus-visible) { outline: none; } /* 仅去除非键盘聚焦的标题轮廓；键盘步骤切换保留可见焦点环 */
+.onboarding-body { margin-top: var(--space-2); max-width: 72ch; overflow-wrap: anywhere; }
+.onboarding-mobile-progress { display: none; margin: 0 0 var(--space-2); color: var(--muted); font-size: 0.84375rem; line-height: 1.6; }
+.onboarding-optional-rows { margin-top: var(--space-2); }
+/* A2：状态点+文本+动作三列网格，文本恒左对齐（flex space-between 会把
+   文本行挤向中部，三行左缘参差）；代理卡行有两个动作，占第四列。 */
+.onboarding-optional-row {
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 2px;
+  border-bottom: 1px solid var(--line);
+}
+#onboarding-proxy-row { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+.onboarding-optional-row::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--state-color, var(--line-strong));
+}
+.onboarding-optional-row span { min-width: 0; color: var(--ink); overflow-wrap: anywhere; text-align: left; }
+.onboarding-summary { margin-top: var(--space-2); display: grid; gap: var(--space-2); }
+.onboarding-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+.onboarding-footer button { min-width: 96px; }
+/* UIAUDIT-1 F3：第 1 步隐藏「上一步」后主钮曾漂到内容列左下——margin-left:auto
+   让「下一步/完成引导」恒在右端（两钮在场时与 space-between 等效） */
+.onboarding-footer #onboarding-next { margin-left: auto; }
+
+@media (max-width: 719px) {
+  .onboarding-layout { grid-template-columns: minmax(0, 1fr); }
+  .onboarding-toc { display: none; } /* 移动端只保留“第 N 步，共 5 步”与当前标题，不做横向步骤条 */
+  .onboarding-mobile-progress { display: block; }
+  #onboarding-page button { min-height: 44px; } /* 移动端触达 ≥44px；coarse 指针另由全局 44px 规则覆盖 */
+}
+
+/* ---- 自动学习材料（cloud-automation.v3）：运行记录并入任务抽屉
+   （tasks-drawer.js），按课程开关只在课程目录；设置页不再有管理板块。 ---- */
+.automation-runs-tier .automation-run-hint { margin: 2px 0 0; }
+
+/* 校园连接卡：conn-menu 弹层内的唯一连接面（courselens.vpn-connection.v1 消费端）。
+   AS4-U2b：校园网络整卡降为「复旦课程平台」卡（.conn-card）的网络副行——健康时
+   shell 置 hidden 整块收起，弹层只讲复旦与 GitHub 两件事。紧凑单卡、无动画
+   （reduced-motion 由 construction 满足）、仅用主题 token（深浅色自适应）；
+   焦点环走全局 :focus-visible。窄屏（≥375px）动作行换行、事实表单列，绝不横向裁切。 */
+.conn-card { min-width: 0; }
+.conn-card .campus-connection { margin: 8px 0 0; }
+.campus-connection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 var(--space-2);
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--navy);
+  border-radius: var(--radius);
+  background: var(--surface);
+  min-width: 0;
+}
+.campus-connection[data-state="ready"] { border-left-color: var(--navy); }
+.campus-connection[data-state="checking"] { border-left-color: var(--line-strong); }
+.campus-connection[data-state="degraded"] { border-left-color: var(--gold); }
+.campus-connection[data-state="action_required"] { border-left-color: var(--gold-strong); }
+/* AS4-U2b：display:flex 会压过 hidden 的 UA 默认，显式收起（同 .campus-connection-tun[hidden] 惯例） */
+.campus-connection[hidden] { display: none; }
+#campus-connection-state {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--ink);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.campus-connection-reason, .campus-connection-regen {
+  margin: 0;
+  font-size: 0.84375rem;
+  line-height: 1.6;
+  color: var(--muted);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.campus-connection-actions { margin-top: 2px; }
+.campus-connection-actions button { min-height: 36px; }
+/* P2-B：证据支持时的可关闭 TUN 提示行——只在失败证据出现时渲染，健康态零
+   写入；「不再提示」是真实按钮（键盘可达、:focus-visible 全局环、reduced-motion
+   无新增动画）。类选择器 display:flex 会盖过 UA 的 [hidden] 规则，须显式回补。 */
+.campus-connection-tun {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+  margin: 2px 0 0;
+  min-width: 0;
+}
+.campus-connection-tun[hidden] { display: none; }
+.campus-connection-tun .hint { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.campus-connection-tun button { flex: 0 0 auto; min-height: 28px; font-size: 0.84375rem; }
+.campus-connection-details { min-width: 0; }
+.campus-connection-details summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.84375rem;
+  white-space: nowrap;
+}
+.campus-connection-facts {
+  margin: 8px 0 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+.campus-fact { display: flex; gap: var(--space-2); min-width: 0; }
+.campus-fact dt { flex: 0 0 auto; color: var(--muted); font-size: 0.84375rem; }
+.campus-fact dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.campus-connection-privacy { margin: 6px 0 0; }
+@media (max-width: 719px) {
+  .campus-connection { padding: 8px 10px; }
+  .campus-connection-actions button { flex: 1 1 auto; }
+}
+
+/* ---- 顶栏更新小组件槽位（UX-1 A1）：44×44 与 theme-toggle 同规格，本文件后
+   加载以同特异性覆写 .icon-button 的 34px；状态原位换装，顶栏零位移。
+   A4：图标色与主题/直播/任务统一墨色，accent 色留给状态点/徽标。 ---- */
+.update-toggle {
+  position: relative;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  color: var(--ink);
+}
+.update-toggle:hover:not(:disabled) { background: var(--navy-soft); }
+/* .icon-button 的 display:inline-grid 会压过 UA 的 [hidden]，必须显式隐藏
+   （ambient 态顶栏零痕迹的平台事实） */
+.update-toggle[hidden] { display: none; }
+.update-toggle svg { width: 19px; height: 19px; }
+
+/* ---- 数据管理工作区（UX-1 B1-B6）：分栏镜像 course-layout 400px+1fr；
+   无卡片套卡片，1px --line 边框 + 发丝分隔行 + tabular-nums；可重建三档用
+   金/danger/navy 结构色，不引入新 token。 ---- */
+.data-summary {
+  margin: 0 0 var(--space-3);
+  color: var(--muted);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+.data-summary-orphan-row { display: flex; margin: -6px 0 var(--space-3); }
+.data-bulk-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2);
+  margin: 0 0 var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+}
+.data-bulk-bar #data-selection-count {
+  color: var(--navy-ink);
+  font-size: 0.84375rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.data-bulk-hint { margin: 0; color: var(--muted); font-size: 0.84375rem; }
+/* A7：动作组独占一行（flex-wrap 容器内 basis 100% 换行），上方留 hint+已选计数 */
+.data-bulk-actions { margin: 0; flex-wrap: wrap; flex-basis: 100%; }
+/* 意图分组（安全→释放空间→不可逆）：组内贴排，组间细分隔线；danger 组额外留白隔离 */
+.data-action-group { display: inline-flex; align-items: center; gap: 6px; }
+.data-action-group + .data-action-group { margin-left: 6px; padding-left: 12px; border-left: 1px solid var(--line); }
+.data-action-group[data-bulk-group="irreversible"] { margin-left: 10px; padding-left: 16px; }
+/* NIGHT2-W12：三档意图分级给可见的小标签+一句人话说明，危险分级一眼可辨 */
+.data-group-tier { color: var(--muted); font-size: 0.75rem; letter-spacing: 0; }
+.data-action-group[data-bulk-group="space"] .data-group-tier { color: var(--gold-strong); }
+.data-action-group[data-bulk-group="irreversible"] .data-group-tier { color: var(--danger); }
+.data-bulk-explain { margin: 6px 0 0; color: var(--muted); font-size: 0.84375rem; }
+/* 乙-2（#50）：批量操作长说明收进折叠（原文保留），summary 沿用 muted 模式 */
+.data-bulk-explain-details > summary { width: fit-content; cursor: pointer; font-size: 0.84375rem; line-height: 1.6; color: var(--muted); }
+/* 触达补偿（coarse 指针）：components.css 的 button{min-height:32px} 晚于 layout.css
+   的全局 coarse 44px 规则加载并覆盖它；按既有先例在本面包交互上恢复 44px */
+@media (pointer: coarse) {
+  .data-bulk-bar button { min-height: 44px; }
+}
+.data-result { border-left: 3px solid var(--gold); padding: 4px 10px; }
+.data-result[data-state="ready"] { border-left-color: var(--navy-ink); }
+.data-result .data-blocker { display: inline-block; margin-right: 10px; color: var(--muted); }
+.data-layout {
+  display: grid;
+  /* UIAUDIT-1 F13：列表列 400px 曾把行内信息挤成三行——放宽到 456px，
+     右侧明细区未选中时有引导空态兜底（renderDetailEmptyState）不留大片白 */
+  grid-template-columns: 456px minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+.data-course-list, .data-detail { min-width: 0; }
+.data-course-list { max-height: calc(100dvh - 380px); overflow: auto; }
+.data-course-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--line);
+}
+.data-course-row.active { background: var(--navy-soft); box-shadow: inset 3px 0 0 var(--gold); }
+.data-pick { flex: 0 0 auto; align-self: center; }
+.data-pick input { width: 17px; height: 17px; accent-color: var(--navy-ink); }
+.data-row-open {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.data-row-summary {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 0;
+  cursor: pointer;
+  list-style: none;
+}
+.data-row-summary::-webkit-details-marker { display: none; }
+.data-row-main { display: block; min-width: 0; }
+.data-row-title {
+  display: block;
+  font-family: var(--font-editorial);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.data-row-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.data-chip { font-size: 0.75rem; color: var(--muted); border: 1px solid var(--line); border-radius: var(--radius); padding: 1px 8px; }
+.data-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+.data-tag { border: 1px solid var(--line); border-radius: var(--radius); padding: 0 6px; }
+.data-tag-orphan { border-color: var(--danger); color: var(--danger); }
+.data-row-narrow { flex-direction: column; }
+.data-row-detail-body { min-width: 0; padding: var(--space-2) 0 0; }
+.data-detail { padding: 4px 2px; }
+.data-detail-head { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.data-detail-head h3 { margin: 0; margin-right: auto; font-size: 1.15rem; color: var(--navy-ink); overflow-wrap: anywhere; }
+.data-category-grid { margin-top: var(--space-2); border-top: 1px solid var(--line); }
+.data-category-line {
+  display: grid;
+  grid-template-columns: 4.5em 3.5em minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.84375rem;
+  font-variant-numeric: tabular-nums;
+}
+.data-category-name { color: var(--navy-ink); }
+.data-category-volume, .data-category-updated { color: var(--muted); overflow-wrap: anywhere; }
+.data-tier { white-space: nowrap; }
+.data-tier-rebuildable { color: var(--gold-strong); }
+.data-tier-remote { color: var(--gold-strong); }
+.data-tier-irreversible { color: var(--muted); }
+.data-lecture-table { margin-top: var(--space-3); border-top: 1px solid var(--line); }
+.data-lecture-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.84375rem;
+}
+.data-lecture-title { min-width: 0; flex: 1; overflow-wrap: anywhere; color: var(--ink); }
+.data-lecture-size { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.data-lecture-pager { display: flex; align-items: center; gap: var(--space-2); padding: 8px 2px; }
+.data-lecture-status { color: var(--muted); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+@media (max-width: 999px) {
+  .data-layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+  .data-detail { display: none; }
+  .data-category-line { grid-template-columns: 4.5em 3.5em minmax(0, 1fr) auto; }
+  .data-category-updated { display: none; }
+}
+.data-search { min-width: 160px; }
+.data-category-filter { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.84375rem; white-space: nowrap; }
+.data-category-filter .select { min-width: 120px; }
+@media (max-width: 719px) {
+  .data-course-list { max-height: none; }
+  .header-actions .data-search { min-width: 0; width: 100%; }
+}
+
+/* 触达补偿（coarse 指针）：S2-2 移交注 2 盘点的 8 处深层缺口逐项闭合 ≥44px。
+   这些基线 min-height（36/40/32/36/36/36/28/34px）特异性高于全局 coarse 规则，
+   故按 :744 先例在本包按相同媒体条件逐选择器恢复；基块置于文件末尾，同特异性
+   下一律后位胜出。fine 指针几何零变化。 */
+@media (pointer: coarse) {
+  .settings-nav button,
+  .onboarding-toc button,
+  .hlc-recheck, .live-room-recheck,
+  #enter-live-room,
+  .home-live-card .btn-primary,
+  .campus-connection-actions button,
+  .campus-connection-tun button,
+  .auto-connect-account select {
+    min-height: 44px;
+  }
+}
+
+/* 考核雷达（N5A-P1）：总结卡尾部与学习桌两处呈现；轻量安静形态，
+   确认/忽略=次要文字钮（text-button），不与主动作竞争视觉。 */
+.assessment-radar { display: grid; gap: 6px; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.assessment-radar[hidden] { display: none; }
+.assessment-event { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 0.84375rem; line-height: 1.6; color: var(--ink); }
+.assessment-event.confirmed { color: var(--muted); }
+
+/* U9 检索导航：当前命中的活动行（Enter/Shift+Enter 巡览位置） */
+.transcript-hit-active { background: var(--navy-soft); }
+
+/* U7②③：缓冲段可视化 + 章节标记（进度条内绝对定位，均不截获指针——
+   点击/拖拽仍归 range input；章节标记按钮例外，可悬停显名、点击跳转）。
+   U④ 缓冲条收轨：整行 32px 洗带改为进度条 4px 轨内段——与可见轨/填充条
+   同一 thumb 内缩几何、随 hover 一起 4→6px；三色阶=未播 28% <
+   已缓冲 45% < 已播 accent，数据源 --buffer-ratio 不变。 */
+.player-timeline-buffered {
+  position: absolute;
+  left: calc(var(--player-thumb-size) / 2);
+  top: calc(50% + var(--player-track-offset));
+  height: 4px;
+  transform: translateY(-50%);
+  width: calc((100% - var(--player-thumb-size)) * var(--buffer-ratio, 0));
+  border-radius: 2px;
+  background: rgb(var(--stage-ink-rgb) / 45%);
+  pointer-events: none;
+}
+.player-timeline-markers { position: absolute; inset: 0; pointer-events: none; }
+.player-chapter-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--chapter-ratio, 0) * 100%);
+  width: 2px;
+  padding: 0;
+  border: 0;
+  background: var(--stage-accent);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* U⑦：新课程云端自动处理一次性询问（课程列表顶部轻提示卡） */
+.course-auto-ask {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  display: grid;
+  gap: 4px;
+  font-size: 0.84375rem;
+}
+.course-auto-ask p { margin: 0; }
+.course-auto-ask-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+/* U⑧：同类终态任务聚合卡——×N 徽标 + 历次折叠 */
+.task .t-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted, inherit);
+  white-space: nowrap;
+}
+.task-aggregate[data-state="failed"] .t-count { color: var(--danger, inherit); }
+.task-aggregate-details > summary { cursor: pointer; font-size: 0.78125rem; color: var(--muted, inherit); }
+.task-aggregate-details[open] > summary { margin-bottom: 6px; }
+.task-aggregate-details .task { border: 0; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
+
+/* U⑩：DeepSeek 日用量三档预设卡（点卡即存；推荐档有安静标记） */
+/* SETTINGS-UX-1 A3（化身走查 F6）：宽屏两列网格省一半纵向（走查实测四卡
+   全宽竖排 247px 高）；窄列回退单列。点卡即存行为零变化。 */
+#deepseek-budget-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+@media (max-width: 999px) {
+  #deepseek-budget-presets { grid-template-columns: 1fr; }
+}
+/* P58：DeepSeek 保存状态确认条——复用 .status-pill 语言；通栏呈条状更醒目 */
+.deepseek-save-pill { width: 100%; font-weight: 600; }
+.budget-preset {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+}
+.budget-preset:hover:not([disabled]) { border-color: var(--line-strong); }
+.budget-preset[aria-checked="true"] { border-color: var(--navy); background: var(--navy-soft); }
+.budget-preset:disabled { opacity: 0.6; cursor: default; }
+.budget-preset strong { font-size: 0.875rem; color: var(--ink); }
+.budget-preset .budget-amount { font-size: 0.8125rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+/* CLIENT-UI-1：「推荐」徽记补样式——此前零挂点裸文本与档位名连排成
+   「日常够用推荐」；按安静标记族（.t-mode-note/.data-chip 同配方）收为
+   12px chip 档，不与档位名竞争强调。muted/surface 亮 5.72 暗 6.13 双过 AA。 */
+.budget-preset .budget-recommend {
+  margin-left: 6px;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ---- N7F 课程总体复习（课程级 surface） ----
+   取值全部走 tokens.css 既有变量：不引入新色/新半径/新动效曲线。
+   布局：课程头保持既有块级排版（h2 与 meta 原样堆叠），入口是课程信息之后
+   的独立一行；复习 surface 与 .course-layout 互斥（可见性由 study.js 联动）。 */
+.cr-open { display: block; margin-top: var(--space-2); }
+
+.course-review { display: block; padding: 0 2px var(--space-6); outline: none; }
+.course-review[hidden] { display: none; }
+
+.cr-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-3); padding: 4px 2px var(--space-2); }
+.cr-heading { flex: 1 1 220px; min-width: 0; }
+.cr-heading h2 { font-size: 1.25rem; letter-spacing: 0; color: var(--navy-ink); }
+.cr-heading span { display: block; margin-top: 4px; color: var(--muted); font-size: 0.84375rem; line-height: 1.6; }
+.cr-actions { flex: 0 1 auto; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+
+/* 覆盖度独立一行：与操作按钮分行，窄屏不会把主按钮挤出视口 */
+.cr-coverage { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: 0 2px var(--space-2); color: var(--muted); font-size: 0.8125rem; }
+.cr-coverage[hidden] { display: none; }
+.cr-coverage-item { display: inline-flex; align-items: baseline; gap: 4px; }
+/* 相邻计数之间一道细分隔线：标签与数字不会读成一串 */
+.cr-coverage-item + .cr-coverage-item { border-left: 1px solid var(--line); padding-left: var(--space-4); }
+.cr-coverage-item strong { color: var(--ink); font-weight: 600; }
+
+/* 状态条：五档语气，除颜色外还带文本，绝不只靠颜色传达 */
+.cr-status { margin: var(--space-2) 2px var(--space-3); padding: var(--space-2) var(--space-3); border-left: 3px solid var(--line-strong); background: var(--surface); border-radius: 0 var(--radius) var(--radius) 0; font-size: 0.84375rem; line-height: 1.65; }
+.cr-status[data-tone="caution"] { border-left-color: var(--gold); }
+.cr-status[data-tone="danger"] { border-left-color: var(--danger); color: var(--danger); }
+.cr-status[data-tone="busy"] { border-left-color: var(--navy); }
+.cr-status[data-tone="ready"] { border-left-color: var(--line); color: var(--muted); }
+.cr-status[data-tone="quiet"] { border-left-color: var(--line); color: var(--muted); }
+/* 练习失败卡（.error-note 共享配方，components.css）与状态条同节奏（VA-P2-03）。 */
+#cr-panel-assessment .error-note { margin: var(--space-2) 2px var(--space-3); }
+.cr-refresh-result { margin: 0 2px var(--space-3); color: var(--muted); font-size: 0.8125rem; line-height: 1.65; }
+.cr-refresh-result[hidden] { display: none; }
+
+/* 三视图 tablist：结构镜像 .materials-tabs，选择器域独立（data-review-tab），
+   与既有 data-material-tab 的 roving tabindex 互不干扰。活跃态配方已与
+   .material-tab.active 收敛为同一下划线语言（VA-P3-04 · VISUAL-BACKLOG-1：
+   原描边盒与四一级标签主面两套配方，收敛走主面既有配方，零新视觉语言；
+   基础态 2px 透明下边占位 + padding-bottom 补偿，切换零跳动）。 */
+.cr-tabs { display: flex; flex-wrap: wrap; gap: var(--space-1); border-bottom: 1px solid var(--line); margin-bottom: var(--space-4); }
+.cr-tab { font: inherit; font-size: 0.84375rem; padding: 7px 14px 6px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.cr-tab:hover { color: var(--navy-ink); }
+.cr-tab.active { border-bottom-color: var(--navy); color: var(--ink); font-weight: 600; }
+.cr-panel { outline: none; }
+.cr-panel[hidden] { display: none; }
+
+/* 筛选 chips */
+.cr-filter-bar { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-bottom: var(--space-3); }
+.cr-chip { font: inherit; font-size: 0.78125rem; padding: 3px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--muted); cursor: pointer; }
+.cr-chip.active { border-color: var(--navy); color: var(--navy-ink); font-weight: 600; }
+
+/* 知识脉络：只陈列主张与出处，不出现“掌握度”之类的前端推断 */
+.cr-topic { padding: var(--space-3) 0; border-bottom: 1px solid var(--line); }
+.cr-topic:last-child { border-bottom: none; }
+.cr-topic-title { font-size: 1rem; color: var(--navy-ink); }
+.cr-topic-alias, .cr-topic-scope { margin-top: 2px; color: var(--muted); font-size: 0.78125rem; }
+.cr-point-list { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: grid; gap: var(--space-2); }
+.cr-point { padding-left: var(--space-3); border-left: 2px solid var(--track); }
+/* RR-ANCHORFE-1：要点锚点芯片——复用全局时间戳按钮，按要点行缩小一号 */
+.cr-point-anchor { flex: none; min-width: 48px; min-height: 24px; padding: 2px 4px; font-size: 0.8125rem; }
+.cr-point-text { font-size: 0.875rem; line-height: 1.7; overflow-wrap: anywhere; }
+.cr-rewatch { display: inline-block; margin-top: 4px; color: var(--gold-strong); font-size: 0.78125rem; }
+
+.cr-source-labels { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.cr-source-tag { font-size: 0.75rem; padding: 2px 8px; border-radius: var(--radius); background: var(--navy-soft); color: var(--navy-ink); }
+.cr-coverage-inline { margin-top: var(--space-1); color: var(--muted); font-size: 0.78125rem; }
+.cr-hint { margin-top: 4px; color: var(--muted); font-size: 0.78125rem; line-height: 1.6; }
+
+/* 按课次 */
+.cr-lecture { padding: var(--space-3) 0; border-bottom: 1px solid var(--line); }
+.cr-lecture:last-child { border-bottom: none; }
+.cr-lecture-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); }
+/* 长标题截断：完整文本仍在 DOM 中，读屏与检索可取到 */
+.cr-lecture-title { font-size: 0.9375rem; color: var(--navy-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.cr-lecture-status { font-size: 0.75rem; padding: 1px 7px; border-radius: var(--radius); background: var(--track); color: var(--muted); }
+.cr-lecture-topics, .cr-question-scope { margin-top: 3px; color: var(--muted); font-size: 0.78125rem; }
+
+/* 练习与真题 */
+.cr-question { padding: var(--space-3) 0; border-bottom: 1px solid var(--line); }
+.cr-question:last-child { border-bottom: none; }
+.cr-question-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); }
+.cr-question-text { flex: 1 1 260px; font-size: 0.90625rem; line-height: 1.7; font-weight: 500; overflow-wrap: anywhere; }
+.cr-answer-source { flex: 0 0 auto; font-size: 0.75rem; padding: 1px 8px; border-radius: var(--radius); background: var(--navy-soft); color: var(--navy-ink); }
+.cr-answer { margin-top: var(--space-2); }
+.cr-answer summary { cursor: pointer; font-size: 0.8125rem; color: var(--navy-ink); }
+.cr-answer-text { margin-top: 4px; font-size: 0.84375rem; line-height: 1.7; }
+.cr-answer.ai summary { color: var(--gold-strong); }
+.cr-answer-none { margin-top: 4px; color: var(--muted); font-size: 0.78125rem; }
+.cr-more { display: block; margin: var(--space-3) auto 0; font: inherit; font-size: 0.8125rem; padding: 5px 16px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); color: var(--navy-ink); cursor: pointer; }
+
+/* 窄屏：单列；三 tab 等分一行；主按钮不与图标钮挤在一条线上 */
+@media (max-width: 640px) {
+  .cr-header { gap: var(--space-1) var(--space-2); }
+  .cr-heading { flex: 1 1 100%; }
+  .cr-actions { flex: 1 1 100%; }
+  .cr-actions .btn-primary { flex: 1 1 auto; }
+  .cr-tabs { gap: 0; }
+  .cr-tab { flex: 1 1 33%; padding: 7px 6px 6px; text-align: center; }
+  .cr-question-text { flex: 1 1 100%; }
+}
+@media (max-width: 480px) {
+  .cr-citation-row { display: grid; gap: 2px; }
+}
+
+/* ---- 数据地图（DATAMAP-P1「你的数据在哪里」） --------------------------
+   三域卡片 + 本机类别计数 + 外联主机闭集清单 + 保留期 + 四动作入口。
+   颜色全部走 tokens（ink/muted/navy/gold/line 双主题对），亮暖纸/暗
+   navy-gold 自动成立；主机名用 mono 轨传达「可核对的事实」。 */
+.datamap-flow { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: stretch; }
+.datamap-domain { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface); padding: var(--space-3) var(--space-4); }
+.datamap-domain-title { font-size: 0.9375rem; color: var(--navy-ink); margin-bottom: 2px; }
+.datamap-domain-field { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: baseline; font-size: 0.8125rem; line-height: 1.6; color: var(--ink); }
+.datamap-field-label { flex: 0 0 auto; font-size: 0.75rem; padding: 0 7px; border-radius: var(--radius); background: var(--navy-soft); color: var(--navy-ink); }
+.datamap-field-value { flex: 1 1 120px; }
+.datamap-domain-items { margin: 2px 0 0; padding-left: 18px; display: grid; gap: 3px; color: var(--muted); font-size: 0.78125rem; line-height: 1.65; }
+.datamap-arrow { align-self: center; color: var(--gold-strong); font-size: 1.125rem; }
+.datamap-counters { display: flex; flex-wrap: wrap; gap: 6px var(--space-2); align-items: baseline; }
+.datamap-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.datamap-bytes { flex-basis: 100%; }
+.datamap-counters-empty { color: var(--muted); font-size: 0.84375rem; }
+.datamap-hosts { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.datamap-host-row { display: flex; flex-wrap: wrap; gap: 4px var(--space-2); align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 0.84375rem; }
+.datamap-host-row:last-child { border-bottom: none; }
+.datamap-host-group { flex: 0 0 auto; }
+.datamap-host-name { font-family: var(--font-mono); font-size: 0.78125rem; color: var(--navy-ink); overflow-wrap: anywhere; }
+.datamap-host-purpose { color: var(--muted); font-size: 0.78125rem; }
+.datamap-retention { margin: 0; padding-left: 18px; display: grid; gap: 4px; color: var(--ink); font-size: 0.84375rem; line-height: 1.65; }
+.datamap-actions { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.datamap-action-row { display: flex; flex-wrap: wrap; gap: 4px var(--space-2); align-items: baseline; font-size: 0.84375rem; }
+.datamap-action-title { color: var(--ink); }
+.datamap-action-where { flex-basis: 100%; }
+@media (max-width: 640px) {
+  /* 窄屏：三域纵排，流向箭头转为向下 */
+  .datamap-flow { flex-direction: column; }
+  .datamap-arrow { transform: rotate(90deg); }
+}

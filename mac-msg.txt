@@ -1,0 +1,1 @@
+CourseLens 0.1.0 macOS 出厂快照（RELEASE-CHAIN-010-R2）：构建基 82ea660 全树（含 STUDY-STATS 学习统计全系、F-GATE 三修、allowlist 两枚新钉测试上镜、安装器三阶段根修与取消恢复、UIS 登录超时修复、GitHub 绑定精准归因根修、发布链元数据门等学生可感增量）；macOS 测试版（Apple Silicon，macOS 12+）CI 源树，ad-hoc 签名独立测试版通道。

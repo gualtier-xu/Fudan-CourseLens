@@ -1,0 +1,1410 @@
+{
+  "contract": "courselens.course-knowledge.v1",
+  "documents": {
+    "complete": {
+      "assessment_items": [
+        {
+          "citation_ids": [
+            "ckc:edbee594f867"
+          ],
+          "content_hash": "6e69d370fbe6d6458c0671ba64dca57e",
+          "course_id": "crs-synthetic-2026a",
+          "document_id": "cccccccccccccccccccccccccccccccc",
+          "item_id": "cka:bffe3ed8c4a0",
+          "label": "第 2 题",
+          "question_no": 2,
+          "sub_id": ""
+        }
+      ],
+      "contract": "courselens.course-knowledge.v1",
+      "course_id": "crs-synthetic-2026a",
+      "coverage": {
+        "assessment_items": 1,
+        "bookmarks": 1,
+        "course_document_pages": 1,
+        "document_pages": 1,
+        "lectures_partial": 0,
+        "lectures_ready": 2,
+        "lectures_stale": 0,
+        "lectures_total": 2,
+        "slide_pages": 1,
+        "transcript_segments": 2
+      },
+      "evidence_refs": [
+        {
+          "citation_id": "ckc:0f3a3e79378d",
+          "content_hash": "87957f5515cc330d3888fa808aeb2f7d832fbf92d7a6497a30fb50a209e5a2e3",
+          "kind": "document_page",
+          "label": "教材第 1 章",
+          "locator": {
+            "page": 1
+          },
+          "revision_id": "95a674eed8444543207e33243a6f9ac298a931bfb0c0a3240a119c3f07ca6441",
+          "source_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        {
+          "citation_id": "ckc:edbee594f867",
+          "content_hash": "6e69d370fbe6d6458c0671ba64dca57e",
+          "kind": "assessment_item",
+          "label": "第 2 题",
+          "locator": {
+            "question_no": 2
+          },
+          "revision_id": "4739f693f6f220d14a5592662edbc5d4eb98d3b79b6f59f3ac249acaaeefc9e4",
+          "source_id": "cccccccccccccccccccccccccccccccc"
+        }
+      ],
+      "input_hash": "a699855f39e0293f60d496bce357b48a",
+      "lectures": [
+        {
+          "course_id": "crs-synthetic-2026a",
+          "evidence_refs": [
+            {
+              "citation_id": "ckc:06d93578a337",
+              "content_hash": "4f129a2230cf011ad01128026cb21833518c199b770698c4f767af07421448b0",
+              "kind": "slide",
+              "label": "第 7 页：多分辨率分析",
+              "locator": {
+                "page": 7
+              },
+              "revision_id": "d01851493d531756c90278a99d7077beeba31964aec9d6e5a13c3d17f177b34e",
+              "source_id": "slevt:333333333333"
+            },
+            {
+              "citation_id": "ckc:0f3a3e79378d",
+              "content_hash": "87957f5515cc330d3888fa808aeb2f7d832fbf92d7a6497a30fb50a209e5a2e3",
+              "kind": "document_page",
+              "label": "教材第 1 章",
+              "locator": {
+                "page": 1
+              },
+              "revision_id": "95a674eed8444543207e33243a6f9ac298a931bfb0c0a3240a119c3f07ca6441",
+              "source_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            {
+              "citation_id": "ckc:85f8d16c93be",
+              "content_hash": "ef584f02fdcb27f691a40f6a57fce15bd9f5efa65224cb223b9c311ed4cafd4e",
+              "kind": "document_page",
+              "label": "讲义第 3 页",
+              "locator": {
+                "page": 3
+              },
+              "revision_id": "1dd5b3344a12e1aed8d290c21d4a1aa614e0a346c8cc9dc47cfc894c12543554",
+              "source_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            {
+              "citation_id": "ckc:a04abd7c31cc",
+              "content_hash": "2b5888f4309682984114e1fe4049b9bba3212bf08428c62b3087f97dbdd3a632",
+              "kind": "transcript",
+              "label": "小波变换的定义",
+              "locator": {
+                "end_ms": 168000,
+                "start_ms": 125000
+              },
+              "revision_id": "d72990081afe79026079d72665b6b6e7967c203498cdb0c7d07858db16a96497",
+              "source_id": "seg:111111111111"
+            },
+            {
+              "citation_id": "ckc:cd532a66fa85",
+              "content_hash": "93c0e81e0a5a4ad0bd6af32f64ee4e375b2ebcbdbbb369c528a2e8baac549577",
+              "kind": "bookmark",
+              "label": "我的书签：重点",
+              "locator": {
+                "end_ms": 302000,
+                "start_ms": 300000
+              },
+              "revision_id": "9ae6b83dbf4821adaa32edc7fa026a1b742a2ab8a3f7ee7be221ce97c2fa405f",
+              "source_id": "bm-synthetic-0001"
+            }
+          ],
+          "input_hash": "206bebd9e85a9816da1666b4cd252721",
+          "key_points": [
+            {
+              "citation_ids": [
+                "ckc:06d93578a337",
+                "ckc:a04abd7c31cc"
+              ],
+              "text": "小波变换把信号分解到时频平面"
+            },
+            {
+              "citation_ids": [
+                "ckc:06d93578a337"
+              ],
+              "text": "多分辨率分析用尺度函数构造逼近"
+            },
+            {
+              "citation_ids": [
+                "ckc:0f3a3e79378d",
+                "ckc:85f8d16c93be"
+              ],
+              "text": "讲义与板书给出的滤波器条件一致"
+            }
+          ],
+          "source_coverage": {
+            "assessment_items": 0,
+            "bookmarks": 1,
+            "course_document_pages": 1,
+            "document_pages": 1,
+            "lecture_ir": true,
+            "slide_pages": 1,
+            "summary": true,
+            "transcript_segments": 1
+          },
+          "stale_reasons": [],
+          "status": "ready",
+          "sub_id": "sub-syn-0001",
+          "topics": [
+            {
+              "aliases": [
+                "Wavelet Transform"
+              ],
+              "citation_ids": [
+                "ckc:a04abd7c31cc"
+              ],
+              "lecture_ids": [
+                "sub-syn-0001"
+              ],
+              "status": "ready",
+              "title": "小波变换",
+              "topic_id": "ckt:847dd8486b42"
+            },
+            {
+              "aliases": [],
+              "citation_ids": [
+                "ckc:06d93578a337"
+              ],
+              "lecture_ids": [
+                "sub-syn-0001"
+              ],
+              "status": "ready",
+              "title": "多分辨率分析",
+              "topic_id": "ckt:a0ebd36fda1a"
+            }
+          ],
+          "updated_at": 1787000000.0
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "evidence_refs": [
+            {
+              "citation_id": "ckc:0f3a3e79378d",
+              "content_hash": "87957f5515cc330d3888fa808aeb2f7d832fbf92d7a6497a30fb50a209e5a2e3",
+              "kind": "document_page",
+              "label": "教材第 1 章",
+              "locator": {
+                "page": 1
+              },
+              "revision_id": "95a674eed8444543207e33243a6f9ac298a931bfb0c0a3240a119c3f07ca6441",
+              "source_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            {
+              "citation_id": "ckc:1207f7b8de1b",
+              "content_hash": "cda9e07c6e2a0b8789f040ace145a659e66b2d6eac435a36f4a3d285959c617d",
+              "kind": "transcript",
+              "label": "滤波器组与重构",
+              "locator": {
+                "end_ms": 92000,
+                "start_ms": 40000
+              },
+              "revision_id": "32aab6b9d1c799c8106f57dde35e35a2a17d126370e532984cb9c812f7100423",
+              "source_id": "seg:222222222222"
+            }
+          ],
+          "input_hash": "f3a0dd07011ada16c6f7a259aa8ba16b",
+          "key_points": [
+            {
+              "citation_ids": [
+                "ckc:1207f7b8de1b"
+              ],
+              "text": "滤波器组给出可逆重构条件"
+            },
+            {
+              "citation_ids": [
+                "ckc:0f3a3e79378d"
+              ],
+              "text": "课程级教材补充了正交性证明"
+            }
+          ],
+          "source_coverage": {
+            "assessment_items": 0,
+            "bookmarks": 0,
+            "course_document_pages": 1,
+            "document_pages": 0,
+            "lecture_ir": true,
+            "slide_pages": 0,
+            "summary": true,
+            "transcript_segments": 1
+          },
+          "stale_reasons": [],
+          "status": "ready",
+          "sub_id": "sub-syn-0002",
+          "topics": [
+            {
+              "aliases": [],
+              "citation_ids": [
+                "ckc:1207f7b8de1b"
+              ],
+              "lecture_ids": [
+                "sub-syn-0002"
+              ],
+              "status": "ready",
+              "title": "滤波器组",
+              "topic_id": "ckt:171fe1251512"
+            },
+            {
+              "aliases": [
+                "小波分析"
+              ],
+              "citation_ids": [
+                "ckc:1207f7b8de1b"
+              ],
+              "lecture_ids": [
+                "sub-syn-0002"
+              ],
+              "status": "ready",
+              "title": "小波变换",
+              "topic_id": "ckt:b3750b083a7c"
+            }
+          ],
+          "updated_at": 1787000100.0
+        }
+      ],
+      "sources": [
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "slevt:333333333333",
+          "kind": "slide",
+          "label": "第 1 讲课间 PPT",
+          "revision_id": "d01851493d531756c90278a99d7077beeba31964aec9d6e5a13c3d17f177b34e",
+          "scope": "lecture",
+          "source_id": "cks:408d07718b45",
+          "sub_id": "sub-syn-0001"
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "kind": "document_page",
+          "label": "课程级教材",
+          "revision_id": "95a674eed8444543207e33243a6f9ac298a931bfb0c0a3240a119c3f07ca6441",
+          "scope": "course",
+          "source_id": "cks:82bd842643a1",
+          "sub_id": ""
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "document_page",
+          "label": "第 1 讲讲义",
+          "revision_id": "1dd5b3344a12e1aed8d290c21d4a1aa614e0a346c8cc9dc47cfc894c12543554",
+          "scope": "lecture",
+          "source_id": "cks:a5fb7bc7ed51",
+          "sub_id": "sub-syn-0001"
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "cccccccccccccccccccccccccccccccc",
+          "kind": "assessment_item",
+          "label": "期末真题",
+          "revision_id": "4739f693f6f220d14a5592662edbc5d4eb98d3b79b6f59f3ac249acaaeefc9e4",
+          "scope": "course",
+          "source_id": "cks:a88ce77d19b1",
+          "sub_id": ""
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "seg:222222222222",
+          "kind": "transcript",
+          "label": "第 2 讲同步字幕",
+          "revision_id": "32aab6b9d1c799c8106f57dde35e35a2a17d126370e532984cb9c812f7100423",
+          "scope": "lecture",
+          "source_id": "cks:b200580983ce",
+          "sub_id": "sub-syn-0002"
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "bm-synthetic-0001",
+          "kind": "bookmark",
+          "label": "我的书签",
+          "revision_id": "9ae6b83dbf4821adaa32edc7fa026a1b742a2ab8a3f7ee7be221ce97c2fa405f",
+          "scope": "lecture",
+          "source_id": "cks:c4f39634f07c",
+          "sub_id": "sub-syn-0001"
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "seg:111111111111",
+          "kind": "transcript",
+          "label": "第 1 讲同步字幕",
+          "revision_id": "d72990081afe79026079d72665b6b6e7967c203498cdb0c7d07858db16a96497",
+          "scope": "lecture",
+          "source_id": "cks:f671a091ca4d",
+          "sub_id": "sub-syn-0001"
+        }
+      ],
+      "stale_reasons": [],
+      "status": "ready",
+      "topics": [
+        {
+          "aliases": [],
+          "citation_ids": [
+            "ckc:1207f7b8de1b"
+          ],
+          "lecture_ids": [
+            "sub-syn-0002"
+          ],
+          "status": "ready",
+          "title": "滤波器组",
+          "topic_id": "ckt:171fe1251512"
+        },
+        {
+          "aliases": [
+            "Wavelet Transform"
+          ],
+          "citation_ids": [
+            "ckc:1207f7b8de1b",
+            "ckc:a04abd7c31cc"
+          ],
+          "lecture_ids": [
+            "sub-syn-0001",
+            "sub-syn-0002"
+          ],
+          "status": "ready",
+          "title": "小波变换",
+          "topic_id": "ckt:847dd8486b42"
+        },
+        {
+          "aliases": [],
+          "citation_ids": [
+            "ckc:06d93578a337"
+          ],
+          "lecture_ids": [
+            "sub-syn-0001"
+          ],
+          "status": "ready",
+          "title": "多分辨率分析",
+          "topic_id": "ckt:a0ebd36fda1a"
+        }
+      ],
+      "updated_at": 1787000200.0
+    },
+    "partial": {
+      "assessment_items": [
+        {
+          "citation_ids": [
+            "ckc:edbee594f867"
+          ],
+          "content_hash": "6e69d370fbe6d6458c0671ba64dca57e",
+          "course_id": "crs-synthetic-2026a",
+          "document_id": "cccccccccccccccccccccccccccccccc",
+          "item_id": "cka:bffe3ed8c4a0",
+          "label": "第 2 题",
+          "question_no": 2,
+          "sub_id": ""
+        }
+      ],
+      "contract": "courselens.course-knowledge.v1",
+      "course_id": "crs-synthetic-2026a",
+      "coverage": {
+        "assessment_items": 1,
+        "bookmarks": 0,
+        "course_document_pages": 1,
+        "document_pages": 1,
+        "lectures_partial": 2,
+        "lectures_ready": 0,
+        "lectures_stale": 0,
+        "lectures_total": 2,
+        "slide_pages": 1,
+        "transcript_segments": 1
+      },
+      "evidence_refs": [
+        {
+          "citation_id": "ckc:0f3a3e79378d",
+          "content_hash": "87957f5515cc330d3888fa808aeb2f7d832fbf92d7a6497a30fb50a209e5a2e3",
+          "kind": "document_page",
+          "label": "教材第 1 章",
+          "locator": {
+            "page": 1
+          },
+          "revision_id": "95a674eed8444543207e33243a6f9ac298a931bfb0c0a3240a119c3f07ca6441",
+          "source_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        {
+          "citation_id": "ckc:edbee594f867",
+          "content_hash": "6e69d370fbe6d6458c0671ba64dca57e",
+          "kind": "assessment_item",
+          "label": "第 2 题",
+          "locator": {
+            "question_no": 2
+          },
+          "revision_id": "4739f693f6f220d14a5592662edbc5d4eb98d3b79b6f59f3ac249acaaeefc9e4",
+          "source_id": "cccccccccccccccccccccccccccccccc"
+        }
+      ],
+      "input_hash": "9383be273fd931742d64b943995b2584",
+      "lectures": [
+        {
+          "course_id": "crs-synthetic-2026a",
+          "evidence_refs": [
+            {
+              "citation_id": "ckc:06d93578a337",
+              "content_hash": "4f129a2230cf011ad01128026cb21833518c199b770698c4f767af07421448b0",
+              "kind": "slide",
+              "label": "第 7 页：多分辨率分析",
+              "locator": {
+                "page": 7
+              },
+              "revision_id": "d01851493d531756c90278a99d7077beeba31964aec9d6e5a13c3d17f177b34e",
+              "source_id": "slevt:333333333333"
+            },
+            {
+              "citation_id": "ckc:85f8d16c93be",
+              "content_hash": "ef584f02fdcb27f691a40f6a57fce15bd9f5efa65224cb223b9c311ed4cafd4e",
+              "kind": "document_page",
+              "label": "讲义第 3 页",
+              "locator": {
+                "page": 3
+              },
+              "revision_id": "1dd5b3344a12e1aed8d290c21d4a1aa614e0a346c8cc9dc47cfc894c12543554",
+              "source_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            {
+              "citation_id": "ckc:a04abd7c31cc",
+              "content_hash": "2b5888f4309682984114e1fe4049b9bba3212bf08428c62b3087f97dbdd3a632",
+              "kind": "transcript",
+              "label": "小波变换的定义",
+              "locator": {
+                "end_ms": 168000,
+                "start_ms": 125000
+              },
+              "revision_id": "d72990081afe79026079d72665b6b6e7967c203498cdb0c7d07858db16a96497",
+              "source_id": "seg:111111111111"
+            }
+          ],
+          "input_hash": "87b9d175ac77318231efaecd2ba3de7b",
+          "key_points": [
+            {
+              "citation_ids": [
+                "ckc:06d93578a337",
+                "ckc:a04abd7c31cc"
+              ],
+              "text": "小波变换把信号分解到时频平面"
+            }
+          ],
+          "source_coverage": {
+            "assessment_items": 0,
+            "bookmarks": 0,
+            "course_document_pages": 0,
+            "document_pages": 1,
+            "lecture_ir": false,
+            "slide_pages": 1,
+            "summary": false,
+            "transcript_segments": 1
+          },
+          "stale_reasons": [
+            "summary_missing"
+          ],
+          "status": "partial",
+          "sub_id": "sub-syn-0001",
+          "topics": [
+            {
+              "aliases": [],
+              "citation_ids": [
+                "ckc:a04abd7c31cc"
+              ],
+              "lecture_ids": [
+                "sub-syn-0001"
+              ],
+              "status": "partial",
+              "title": "小波变换",
+              "topic_id": "ckt:03012918929f"
+            }
+          ],
+          "updated_at": 1787000300.0
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "evidence_refs": [],
+          "input_hash": "32e6b98e1350f9bc9861d3d79816b4b8",
+          "key_points": [],
+          "source_coverage": {
+            "assessment_items": 0,
+            "bookmarks": 0,
+            "course_document_pages": 0,
+            "document_pages": 0,
+            "lecture_ir": false,
+            "slide_pages": 0,
+            "summary": false,
+            "transcript_segments": 0
+          },
+          "stale_reasons": [
+            "summary_missing",
+            "transcript_missing"
+          ],
+          "status": "partial",
+          "sub_id": "sub-syn-0002",
+          "topics": [],
+          "updated_at": 1787000300.0
+        }
+      ],
+      "sources": [
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "slevt:333333333333",
+          "kind": "slide",
+          "label": "第 1 讲课间 PPT",
+          "revision_id": "d01851493d531756c90278a99d7077beeba31964aec9d6e5a13c3d17f177b34e",
+          "scope": "lecture",
+          "source_id": "cks:408d07718b45",
+          "sub_id": "sub-syn-0001"
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "kind": "document_page",
+          "label": "课程级教材",
+          "revision_id": "95a674eed8444543207e33243a6f9ac298a931bfb0c0a3240a119c3f07ca6441",
+          "scope": "course",
+          "source_id": "cks:82bd842643a1",
+          "sub_id": ""
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "document_page",
+          "label": "第 1 讲讲义",
+          "revision_id": "1dd5b3344a12e1aed8d290c21d4a1aa614e0a346c8cc9dc47cfc894c12543554",
+          "scope": "lecture",
+          "source_id": "cks:a5fb7bc7ed51",
+          "sub_id": "sub-syn-0001"
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "cccccccccccccccccccccccccccccccc",
+          "kind": "assessment_item",
+          "label": "期末真题",
+          "revision_id": "4739f693f6f220d14a5592662edbc5d4eb98d3b79b6f59f3ac249acaaeefc9e4",
+          "scope": "course",
+          "source_id": "cks:a88ce77d19b1",
+          "sub_id": ""
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "seg:222222222222",
+          "kind": "transcript",
+          "label": "第 2 讲同步字幕",
+          "revision_id": "32aab6b9d1c799c8106f57dde35e35a2a17d126370e532984cb9c812f7100423",
+          "scope": "lecture",
+          "source_id": "cks:b200580983ce",
+          "sub_id": "sub-syn-0002"
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "bm-synthetic-0001",
+          "kind": "bookmark",
+          "label": "我的书签",
+          "revision_id": "9ae6b83dbf4821adaa32edc7fa026a1b742a2ab8a3f7ee7be221ce97c2fa405f",
+          "scope": "lecture",
+          "source_id": "cks:c4f39634f07c",
+          "sub_id": "sub-syn-0001"
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "seg:111111111111",
+          "kind": "transcript",
+          "label": "第 1 讲同步字幕",
+          "revision_id": "d72990081afe79026079d72665b6b6e7967c203498cdb0c7d07858db16a96497",
+          "scope": "lecture",
+          "source_id": "cks:f671a091ca4d",
+          "sub_id": "sub-syn-0001"
+        }
+      ],
+      "stale_reasons": [
+        "summary_missing"
+      ],
+      "status": "partial",
+      "topics": [
+        {
+          "aliases": [],
+          "citation_ids": [
+            "ckc:a04abd7c31cc"
+          ],
+          "lecture_ids": [
+            "sub-syn-0001"
+          ],
+          "status": "partial",
+          "title": "小波变换",
+          "topic_id": "ckt:03012918929f"
+        }
+      ],
+      "updated_at": 1787000400.0
+    },
+    "stale": {
+      "assessment_items": [
+        {
+          "citation_ids": [
+            "ckc:edbee594f867"
+          ],
+          "content_hash": "6e69d370fbe6d6458c0671ba64dca57e",
+          "course_id": "crs-synthetic-2026a",
+          "document_id": "cccccccccccccccccccccccccccccccc",
+          "item_id": "cka:bffe3ed8c4a0",
+          "label": "第 2 题",
+          "question_no": 2,
+          "sub_id": ""
+        }
+      ],
+      "contract": "courselens.course-knowledge.v1",
+      "course_id": "crs-synthetic-2026a",
+      "coverage": {
+        "assessment_items": 1,
+        "bookmarks": 0,
+        "course_document_pages": 1,
+        "document_pages": 1,
+        "lectures_partial": 0,
+        "lectures_ready": 1,
+        "lectures_stale": 1,
+        "lectures_total": 2,
+        "slide_pages": 1,
+        "transcript_segments": 2
+      },
+      "evidence_refs": [
+        {
+          "citation_id": "ckc:0f3a3e79378d",
+          "content_hash": "87957f5515cc330d3888fa808aeb2f7d832fbf92d7a6497a30fb50a209e5a2e3",
+          "kind": "document_page",
+          "label": "教材第 1 章",
+          "locator": {
+            "page": 1
+          },
+          "revision_id": "95a674eed8444543207e33243a6f9ac298a931bfb0c0a3240a119c3f07ca6441",
+          "source_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        {
+          "citation_id": "ckc:edbee594f867",
+          "content_hash": "6e69d370fbe6d6458c0671ba64dca57e",
+          "kind": "assessment_item",
+          "label": "第 2 题",
+          "locator": {
+            "question_no": 2
+          },
+          "revision_id": "4739f693f6f220d14a5592662edbc5d4eb98d3b79b6f59f3ac249acaaeefc9e4",
+          "source_id": "cccccccccccccccccccccccccccccccc"
+        }
+      ],
+      "input_hash": "dad1d437ff5205ffbeb415f0b9dc2077",
+      "lectures": [
+        {
+          "course_id": "crs-synthetic-2026a",
+          "evidence_refs": [
+            {
+              "citation_id": "ckc:06d93578a337",
+              "content_hash": "4f129a2230cf011ad01128026cb21833518c199b770698c4f767af07421448b0",
+              "kind": "slide",
+              "label": "第 7 页：多分辨率分析",
+              "locator": {
+                "page": 7
+              },
+              "revision_id": "d01851493d531756c90278a99d7077beeba31964aec9d6e5a13c3d17f177b34e",
+              "source_id": "slevt:333333333333"
+            },
+            {
+              "citation_id": "ckc:85f8d16c93be",
+              "content_hash": "ef584f02fdcb27f691a40f6a57fce15bd9f5efa65224cb223b9c311ed4cafd4e",
+              "kind": "document_page",
+              "label": "讲义第 3 页",
+              "locator": {
+                "page": 3
+              },
+              "revision_id": "1dd5b3344a12e1aed8d290c21d4a1aa614e0a346c8cc9dc47cfc894c12543554",
+              "source_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            },
+            {
+              "citation_id": "ckc:a04abd7c31cc",
+              "content_hash": "2b5888f4309682984114e1fe4049b9bba3212bf08428c62b3087f97dbdd3a632",
+              "kind": "transcript",
+              "label": "小波变换的定义",
+              "locator": {
+                "end_ms": 168000,
+                "start_ms": 125000
+              },
+              "revision_id": "d72990081afe79026079d72665b6b6e7967c203498cdb0c7d07858db16a96497",
+              "source_id": "seg:111111111111"
+            }
+          ],
+          "input_hash": "5e77d805508437a201a3086919caab1c",
+          "key_points": [
+            {
+              "citation_ids": [
+                "ckc:06d93578a337",
+                "ckc:a04abd7c31cc"
+              ],
+              "text": "小波变换把信号分解到时频平面"
+            }
+          ],
+          "source_coverage": {
+            "assessment_items": 0,
+            "bookmarks": 0,
+            "course_document_pages": 0,
+            "document_pages": 1,
+            "lecture_ir": true,
+            "slide_pages": 1,
+            "summary": true,
+            "transcript_segments": 1
+          },
+          "stale_reasons": [
+            "document_changed"
+          ],
+          "status": "stale",
+          "sub_id": "sub-syn-0001",
+          "topics": [
+            {
+              "aliases": [],
+              "citation_ids": [
+                "ckc:a04abd7c31cc"
+              ],
+              "lecture_ids": [
+                "sub-syn-0001"
+              ],
+              "status": "ready",
+              "title": "小波变换",
+              "topic_id": "ckt:03012918929f"
+            }
+          ],
+          "updated_at": 1787000500.0
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "evidence_refs": [
+            {
+              "citation_id": "ckc:0f3a3e79378d",
+              "content_hash": "87957f5515cc330d3888fa808aeb2f7d832fbf92d7a6497a30fb50a209e5a2e3",
+              "kind": "document_page",
+              "label": "教材第 1 章",
+              "locator": {
+                "page": 1
+              },
+              "revision_id": "95a674eed8444543207e33243a6f9ac298a931bfb0c0a3240a119c3f07ca6441",
+              "source_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            {
+              "citation_id": "ckc:1207f7b8de1b",
+              "content_hash": "cda9e07c6e2a0b8789f040ace145a659e66b2d6eac435a36f4a3d285959c617d",
+              "kind": "transcript",
+              "label": "滤波器组与重构",
+              "locator": {
+                "end_ms": 92000,
+                "start_ms": 40000
+              },
+              "revision_id": "32aab6b9d1c799c8106f57dde35e35a2a17d126370e532984cb9c812f7100423",
+              "source_id": "seg:222222222222"
+            }
+          ],
+          "input_hash": "f3a0dd07011ada16c6f7a259aa8ba16b",
+          "key_points": [
+            {
+              "citation_ids": [
+                "ckc:1207f7b8de1b"
+              ],
+              "text": "滤波器组给出可逆重构条件"
+            }
+          ],
+          "source_coverage": {
+            "assessment_items": 0,
+            "bookmarks": 0,
+            "course_document_pages": 1,
+            "document_pages": 0,
+            "lecture_ir": true,
+            "slide_pages": 0,
+            "summary": true,
+            "transcript_segments": 1
+          },
+          "stale_reasons": [],
+          "status": "ready",
+          "sub_id": "sub-syn-0002",
+          "topics": [
+            {
+              "aliases": [
+                "小波分析"
+              ],
+              "citation_ids": [
+                "ckc:1207f7b8de1b"
+              ],
+              "lecture_ids": [
+                "sub-syn-0002"
+              ],
+              "status": "ready",
+              "title": "小波变换",
+              "topic_id": "ckt:b3750b083a7c"
+            }
+          ],
+          "updated_at": 1787000600.0
+        }
+      ],
+      "sources": [
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "slevt:333333333333",
+          "kind": "slide",
+          "label": "第 1 讲课间 PPT",
+          "revision_id": "d01851493d531756c90278a99d7077beeba31964aec9d6e5a13c3d17f177b34e",
+          "scope": "lecture",
+          "source_id": "cks:408d07718b45",
+          "sub_id": "sub-syn-0001"
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "kind": "document_page",
+          "label": "课程级教材",
+          "revision_id": "95a674eed8444543207e33243a6f9ac298a931bfb0c0a3240a119c3f07ca6441",
+          "scope": "course",
+          "source_id": "cks:82bd842643a1",
+          "sub_id": ""
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "document_page",
+          "label": "第 1 讲讲义",
+          "revision_id": "1dd5b3344a12e1aed8d290c21d4a1aa614e0a346c8cc9dc47cfc894c12543554",
+          "scope": "lecture",
+          "source_id": "cks:a5fb7bc7ed51",
+          "sub_id": "sub-syn-0001"
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "cccccccccccccccccccccccccccccccc",
+          "kind": "assessment_item",
+          "label": "期末真题",
+          "revision_id": "4739f693f6f220d14a5592662edbc5d4eb98d3b79b6f59f3ac249acaaeefc9e4",
+          "scope": "course",
+          "source_id": "cks:a88ce77d19b1",
+          "sub_id": ""
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "seg:222222222222",
+          "kind": "transcript",
+          "label": "第 2 讲同步字幕",
+          "revision_id": "32aab6b9d1c799c8106f57dde35e35a2a17d126370e532984cb9c812f7100423",
+          "scope": "lecture",
+          "source_id": "cks:b200580983ce",
+          "sub_id": "sub-syn-0002"
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "bm-synthetic-0001",
+          "kind": "bookmark",
+          "label": "我的书签",
+          "revision_id": "9ae6b83dbf4821adaa32edc7fa026a1b742a2ab8a3f7ee7be221ce97c2fa405f",
+          "scope": "lecture",
+          "source_id": "cks:c4f39634f07c",
+          "sub_id": "sub-syn-0001"
+        },
+        {
+          "course_id": "crs-synthetic-2026a",
+          "external_id": "seg:111111111111",
+          "kind": "transcript",
+          "label": "第 1 讲同步字幕",
+          "revision_id": "d72990081afe79026079d72665b6b6e7967c203498cdb0c7d07858db16a96497",
+          "scope": "lecture",
+          "source_id": "cks:f671a091ca4d",
+          "sub_id": "sub-syn-0001"
+        }
+      ],
+      "stale_reasons": [
+        "input_changed"
+      ],
+      "status": "stale",
+      "topics": [
+        {
+          "aliases": [
+            "Wavelet Transform"
+          ],
+          "citation_ids": [
+            "ckc:1207f7b8de1b",
+            "ckc:a04abd7c31cc"
+          ],
+          "lecture_ids": [
+            "sub-syn-0001",
+            "sub-syn-0002"
+          ],
+          "status": "ready",
+          "title": "小波变换",
+          "topic_id": "ckt:847dd8486b42"
+        }
+      ],
+      "updated_at": 1787000700.0
+    }
+  },
+  "fixture_schema": "courselens.course-knowledge.fixture.v1",
+  "rejections": [
+    {
+      "base": "complete",
+      "expected_code": "reference_missing",
+      "name": "dangling_citation",
+      "ops": [
+        {
+          "op": "set",
+          "path": "lectures[0].key_points[0].citation_ids[0]",
+          "value": "ckc:000000000000"
+        }
+      ]
+    },
+    {
+      "base": "complete",
+      "expected_code": "hash_malformed",
+      "name": "hash_malformed",
+      "ops": [
+        {
+          "op": "set",
+          "path": "lectures[0].evidence_refs[0].revision_id",
+          "value": "ZZZZ"
+        }
+      ]
+    },
+    {
+      "base": "complete",
+      "expected_code": "kind_unsupported",
+      "name": "unknown_evidence_kind",
+      "ops": [
+        {
+          "op": "set",
+          "path": "lectures[0].evidence_refs[0].kind",
+          "value": "video"
+        }
+      ]
+    },
+    {
+      "base": "complete",
+      "expected_code": "status_unsupported",
+      "name": "unknown_status",
+      "ops": [
+        {
+          "op": "set",
+          "path": "lectures[0].status",
+          "value": "done"
+        }
+      ]
+    },
+    {
+      "base": "complete",
+      "expected_code": "assessment_answer_unsupported",
+      "name": "assessment_pretends_official_answer",
+      "ops": [
+        {
+          "op": "set",
+          "path": "assessment_items[0].official_answer",
+          "value": "B"
+        }
+      ]
+    },
+    {
+      "base": "complete",
+      "expected_code": "cross_course_reference",
+      "name": "cross_course_reference",
+      "ops": [
+        {
+          "op": "set",
+          "path": "lectures[0].course_id",
+          "value": "crs-other-0002"
+        }
+      ]
+    },
+    {
+      "base": "complete",
+      "expected_code": "field_required",
+      "name": "missing_required_field",
+      "ops": [
+        {
+          "op": "del",
+          "path": "lectures[0].evidence_refs[0].content_hash"
+        }
+      ]
+    },
+    {
+      "base": "complete",
+      "expected_code": "field_unknown",
+      "name": "unknown_field",
+      "ops": [
+        {
+          "op": "set",
+          "path": "lectures[0].embedding_vector",
+          "value": [
+            0.1,
+            0.2
+          ]
+        }
+      ]
+    },
+    {
+      "base": "complete",
+      "expected_code": "coverage_mismatch",
+      "name": "coverage_mismatch",
+      "ops": [
+        {
+          "op": "set",
+          "path": "coverage.lectures_stale",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "base": "complete",
+      "expected_code": "state_conflict",
+      "name": "ready_must_not_be_stale",
+      "ops": [
+        {
+          "op": "set",
+          "path": "lectures[0].stale_reasons",
+          "value": [
+            "input_changed"
+          ]
+        }
+      ]
+    },
+    {
+      "base": "complete",
+      "expected_code": "type_invalid",
+      "name": "key_point_anchor_negative",
+      "ops": [
+        {
+          "op": "set",
+          "path": "lectures[0].key_points[0].anchor_ms",
+          "value": -5
+        }
+      ]
+    },
+    {
+      "base": "complete",
+      "expected_code": "type_invalid",
+      "name": "key_point_anchor_wrong_type",
+      "ops": [
+        {
+          "op": "set",
+          "path": "lectures[0].key_points[0].anchor_ms",
+          "value": "125000"
+        }
+      ]
+    }
+  ],
+  "views": {
+    "assessment_workspace": {
+      "contract": "courselens.course-knowledge.v1",
+      "counts": {
+        "course_level": 1,
+        "lectures": 0,
+        "total": 1
+      },
+      "course_id": "crs-synthetic-2026a",
+      "items": [
+        {
+          "citation_ids": [
+            "ckc:edbee594f867"
+          ],
+          "content_hash": "6e69d370fbe6d6458c0671ba64dca57e",
+          "document_id": "cccccccccccccccccccccccccccccccc",
+          "item_id": "cka:bffe3ed8c4a0",
+          "label": "第 2 题",
+          "question_no": 2,
+          "sub_id": ""
+        }
+      ],
+      "updated_at": 1787000200.0,
+      "view": "assessment_workspace"
+    },
+    "course_overview": {
+      "assessment": {
+        "lectures_with_items": 0,
+        "total": 1
+      },
+      "contract": "courselens.course-knowledge.v1",
+      "course_id": "crs-synthetic-2026a",
+      "coverage": {
+        "assessment_items": 1,
+        "bookmarks": 1,
+        "course_document_pages": 1,
+        "document_pages": 1,
+        "lectures_partial": 0,
+        "lectures_ready": 2,
+        "lectures_stale": 0,
+        "lectures_total": 2,
+        "slide_pages": 1,
+        "transcript_segments": 2
+      },
+      "lectures": [
+        {
+          "input_hash": "206bebd9e85a9816da1666b4cd252721",
+          "key_point_count": 3,
+          "source_coverage": {
+            "assessment_items": 0,
+            "bookmarks": 1,
+            "course_document_pages": 1,
+            "document_pages": 1,
+            "lecture_ir": true,
+            "slide_pages": 1,
+            "summary": true,
+            "transcript_segments": 1
+          },
+          "stale_reasons": [],
+          "status": "ready",
+          "sub_id": "sub-syn-0001",
+          "topic_ids": [
+            "ckt:847dd8486b42",
+            "ckt:a0ebd36fda1a"
+          ],
+          "updated_at": 1787000000.0
+        },
+        {
+          "input_hash": "f3a0dd07011ada16c6f7a259aa8ba16b",
+          "key_point_count": 2,
+          "source_coverage": {
+            "assessment_items": 0,
+            "bookmarks": 0,
+            "course_document_pages": 1,
+            "document_pages": 0,
+            "lecture_ir": true,
+            "slide_pages": 0,
+            "summary": true,
+            "transcript_segments": 1
+          },
+          "stale_reasons": [],
+          "status": "ready",
+          "sub_id": "sub-syn-0002",
+          "topic_ids": [
+            "ckt:171fe1251512",
+            "ckt:b3750b083a7c"
+          ],
+          "updated_at": 1787000100.0
+        }
+      ],
+      "sources": [
+        {
+          "external_id": "slevt:333333333333",
+          "kind": "slide",
+          "label": "第 1 讲课间 PPT",
+          "revision_id": "d01851493d531756c90278a99d7077beeba31964aec9d6e5a13c3d17f177b34e",
+          "scope": "lecture",
+          "source_id": "cks:408d07718b45",
+          "sub_id": "sub-syn-0001"
+        },
+        {
+          "external_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "kind": "document_page",
+          "label": "课程级教材",
+          "revision_id": "95a674eed8444543207e33243a6f9ac298a931bfb0c0a3240a119c3f07ca6441",
+          "scope": "course",
+          "source_id": "cks:82bd842643a1",
+          "sub_id": ""
+        },
+        {
+          "external_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "kind": "document_page",
+          "label": "第 1 讲讲义",
+          "revision_id": "1dd5b3344a12e1aed8d290c21d4a1aa614e0a346c8cc9dc47cfc894c12543554",
+          "scope": "lecture",
+          "source_id": "cks:a5fb7bc7ed51",
+          "sub_id": "sub-syn-0001"
+        },
+        {
+          "external_id": "cccccccccccccccccccccccccccccccc",
+          "kind": "assessment_item",
+          "label": "期末真题",
+          "revision_id": "4739f693f6f220d14a5592662edbc5d4eb98d3b79b6f59f3ac249acaaeefc9e4",
+          "scope": "course",
+          "source_id": "cks:a88ce77d19b1",
+          "sub_id": ""
+        },
+        {
+          "external_id": "seg:222222222222",
+          "kind": "transcript",
+          "label": "第 2 讲同步字幕",
+          "revision_id": "32aab6b9d1c799c8106f57dde35e35a2a17d126370e532984cb9c812f7100423",
+          "scope": "lecture",
+          "source_id": "cks:b200580983ce",
+          "sub_id": "sub-syn-0002"
+        },
+        {
+          "external_id": "bm-synthetic-0001",
+          "kind": "bookmark",
+          "label": "我的书签",
+          "revision_id": "9ae6b83dbf4821adaa32edc7fa026a1b742a2ab8a3f7ee7be221ce97c2fa405f",
+          "scope": "lecture",
+          "source_id": "cks:c4f39634f07c",
+          "sub_id": "sub-syn-0001"
+        },
+        {
+          "external_id": "seg:111111111111",
+          "kind": "transcript",
+          "label": "第 1 讲同步字幕",
+          "revision_id": "d72990081afe79026079d72665b6b6e7967c203498cdb0c7d07858db16a96497",
+          "scope": "lecture",
+          "source_id": "cks:f671a091ca4d",
+          "sub_id": "sub-syn-0001"
+        }
+      ],
+      "stale_reasons": [],
+      "status": "ready",
+      "topics": [
+        {
+          "aliases": [],
+          "citation_count": 1,
+          "lecture_ids": [
+            "sub-syn-0002"
+          ],
+          "status": "ready",
+          "title": "滤波器组",
+          "topic_id": "ckt:171fe1251512"
+        },
+        {
+          "aliases": [
+            "Wavelet Transform"
+          ],
+          "citation_count": 2,
+          "lecture_ids": [
+            "sub-syn-0001",
+            "sub-syn-0002"
+          ],
+          "status": "ready",
+          "title": "小波变换",
+          "topic_id": "ckt:847dd8486b42"
+        },
+        {
+          "aliases": [],
+          "citation_count": 1,
+          "lecture_ids": [
+            "sub-syn-0001"
+          ],
+          "status": "ready",
+          "title": "多分辨率分析",
+          "topic_id": "ckt:a0ebd36fda1a"
+        }
+      ],
+      "updated_at": 1787000200.0,
+      "view": "course_overview"
+    },
+    "lecture_detail": {
+      "contract": "courselens.course-knowledge.v1",
+      "course_id": "crs-synthetic-2026a",
+      "evidence_refs": [
+        {
+          "citation_id": "ckc:06d93578a337",
+          "content_hash": "4f129a2230cf011ad01128026cb21833518c199b770698c4f767af07421448b0",
+          "kind": "slide",
+          "label": "第 7 页：多分辨率分析",
+          "locator": {
+            "page": 7
+          },
+          "revision_id": "d01851493d531756c90278a99d7077beeba31964aec9d6e5a13c3d17f177b34e",
+          "source_id": "slevt:333333333333"
+        },
+        {
+          "citation_id": "ckc:0f3a3e79378d",
+          "content_hash": "87957f5515cc330d3888fa808aeb2f7d832fbf92d7a6497a30fb50a209e5a2e3",
+          "kind": "document_page",
+          "label": "教材第 1 章",
+          "locator": {
+            "page": 1
+          },
+          "revision_id": "95a674eed8444543207e33243a6f9ac298a931bfb0c0a3240a119c3f07ca6441",
+          "source_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        {
+          "citation_id": "ckc:85f8d16c93be",
+          "content_hash": "ef584f02fdcb27f691a40f6a57fce15bd9f5efa65224cb223b9c311ed4cafd4e",
+          "kind": "document_page",
+          "label": "讲义第 3 页",
+          "locator": {
+            "page": 3
+          },
+          "revision_id": "1dd5b3344a12e1aed8d290c21d4a1aa614e0a346c8cc9dc47cfc894c12543554",
+          "source_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        {
+          "citation_id": "ckc:a04abd7c31cc",
+          "content_hash": "2b5888f4309682984114e1fe4049b9bba3212bf08428c62b3087f97dbdd3a632",
+          "kind": "transcript",
+          "label": "小波变换的定义",
+          "locator": {
+            "end_ms": 168000,
+            "start_ms": 125000
+          },
+          "revision_id": "d72990081afe79026079d72665b6b6e7967c203498cdb0c7d07858db16a96497",
+          "source_id": "seg:111111111111"
+        },
+        {
+          "citation_id": "ckc:cd532a66fa85",
+          "content_hash": "93c0e81e0a5a4ad0bd6af32f64ee4e375b2ebcbdbbb369c528a2e8baac549577",
+          "kind": "bookmark",
+          "label": "我的书签：重点",
+          "locator": {
+            "end_ms": 302000,
+            "start_ms": 300000
+          },
+          "revision_id": "9ae6b83dbf4821adaa32edc7fa026a1b742a2ab8a3f7ee7be221ce97c2fa405f",
+          "source_id": "bm-synthetic-0001"
+        }
+      ],
+      "input_hash": "206bebd9e85a9816da1666b4cd252721",
+      "key_points": [
+        {
+          "citation_ids": [
+            "ckc:06d93578a337",
+            "ckc:a04abd7c31cc"
+          ],
+          "text": "小波变换把信号分解到时频平面"
+        },
+        {
+          "citation_ids": [
+            "ckc:06d93578a337"
+          ],
+          "text": "多分辨率分析用尺度函数构造逼近"
+        },
+        {
+          "citation_ids": [
+            "ckc:0f3a3e79378d",
+            "ckc:85f8d16c93be"
+          ],
+          "text": "讲义与板书给出的滤波器条件一致"
+        }
+      ],
+      "source_coverage": {
+        "assessment_items": 0,
+        "bookmarks": 1,
+        "course_document_pages": 1,
+        "document_pages": 1,
+        "lecture_ir": true,
+        "slide_pages": 1,
+        "summary": true,
+        "transcript_segments": 1
+      },
+      "stale_reasons": [],
+      "status": "ready",
+      "sub_id": "sub-syn-0001",
+      "topics": [
+        {
+          "aliases": [
+            "Wavelet Transform"
+          ],
+          "citation_ids": [
+            "ckc:a04abd7c31cc"
+          ],
+          "status": "ready",
+          "title": "小波变换",
+          "topic_id": "ckt:847dd8486b42"
+        },
+        {
+          "aliases": [],
+          "citation_ids": [
+            "ckc:06d93578a337"
+          ],
+          "status": "ready",
+          "title": "多分辨率分析",
+          "topic_id": "ckt:a0ebd36fda1a"
+        }
+      ],
+      "updated_at": 1787000000.0,
+      "view": "lecture_detail"
+    }
+  }
+}

@@ -1,0 +1,57 @@
+<!doctype html>
+<!-- CourseLens 开机 splash（LAUNCH-FIX-1 C）。
+     单文件零外链：SVG 内联 + CSS keyframes + 零 JS。深墨蓝/象牙/金 = 既有
+     设计语言（tokens.css navy-deep #071D33 · navy-soft #E8EBF1 · navy
+     #3F699A · gold #D19E3F），透镜 mark 呼吸过渡 ≤2s 循环；系统命中
+     prefers-reduced-motion 即整体退静态（本文件即静态图标过渡版）。淡出由
+     载体（splash.pyw）在 <html> 上落 splash-bye 类驱动，页面自身不计时。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 100%; height: 100%; }
+  body {
+    display: flex; align-items: center; justify-content: center;
+    background: #071D33; overflow: hidden;
+    transition: opacity .28s ease; opacity: 1;
+  }
+  html.splash-bye body { opacity: 0; }
+  .stack { display: flex; flex-direction: column; align-items: center; }
+  .mark { width: 128px; height: 128px; }
+  .word {
+    margin-top: 16px; font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: 12px; font-weight: 600; letter-spacing: .46em; text-indent: .46em;
+    color: #8FB3D9;
+  }
+  .lens-ring { transform-origin: 50% 50%; animation: splash-breathe 1.8s ease-in-out infinite; }
+  .lens-iris { transform-origin: 50% 50%; animation: splash-iris 1.8s ease-in-out infinite; }
+  .lens-glare { animation: splash-glare 1.8s ease-in-out infinite; }
+  @keyframes splash-breathe {
+    0%, 100% { transform: scale(.96); opacity: .86; }
+    50% { transform: scale(1.02); opacity: 1; }
+  }
+  @keyframes splash-iris {
+    0%, 100% { transform: scale(.88); opacity: .45; }
+    50% { transform: scale(1); opacity: .95; }
+  }
+  @keyframes splash-glare {
+    0%, 100% { opacity: .2; }
+    50% { opacity: .75; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lens-ring, .lens-iris, .lens-glare { animation: none; }
+    body { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="stack" aria-label="CourseLens 启动中">
+    <svg class="mark" viewBox="0 0 96 96" role="img" aria-hidden="true">
+      <circle class="lens-ring" cx="48" cy="48" r="33" fill="none" stroke="#E8EBF1" stroke-width="5"/>
+      <circle class="lens-iris" cx="48" cy="48" r="16" fill="#3F699A"/>
+      <circle class="lens-glare" cx="37" cy="37" r="4.5" fill="#D19E3F"/>
+    </svg>
+    <div class="word">COURSELENS</div>
+  </main>
+</body>
+</html>

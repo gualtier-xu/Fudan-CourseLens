@@ -1,0 +1,188 @@
+{
+  "scoring": "evidence_benchmark_scoring_v1",
+  "synthetic": true,
+  "description": "Deterministic synthetic scoring input for the evidence benchmark scorer: Mandarin/English code-switch, scope terms/units, numeric items including scientific notation and percentages, negation markers in both scripts, matched pairs with substitution/insertion/deletion, an unmatched reference segment, an unmatched hypothesis segment over reference silence, timing errors, correction states including a rejected proposal, and display cues with a duration violation. All hashes are sha256 of fixed seed strings; no real media, course content, accounts, URLs, or secrets.",
+  "source": {
+    "kind": "recording",
+    "origin": "native_upload",
+    "title": "Synthetic Scoring Fixture 001",
+    "duration_ms": 120000,
+    "source_sha256": "aced24d8e80a92c3cc4c0fdc4b5c8e0c3e9ba79bf5907ab96ce66e854df8890d"
+  },
+  "fingerprints": {
+    "producer": "courselens-synthetic-producer",
+    "model": "synthetic-asr-model-v1",
+    "config_hash": "cba35d058c111b628cd8a9017baa96745b8a217aeaf127673b2c7de94812701f",
+    "media_sha256": "0cbc3fd57c40533319ff7f636d1e1ffdff755827ea5a32ed5bc68fac8363b629"
+  },
+  "scope": {
+    "terms": ["gradient descent", "loss function", "cross entropy", "该假设"],
+    "units": ["毫克每升", "meters per second"]
+  },
+  "presentation": {
+    "max_cue_duration_ms": 7000
+  },
+  "reference": {
+    "segments": [
+      {
+        "start_ms": 0,
+        "end_ms": 8000,
+        "lang": "zh-CN",
+        "text": "今天我们讨论第三章，剂量是50毫克每升。"
+      },
+      {
+        "start_ms": 8200,
+        "end_ms": 14000,
+        "lang": "en-US",
+        "text": "Let's start with the first topic: gradient descent."
+      },
+      {
+        "start_ms": 15000,
+        "end_ms": 22000,
+        "lang": "zh-CN",
+        "text": "这个模型使用 loss function 和 cross entropy。"
+      },
+      {
+        "start_ms": 23000,
+        "end_ms": 30000,
+        "lang": "en-US",
+        "text": "The speed equals 3.0e8 meters per second, and pi is 3.14159."
+      },
+      {
+        "start_ms": 30500,
+        "end_ms": 36000,
+        "lang": "zh-CN",
+        "text": "该假设未被拒绝，但不显著。"
+      },
+      {
+        "start_ms": 36500,
+        "end_ms": 42000,
+        "lang": "en-US",
+        "text": "This method does not require labels."
+      },
+      {
+        "start_ms": 43000,
+        "end_ms": 48000,
+        "lang": "en-US",
+        "text": "It works without annotations for 20 rounds."
+      },
+      {
+        "start_ms": 50000,
+        "end_ms": 54000,
+        "lang": "zh-CN",
+        "no_speech": true,
+        "text": ""
+      },
+      {
+        "start_ms": 56000,
+        "end_ms": 60000,
+        "lang": "zh-CN",
+        "text": "本节到此结束。"
+      }
+    ]
+  },
+  "hypothesis": {
+    "segments": [
+      {
+        "start_ms": 100,
+        "end_ms": 8200,
+        "lang": "zh-CN",
+        "text": "今天我们讨论第三章，剂量是50毫克。"
+      },
+      {
+        "start_ms": 8300,
+        "end_ms": 14100,
+        "lang": "en-US",
+        "text": "Let's start with the first topic: gradient decent."
+      },
+      {
+        "start_ms": 15000,
+        "end_ms": 22000,
+        "lang": "zh-CN",
+        "text": "这个模型使用 loss function 和 cross entropy。"
+      },
+      {
+        "start_ms": 24000,
+        "end_ms": 30000,
+        "lang": "en-US",
+        "text": "The speed equals 3.0e8 meters per second, and pi is 3.14159."
+      },
+      {
+        "start_ms": 31000,
+        "end_ms": 37000,
+        "lang": "zh-CN",
+        "text": "该假设未被拒绝，但不显著。"
+      },
+      {
+        "start_ms": 36500,
+        "end_ms": 42000,
+        "lang": "en-US",
+        "text": "This method does not require any labels."
+      },
+      {
+        "start_ms": 50500,
+        "end_ms": 53500,
+        "lang": "zh-CN",
+        "text": "呃嗯"
+      },
+      {
+        "start_ms": 56000,
+        "end_ms": 60000,
+        "lang": "zh-CN",
+        "text": "本节到此结束。"
+      }
+    ],
+    "corrections": [
+      {
+        "state": "timing_preserved",
+        "actor": "user",
+        "reason": "synthetic wording polish; anchors kept",
+        "text": "该假设未被拒绝，且效应不显著。"
+      },
+      {
+        "state": "needs_alignment",
+        "actor": "llm",
+        "reason": "synthetic anchor move; token time points are stale",
+        "text": null
+      },
+      {
+        "state": "rejected",
+        "actor": "rule",
+        "reason": "synthetic rejection: punctuation stripped without evidence",
+        "text": "本节到此结束"
+      }
+    ],
+    "cues": [
+      {
+        "start_ms": 100,
+        "end_ms": 8200,
+        "lang": "zh-CN",
+        "lines": ["今天我们讨论第三章，", "剂量是50毫克。"]
+      },
+      {
+        "start_ms": 8300,
+        "end_ms": 14100,
+        "lang": "en-US",
+        "lines": ["Let's start with the first", "topic: gradient decent."]
+      },
+      {
+        "start_ms": 15000,
+        "end_ms": 22000,
+        "lang": "zh-CN",
+        "lines": ["这个模型使用 loss function", "和 cross entropy。"]
+      },
+      {
+        "start_ms": 50500,
+        "end_ms": 53500,
+        "lang": "zh-CN",
+        "lines": ["呃嗯"]
+      },
+      {
+        "start_ms": 56000,
+        "end_ms": 60000,
+        "lang": "zh-CN",
+        "lines": ["本节到此结束。"]
+      }
+    ]
+  }
+}

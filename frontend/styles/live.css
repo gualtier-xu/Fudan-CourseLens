@@ -1,0 +1,295 @@
+/* 直播独立页样式（N6L S1 · 首例按页拆分的样式文件，设计纸 §19.3）。
+ * 纪律：圆角/字距/阴影/色值全部走 tokens 闭集（workbench T8 全 styles 扫描）；
+ * 布局参数按设计纸 §二十（16:9 播放位、双列 grid、窄版单列）；
+ * 动效带 prefers-reduced-motion 分支（活标识脉冲）。 */
+
+.live-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.live-main { min-width: 0; display: grid; gap: var(--space-3); }
+
+.live-stage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  border-radius: var(--radius-panel);
+  background: var(--stage-bg);
+  overflow: hidden;
+}
+
+#live-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--stage-bg);
+}
+
+/* 非播放态的覆盖卡（等待/错误/连接中）：双主题页面面——走主题 token，
+   不再借用恒暗 stage 底（用户拍板：直播页双主题适配）。播放时本卡隐藏，
+   视频底保持恒暗语境；badge/pill/缓冲等播放期 overlay 不变。 */
+.live-cover {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+  background: var(--surface);
+}
+
+.live-card {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 46ch;
+  text-align: center;
+  justify-items: center;
+}
+
+.live-card h2 { margin: 0; font-size: 1.25rem; font-weight: 600; color: var(--navy-ink); }
+.live-card p { margin: 0; color: var(--muted); font-size: 0.90625rem; line-height: 1.7; overflow-wrap: anywhere; }
+.live-card-diagnostic { font-size: 0.8125rem; color: var(--muted); }
+.live-card-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center; margin-top: var(--space-2); }
+.live-card-actions .btn-primary { min-height: 36px; padding: 5px 16px; }
+.live-card-actions .btn-quiet { min-height: 36px; padding: 5px 14px; }
+
+/* 活标识（直播中徽标）：红点脉冲，reduced-motion 下静止 */
+.live-badge {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px 10px;
+  border-radius: var(--radius);
+  background: var(--navy-deep);
+  color: var(--accent-contrast);
+  font-size: 0.8125rem;
+}
+
+.live-badge::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .live-badge::before { animation: live-pulse 2s ease-in-out infinite; }
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.live-clock {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  padding: 3px 10px;
+  border-radius: var(--radius);
+  background: var(--navy-deep);
+  color: var(--accent-contrast);
+  font-size: 0.8125rem;
+}
+
+/* 「回到直播中」pill（P25 语义沿用） */
+.live-pill {
+  position: absolute;
+  bottom: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  min-height: 34px;
+  padding: 4px 14px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--gold-strong);
+  color: var(--accent-contrast);
+  font-size: 0.875rem;
+}
+
+.live-pill[hidden] { display: none; }
+
+/* 缓冲指示（N5PR-P4 同款防闪由 live-player 掌管显隐） */
+.live-buffering {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-2);
+  color: var(--navy-ink);
+  font-size: 0.875rem;
+  pointer-events: none;
+}
+
+.live-buffering[hidden] { display: none; }
+
+.live-buffering-ring {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--navy-soft);
+  border-top-color: var(--navy-ink);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .live-buffering-ring { animation: live-spin 0.9s linear infinite; }
+}
+
+@keyframes live-spin { to { transform: rotate(360deg); } }
+
+/* 弱网提示条（L2 #10；S2 出口接入前的中性提示） */
+.live-hint {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.84375rem;
+}
+
+.live-hint[hidden] { display: none; }
+
+/* 侧栏：课程上下文 + 今晚在播 */
+.live-side { min-width: 0; display: grid; gap: var(--space-3); }
+
+.live-card-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.live-card-panel h2 { margin: 0; font-size: 1rem; font-weight: 600; color: var(--navy-ink); }
+.live-context { margin: 0; color: var(--muted); font-size: 0.84375rem; line-height: 1.6; overflow-wrap: anywhere; }
+
+.live-tonight { display: grid; gap: var(--space-2); }
+.live-tonight-empty { margin: 0; color: var(--muted); font-size: 0.84375rem; }
+
+.live-tonight-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px var(--space-2);
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+}
+
+.live-tonight-item[aria-pressed="true"] { border-color: var(--navy-ink); }
+
+.lti-title { grid-column: 1; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.lti-time { grid-column: 2; color: var(--muted); font-size: 0.8125rem; }
+.lti-chip { grid-column: 1 / -1; color: var(--muted); font-size: 0.8125rem; }
+
+.live-status-line { min-height: 20px; color: var(--muted); font-size: 0.84375rem; }
+
+/* ---- 直播二期（乙2）：视角条——闭集视角一键切换；aria-pressed 承载
+   当前视角；纯声音档在弱网建议态走金 accent 高亮。 ---- */
+.live-view-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-height: 34px;
+  padding: 2px 0;
+}
+.live-view-bar[hidden] { display: none; }
+
+.live-view-option {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  color: var(--ink);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: border-color var(--motion) ease, color var(--motion) ease, background-color var(--motion) ease;
+}
+.live-view-option:hover:not(:disabled) { border-color: var(--navy-ink); color: var(--navy-ink); }
+.live-view-option[aria-pressed="true"] {
+  border-color: var(--navy);
+  background: var(--navy-soft);
+  color: var(--navy-ink);
+  font-weight: 600;
+}
+.live-view-option:disabled { opacity: 0.5; cursor: default; }
+
+/* 弱网③级建议：纯声音档金 accent（对比度达标族），提示行只在该态出现 */
+.live-view-option.live-view-audio[data-suggest="true"] {
+  border-color: var(--gold-strong);
+  color: var(--gold-strong);
+}
+.live-view-hint { margin: 0; color: var(--gold-strong); font-size: 0.8125rem; }
+.live-view-hint[hidden] { display: none; }
+
+/* ---- 直播二期（乙3）：文稿侧板——手动开板才渲染，role=log 只读跟读。 ---- */
+.live-transcript-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.live-transcript-head h2 { margin: 0; font-size: 1rem; font-weight: 600; color: var(--navy-ink); }
+.live-transcript-toggle { min-height: 28px; }
+.live-transcript-status { margin: 6px 0 0; color: var(--muted); font-size: 0.8125rem; line-height: 1.6; }
+.live-transcript-status[hidden] { display: none; }
+.live-transcript-list {
+  display: grid;
+  gap: 6px;
+  margin-top: var(--space-2);
+  max-height: 320px;
+  overflow-y: auto;
+}
+.live-transcript-list[hidden] { display: none; }
+.live-transcript-row {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2);
+  font-size: 0.84375rem;
+  line-height: 1.6;
+}
+.ltr-stamp { color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; padding-top: 2px; }
+.ltr-text { color: var(--ink); overflow-wrap: anywhere; }
+
+/* 窄版（沿用应用既有 719px 断点）：单列，播放位全宽第一 */
+@media (max-width: 719px) {
+  .live-layout { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* header 常驻直播入口钮（§12.2 W4：字标右侧，红点=今晚有直播课） */
+.live-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 34px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.90625rem;
+  font-weight: 600;
+}
+
+.live-entry:hover { background: var(--navy-soft); }
+
+.live-entry-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+.live-entry-dot[hidden] { display: none; }

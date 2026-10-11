@@ -1,0 +1,293 @@
+/* 多视图复习包（RR-P2MULTI-1）—— 本包独占新文件，全部类名 p2m- 前缀。
+ * 与 RR-UIFIX-1 并行零接触：不改 pages.css 及任何共享样式文件；
+ * 颜色/间距/圆角只取 tokens.css 既有变量，浅深主题随 token 自动切换。
+ * 视觉语言对齐全局：navy 强调、金色时间锚、--line 分隔、--radius 圆角。
+ * 焦点环由 accessibility.css 全局 :focus-visible 提供，本地不重复（qa-q 内嵌环
+ * 是唯一例外）；字阶走应用 px 主档（13.5/14/15.5px、标题 1rem），无 rem 微值
+ * （CSS-MULTIVIEW-1 收口 CSS-AUDIT-1 P2-2/3/6）。 */
+
+.p2m-pack {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.p2m-pack-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-3);
+}
+
+.p2m-pack-title {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.p2m-view-tabs {
+  display: flex;
+  gap: var(--space-1);
+}
+
+/* 页签钮：边宽/圆角/内距（--space-1/3 恰等全局 4px 12px）/cursor/悬停翻色
+   与焦点环全吃全局 button 配方，本地只留页签身份（透明边、muted 字、衬线轨
+   font:inherit）；悬停边+字翻 navy-ink 由全局 (0,2,1) 承担，本地不重复。 */
+.p2m-view-tab {
+  appearance: none;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.p2m-view-tab.active {
+  background: var(--navy-soft);
+  color: var(--navy-ink);
+  border-color: var(--line);
+  font-weight: 600;
+}
+
+/* 面板是真实 Tab 序元素（tabindex=0，role=tabpanel）：键盘环与指针态归零
+   全由 accessibility.css 三态焦点政策兜底。本文件运行时后注入，任何本地
+   outline:none 都会在 (0,1,0) 同特异度下按源序压掉全局键盘环——此处不写
+   outline，也不重复 :focus-visible 配方。 */
+
+.p2m-pack-note {
+  margin: var(--space-3) 0 0;
+  font-size: 0.84375rem;
+  color: var(--muted);
+}
+
+.p2m-subhead {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: 0.96875rem;
+  color: var(--ink);
+}
+
+/* 时间锚钮：边宽/圆角/底色/nowrap/cursor/焦点环全吃全局 button 配方；边框
+   刻意 --line 与所属卡片同族（全局 --line-strong，弱一档）。悬停只补
+   navy-soft 底洗，边/字翻 navy-ink 交全局 hover——原金色边声明 (0,2,0) 被
+   button:hover:not(:disabled) (0,2,1) 压制从未生效，删死代码。 */
+.p2m-time {
+  appearance: none;
+  border-color: var(--line);
+  color: var(--gold-strong);
+  font: inherit;
+  font-size: 0.84375rem;
+  font-variant-numeric: tabular-nums;
+  padding: 0 var(--space-2);
+  line-height: 1.7;
+}
+
+.p2m-time:hover {
+  background: var(--navy-soft);
+}
+
+/* ---- 时间轴摘要视图 ---- */
+
+.p2m-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 var(--space-4);
+  border-left: 2px solid var(--line);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.p2m-timeline-item {
+  position: relative;
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.p2m-timeline-item::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * var(--space-4) - 5px);
+  top: 0.55em;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.p2m-timeline-body {
+  min-width: 0;
+}
+
+.p2m-timeline-title {
+  display: block;
+  color: var(--ink);
+}
+
+.p2m-timeline-summary {
+  margin: var(--space-1) 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.p2m-takeaway-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.p2m-takeaway {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.p2m-takeaway-text {
+  min-width: 0;
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+/* ---- 章节视图 ---- */
+
+.p2m-chapters {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.p2m-chapter {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+  padding: var(--space-3) var(--space-4);
+}
+
+.p2m-chapter-head {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.p2m-chapter-title {
+  margin: 0;
+  font-size: 0.96875rem;
+  color: var(--ink);
+}
+
+.p2m-chapter-summary {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ---- 关键问答视图 ---- */
+
+.p2m-qa-hint {
+  margin: 0 0 var(--space-3);
+  font-size: 0.84375rem;
+  color: var(--muted);
+}
+
+.p2m-qa-list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.p2m-qa-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-strong);
+}
+
+.p2m-qa-q {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  color: var(--navy-ink);
+  font-weight: 600;
+}
+
+/* 唯一本地焦点环：问句行通栏贴卡片边，-2px 内嵌避免外扩环压住卡片圆角；
+   其余控件焦点环一律由 accessibility.css 全局提供，勿逐类补环。 */
+.p2m-qa-q:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.p2m-qa-a {
+  padding: 0 var(--space-3) var(--space-3);
+  border-top: 1px dashed var(--line);
+}
+
+.p2m-qa-a-text {
+  margin: var(--space-2) 0 var(--space-2);
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+.p2m-qa-static {
+  padding: var(--space-2) var(--space-3);
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+
+/* ---- P2 LLM 档（P2-CONTRACT-1：提纲/FAQ/考前简报）——卡式全复用上族，
+   新增仅引用 chip、速览段、考核徽标三类；token 纪律同文件头。 ---- */
+
+/* 引用 chip 行：可点 chip 与时间锚同族（金字=都能跳回原话），边框虚线以
+   区别于时刻钮；边宽/圆角/cursor/焦点环吃全局 button 配方。无锚降级为
+   虚线纯文本（p2m-cite-text），可读不可点。 */
+.p2m-cite-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.p2m-cite {
+  appearance: none;
+  border-color: var(--line);
+  border-style: dashed;
+  color: var(--gold-strong);
+  font: inherit;
+  font-size: 0.84375rem;
+  padding: 0 var(--space-2);
+  line-height: 1.7;
+}
+
+.p2m-cite:hover {
+  background: var(--navy-soft);
+}
+
+.p2m-cite-text {
+  font-size: 0.84375rem;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 0 var(--space-2);
+  line-height: 1.7;
+}
+
+/* 考前简报：速览段为主文本正文；考核徽标走 navy 身份（与金色时间锚分族，
+   语义=考核提醒不是跳转时刻）。 */
+.p2m-brief-speed {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.7;
+}
+
+.p2m-alert-badge {
+  flex: none;
+  font-size: 0.84375rem;
+  color: var(--navy-ink);
+  background: var(--navy-soft);
+  border-radius: var(--radius);
+  padding: 0 var(--space-2);
+  line-height: 1.7;
+}

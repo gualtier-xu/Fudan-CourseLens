@@ -1,0 +1,131 @@
+{
+  "contract": "courselens.vpn-connection.v1",
+  "fixture_version": 1,
+  "note": "Synthetic values only. Negative cases are mutations applied by tests/test_vpn_connection_contract.py to a named valid base. See docs/vpn-connection-contract-v1.md.",
+  "valid": {
+    "ready_direct": {
+      "schema": "courselens.vpn-connection.v1",
+      "state": "ready",
+      "network_path": "direct",
+      "school_route": "webvpn",
+      "reason": "direct_ok",
+      "observed_at": 1789200000,
+      "expires_at": 1789286400,
+      "retry_after": null,
+      "actions": [],
+      "generation": 7,
+      "services": {
+        "webvpn": {"state": "ready", "route": "direct", "verified": true},
+        "icourse": {"state": "ready", "route": "direct", "verified": true}
+      }
+    },
+    "checking_cold_start": {
+      "schema": "courselens.vpn-connection.v1",
+      "state": "checking",
+      "network_path": "unknown",
+      "school_route": "unknown",
+      "reason": "cold_start",
+      "observed_at": 1789200000,
+      "expires_at": null,
+      "retry_after": null,
+      "actions": ["check-network"],
+      "generation": 0,
+      "services": {
+        "webvpn": {"state": "checking", "route": "unknown", "verified": false},
+        "icourse": {"state": "checking", "route": "unknown", "verified": false}
+      }
+    },
+    "degraded_proxy_fallback": {
+      "schema": "courselens.vpn-connection.v1",
+      "state": "degraded",
+      "network_path": "local_proxy",
+      "school_route": "mixed",
+      "reason": "proxy_fallback",
+      "observed_at": 1789200000,
+      "expires_at": 1789286400,
+      "retry_after": 1789200300,
+      "actions": ["retry", "open-settings"],
+      "generation": 12,
+      "services": {
+        "webvpn": {"state": "ready", "route": "direct", "verified": true},
+        "icourse": {"state": "unavailable", "route": "local_proxy", "verified": false}
+      }
+    },
+    "login_required": {
+      "schema": "courselens.vpn-connection.v1",
+      "state": "login_required",
+      "network_path": "unknown",
+      "school_route": "webvpn",
+      "reason": "credentials_rejected",
+      "observed_at": 1789200000,
+      "expires_at": null,
+      "retry_after": null,
+      "actions": ["login"],
+      "generation": 9,
+      "services": {
+        "webvpn": {"state": "unavailable", "route": "unknown", "verified": false},
+        "icourse": {"state": "unknown", "route": "unknown", "verified": false}
+      }
+    },
+    "expired_session": {
+      "schema": "courselens.vpn-connection.v1",
+      "state": "expired",
+      "network_path": "local_proxy",
+      "school_route": "webvpn",
+      "reason": "session_expired",
+      "observed_at": 1789200000,
+      "expires_at": null,
+      "retry_after": null,
+      "actions": ["reauthenticate"],
+      "generation": 11,
+      "services": {
+        "webvpn": {"state": "unavailable", "route": "local_proxy", "verified": false},
+        "icourse": {"state": "ready", "route": "direct", "verified": true}
+      }
+    }
+  },
+  "invalid": [
+    {"name": "unknown_state", "base": "ready_direct", "set": {"state": "semiready"}, "expect_code": "bad_enum", "expect_path": "$.state"},
+    {"name": "state_as_integer", "base": "ready_direct", "set": {"state": 3}, "expect_code": "bad_type", "expect_path": "$.state"},
+    {"name": "unknown_network_path", "base": "ready_direct", "set": {"network_path": "campus_vpn"}, "expect_code": "bad_enum", "expect_path": "$.network_path"},
+    {"name": "unknown_school_route", "base": "ready_direct", "set": {"school_route": "idp"}, "expect_code": "bad_enum", "expect_path": "$.school_route"},
+    {"name": "unknown_reason", "base": "ready_direct", "set": {"reason": "vpn_down"}, "expect_code": "bad_enum", "expect_path": "$.reason"},
+    {"name": "unknown_action", "base": "checking_cold_start", "set": {"actions": ["check-network", "purge-cache"]}, "expect_code": "bad_enum", "expect_path": "$.actions.1"},
+    {"name": "duplicate_actions", "base": "checking_cold_start", "set": {"actions": ["check-network", "check-network"]}, "expect_code": "duplicate_action", "expect_path": "$.actions.1"},
+    {"name": "actions_as_string", "base": "checking_cold_start", "set": {"actions": "check-network"}, "expect_code": "bad_type", "expect_path": "$.actions"},
+    {"name": "actions_missing", "base": "checking_cold_start", "remove": ["actions"], "expect_code": "missing_field", "expect_path": "$.actions"},
+    {"name": "secret_field_rejected", "base": "ready_direct", "set": {"session_cookie": "rejected-by-contract"}, "expect_code": "unknown_field", "expect_path": "$.session_cookie"},
+    {"name": "secret_url_field_rejected", "base": "ready_direct", "set": {"proxy_url": "rejected-by-contract"}, "expect_code": "unknown_field", "expect_path": "$.proxy_url"},
+    {"name": "unknown_top_field_rejected", "base": "ready_direct", "set": {"note": "rejected-by-contract"}, "expect_code": "unknown_field", "expect_path": "$.note"},
+    {"name": "observed_at_missing", "base": "ready_direct", "remove": ["observed_at"], "expect_code": "missing_field", "expect_path": "$.observed_at"},
+    {"name": "observed_at_iso_string", "base": "ready_direct", "set": {"observed_at": "2026-09-13T08:00:00Z"}, "expect_code": "bad_type", "expect_path": "$.observed_at"},
+    {"name": "observed_at_negative", "base": "ready_direct", "set": {"observed_at": -1}, "expect_code": "negative_number", "expect_path": "$.observed_at"},
+    {"name": "observed_at_zero", "base": "checking_cold_start", "set": {"observed_at": 0}, "expect_code": "bad_time", "expect_path": "$.observed_at"},
+    {"name": "observed_at_float", "base": "ready_direct", "set": {"observed_at": 1789200000.5}, "expect_code": "non_integer_number", "expect_path": "$.observed_at"},
+    {"name": "observed_at_far_future", "base": "ready_direct", "set": {"observed_at": 4102444801}, "expect_code": "bad_time", "expect_path": "$.observed_at"},
+    {"name": "expires_at_missing_on_ready", "base": "ready_direct", "remove": ["expires_at"], "expect_code": "missing_field", "expect_path": "$.expires_at"},
+    {"name": "expires_at_null_on_ready", "base": "ready_direct", "set": {"expires_at": null}, "expect_code": "expires_at_required", "expect_path": "$.expires_at"},
+    {"name": "expires_at_zero_on_ready", "base": "ready_direct", "set": {"expires_at": 0}, "expect_code": "bad_time", "expect_path": "$.expires_at"},
+    {"name": "expires_at_on_non_ready", "base": "checking_cold_start", "set": {"expires_at": 1789286400}, "expect_code": "expires_at_forbidden", "expect_path": "$.expires_at"},
+    {"name": "expires_before_observed", "base": "ready_direct", "set": {"expires_at": 1789100000}, "expect_code": "expires_before_observed", "expect_path": "$.expires_at"},
+    {"name": "expires_at_string", "base": "ready_direct", "set": {"expires_at": "soon"}, "expect_code": "bad_type", "expect_path": "$.expires_at"},
+    {"name": "retry_after_without_retry", "base": "ready_direct", "set": {"retry_after": 1789200300}, "expect_code": "retry_after_without_retry", "expect_path": "$.retry_after"},
+    {"name": "retry_after_zero", "base": "degraded_proxy_fallback", "set": {"retry_after": 0}, "expect_code": "bad_time", "expect_path": "$.retry_after"},
+    {"name": "retry_before_observed", "base": "degraded_proxy_fallback", "set": {"retry_after": 1789100000}, "expect_code": "retry_before_observed", "expect_path": "$.retry_after"},
+    {"name": "retry_after_float", "base": "degraded_proxy_fallback", "set": {"retry_after": 1789200300.25}, "expect_code": "non_integer_number", "expect_path": "$.retry_after"},
+    {"name": "generation_negative", "base": "ready_direct", "set": {"generation": -1}, "expect_code": "negative_number", "expect_path": "$.generation"},
+    {"name": "generation_string", "base": "ready_direct", "set": {"generation": "7"}, "expect_code": "bad_type", "expect_path": "$.generation"},
+    {"name": "generation_boolean", "base": "ready_direct", "set": {"generation": true}, "expect_code": "bad_type", "expect_path": "$.generation"},
+    {"name": "generation_over_safe_integer", "base": "ready_direct", "set": {"generation": 9007199254740992}, "expect_code": "number_too_large", "expect_path": "$.generation"},
+    {"name": "wrong_schema", "base": "ready_direct", "set": {"schema": "courselens.vpn-connection.v2"}, "expect_code": "bad_schema", "expect_path": "$.schema"},
+    {"name": "schema_missing", "base": "ready_direct", "remove": ["schema"], "expect_code": "missing_field", "expect_path": "$.schema"},
+    {"name": "services_as_array", "base": "ready_direct", "set": {"services": []}, "expect_code": "bad_type", "expect_path": "$.services"},
+    {"name": "missing_service", "base": "ready_direct", "set": {"services": {"webvpn": {"state": "ready", "route": "direct", "verified": true}}}, "expect_code": "missing_field", "expect_path": "$.services.icourse"},
+    {"name": "extra_service", "base": "ready_direct", "set": {"services": {"webvpn": {"state": "ready", "route": "direct", "verified": true}, "icourse": {"state": "ready", "route": "direct", "verified": true}, "misc": {"state": "unknown", "route": "unknown", "verified": false}}}, "expect_code": "unknown_service", "expect_path": "$.services.misc"},
+    {"name": "extra_service_field", "base": "ready_direct", "set": {"services.webvpn.endpoint": "rejected-by-contract"}, "expect_code": "unknown_field", "expect_path": "$.services.webvpn.endpoint"},
+    {"name": "unknown_service_state", "base": "ready_direct", "set": {"services.webvpn.state": "ok"}, "expect_code": "bad_enum", "expect_path": "$.services.webvpn.state"},
+    {"name": "unknown_service_route", "base": "ready_direct", "set": {"services.icourse.route": "tunnel"}, "expect_code": "bad_enum", "expect_path": "$.services.icourse.route"},
+    {"name": "verified_as_string", "base": "ready_direct", "set": {"services.icourse.verified": "yes"}, "expect_code": "bad_type", "expect_path": "$.services.icourse.verified"},
+    {"name": "snapshot_not_object", "explicit_snapshot": ["not", "an", "object"], "expect_code": "not_an_object", "expect_path": "$"}
+  ]
+}

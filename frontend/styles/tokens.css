@@ -1,0 +1,169 @@
+:root {
+  color-scheme: light;
+  --canvas: #F7F3EB;
+  --surface: #FFFCF7;
+  --surface-strong: #FFFFFF;
+  --ink: #211E19;
+  --navy: #1E3A5F;
+  --navy-ink: #1E3A5F;
+  --navy-hover: #16304F;
+  --navy-deep: #071D33;
+  --navy-soft: #E8EBF1;
+  --gold: #B7791F;
+  --gold-strong: #B45309;
+  --muted: #6B6458;
+  --line: #DED6C9;
+  --line-strong: #8A8272;
+  --danger: #B4232D;
+  --danger-soft: #F6E7E4;
+  --focus: #1E3A5F;
+  --accent-contrast: #FFFFFF;
+  --scrim: rgb(33 30 25 / 46%);
+  --video-stage: #071D33;
+  /* 播放器恒暗 chrome 色族（批β）：控制条按视频惯例恒暗、刻意不随主题翻转，
+     定义于 :root 且暗色无覆盖分支=按构造恒常（审计 R14）。值为冻结字面常量
+     （象牙白 #EFE9DC、琥珀 #D19E3F 系，历史取自暗主题 --ink/--gold，V1 暖化后
+     无绑定）；--stage-bg 与 --video-stage 同值同源但独立声明，防主题侧再演化
+     时静默翻转。ink 三元组供 alpha 洗色复合：rgb(var(--stage-ink-rgb) / 12%)。 */
+  --stage-bg: #071D33;
+  --stage-ink: #EFE9DC;
+  --stage-ink-rgb: 239 233 220;
+  --stage-accent: #D19E3F;
+  --stage-accent-strong: #F0C97E;
+  --stage-accent-soft: rgb(209 158 63 / 22%);
+  --stage-surface: rgb(7 29 51 / 94%);
+  --stage-controls-scrim: linear-gradient(to top, rgb(7 29 51 / 88%) 0%, rgb(7 29 51 / 55%) 55%, rgb(7 29 51 / 0%) 100%);
+  --track: #EDE7DB;
+  --shadow: none;
+  --shadow-raised: none;
+  --radius: 8px;
+  --radius-panel: 16px;
+  --radius-lg: 16px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --motion-fast: 150ms;
+  --motion: 180ms;
+  --topbar-height: 52px;
+  /* 跨平台字体栈合同（MAC-FONT-1）：单栈写法=Windows 名在前、mac 名在后，
+     平台按序首中即停——Windows 逐位渲染零变化（栈首 Windows 名不变），
+     mac 逐轨首中即得等价排版语言。三轨映射（mac 名经 Apple macOS Sequoia
+     官方字型清单核验 support.apple.com/en-us/120414，全部在列）：
+     宋体编辑轨 --font-editorial → Songti SC（STSong 兜底）；
+     楷体控件/大字轨 --font-ui / --font-display → Kaiti SC / STKaiti；
+     mono 读数轨 --font-mono → Menlo（Monaco 兜底）。 */
+  --font-display: Georgia, "Noto Serif SC", "Source Han Serif SC", "KaiTi", "楷体", "STKaiti", "Songti SC", "SimSun", "NSimSun", "宋体", serif;
+  --font-editorial: Georgia, "Noto Serif SC", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", "NSimSun", "宋体", serif;
+  /* U3 字体轨升级：UI 轨中文面退役（雅黑/苹方下线）——控件与小字改由
+     Georgia（西文/数字）+ 楷体（中文）承载，与正文宋体轨同族的书写传统，
+     但保留楷体的手写温度区分层级。系统无衬线仅作 KaiTi 缺字兜底。 */
+  --font-ui: Georgia, "KaiTi", "Kaiti SC", "STKaiti", "楷体", system-ui, "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-mono: Consolas, "Cascadia Mono", "Menlo", "Monaco", "Courier New", monospace;
+  font-family: var(--font-editorial);
+  letter-spacing: 0;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #1B1815;
+  --surface: #232019;
+  --surface-strong: #2B271F;
+  --ink: #ECE7DB;
+  --navy: #3F699A;
+  --navy-ink: #8FB3D9;
+  --navy-hover: #4A78AC;
+  --navy-deep: #151210;
+  --navy-soft: #2D3644;
+  --gold: #D19E3F;
+  --gold-strong: #DCA742;
+  --muted: #A69E90;
+  --line: #3B362B;
+  --line-strong: #857C69;
+  --danger: #E0705F;
+  --danger-soft: #3A2320;
+  --focus: #8FB3D9;
+  --accent-contrast: #FFFFFF;
+  --scrim: rgb(0 0 0 / 60%);
+  --track: #1C1915;
+  --shadow-raised: none;
+}
+
+* { box-sizing: border-box; }
+/* A11Y-IMPL-4（D14 P1-1）：字号缩放整体解锁的 rem 地基——根字号成为全站
+   唯一基准：html 化 100%（与浏览器默认 16px 同值，默认档像素等价），全站
+   font-size 已机械迁移为 ÷16 精确小数 rem（16=2⁴ 保证任意 .5 步进 px 值
+   终止小数）。界面字号档（设置 → 外观）由 html[data-ui-font] 驱动根字号，
+   默认档不落属性=与改前逐值相同；字幕域（video::cue / --sub-font-size）
+   不随界面档缩放，保持独立字号制。 */
+html { font-size: 100%; }
+html[data-ui-font="large"] { font-size: 112.5%; }
+html[data-ui-font="xlarge"] { font-size: 125%; }
+html, body { width: 100%; min-width: 320px; height: 100%; margin: 0; }
+body {
+  overflow: hidden;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-editorial);
+  font-size: 1.03125rem; /* 16.5px ÷ 16，默认档与改前像素等价 */
+  line-height: 1.75;
+  font-weight: 400;
+}
+/* 排版反转（Anthropic 式阅读感）：正文、标题、课程/讲次/条目名默认走本地
+   CJK 宋体/衬线（--font-editorial），页面不再以系统黑体承载阅读面。
+   纯控件与小型状态文字显式保留无衬线例外（--font-ui）；代码/验证码用
+   --font-mono。新增控件默认继承例外清单即可，无需逐个声明衬线。 */
+button, input, select, textarea,
+kbd,
+.hint, .status-pill, .topbar-crumbs, .global-status, .status-row,
+.sw-meta, .sw-time, .sw-empty, .sw-remaining, .sw-mode, .wb-time, .wb-room,
+.task .t-state, .t-rail-phase, .t-chip, .task-completion-summary,
+.palette-foot, .palette-status, .task-chip-count, .task-chip-failed,
+.catalog-term-filter, .phase-state-text, .pack-item-state, .pack-item-line,
+.empty-verse-hint, .empty-verse-source, .button-link {
+  font-family: var(--font-ui);
+}
+/* 白名单收口（V1-A/V12-3 P3）：.empty-verse-hint/.empty-verse-source 本就在
+   components.css 声明 var(--font-ui)，补录使合同扫描闭集、零视觉变化；
+   .button-link（导出日历 a 钮）此前衬线渲染属合同未覆盖的控件形，补入后
+   与同形态控件同轨。复习页家族按钮（cr-tab/cr-chip/cr-more、p2m-view-tab、
+   p4f-button/p4f-evidence-jump 等）经 font:inherit 显式走衬线阅读轨，属
+   家族风格而非白名单漏网，不补录（2026-10-02 CSS-FLASHHALF-1 注记）。 */
+
+/* U3：键帽不随 UI 轨换楷体——kbd 固定 mono 轨（代码/验证码同轨），
+   与 .palette-foot kbd 既有 mono 键帽形态一致；置于白名单之后以同特异性胜出。 */
+kbd { font-family: var(--font-mono); }
+
+button, input, select, textarea { font-size: 1rem; letter-spacing: 0; } /* 16px ÷ 16 */
+/* 按钮内承载的阅读文本回到衬线：课程/讲次/课表块/搜索项名称 */
+.course-row strong, .lecture-row strong,
+.s-title, .sw-title-line, .wb-name, .palette-option .o-title {
+  font-family: var(--font-editorial);
+}
+button, a, input, select { -webkit-tap-highlight-color: transparent; }
+h1, h2, h3, p, dl, dd, dt { margin: 0; }
+h1 { font-size: 1.5rem; font-weight: 600; line-height: 1.2; letter-spacing: 0; }
+/* U6 视觉归并：面板/区块标题对齐合同字阶（h3=1rem 为面板标题唯一档）；
+   明细主标题（data-detail-head）暂留 1.15rem 作为第二档候选，晨间可调。
+   小安静钮配方收编 tokens：三密度档（32 压缩/40 常规/44 行）共用同族
+   边框/圆角/色彩 token，密度档位晨间可调。 */
+:root {
+  --quiet-pad-y: 4px;
+  --quiet-pad-x: 8px;
+  --quiet-ink: var(--navy-ink);
+  --quiet-hover-bg: var(--navy-soft);
+}
+h2 { font-size: 1rem; font-weight: 600; line-height: 1.4; letter-spacing: 0; }
+h3 { font-size: 1rem; font-weight: 600; line-height: 1.4; letter-spacing: 0; }
+a { color: var(--navy-ink); }
+code { font-family: var(--font-mono); }
+html[data-theme="dark"] .icon-button img,
+html[data-theme="dark"] .search-trigger img,
+html[data-theme="dark"] .player-placeholder img { filter: invert(1); }
+:root { --bottomnav-height: 0px; }
+
+/* 字面规格沉淀纪律（审计 R8）：几何微值（1-3px 线/点、intrinsic 高度、功能性
+   避让如 password-field 48px 右衬）不入 token、不逐个收编；已注记字面规格
+   以在码注释为准（transcript hover 洗色、::cue 字幕底、播放器 --stage-* 族）。 */

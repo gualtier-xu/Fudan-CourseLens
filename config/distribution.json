@@ -1,0 +1,13 @@
+{
+  "schema": "courselens.distribution-registry.v1",
+  "distribution_repository": "gualtier-xu/Fudan-CourseLens",
+  "source_repository": "Fudan-CourseLens-Source",
+  "manifest_source_id": "Fudan-CourseLens-Source",
+  "tag_namespace": "client-v",
+  "manifest_asset": "courselens-windows-manifest.json",
+  "allowed_hosts": [
+    "github.com",
+    "release-assets.githubusercontent.com",
+    "objects.githubusercontent.com"
+  ]
+}
