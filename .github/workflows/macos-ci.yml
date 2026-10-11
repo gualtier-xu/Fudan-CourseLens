@@ -1,0 +1,119 @@
+name: macOS CI
+
+# Keep the platform abstraction layer (src/platform: credentials / paths /
+# single_instance / autostart) and the client import chain green on a real
+# macOS runner. macOS runners are free for public repositories, so this
+# workflow can run on the public mirror without consuming private minutes.
+#
+# Scope discipline: this is the no-decision layer of the macOS chain. It
+# exercises the existing darwin backends/stubs and deliberately does not touch
+# the three mac-chain decision points (real-device validation, notarization,
+# the macOS version floor).
+#
+# Triggers: workflow_dispatch from any branch, plus push to any branch other
+# than the protected one, so disposable trial branches can exercise the
+# workflow without a main-branch run.
+#
+# The `macos-suite-probe` job is non-gating (continue-on-error): it runs the
+# full client suite once per trigger to surface Windows-only assumptions as a
+# macOS compatibility gap list. Its failures must never block the green gate;
+# the gate is `macos-platform`.
+
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos-platform:
+    name: Platform layer + import chain (macOS)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Python 3.10
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.10"
+          cache: pip
+      - name: Install pinned client and test runtime
+        run: |
+          python -m pip install --requirement requirements-client-py310.lock.txt
+          python -m pip install --requirement requirements-test-py310.lock.txt
+      - name: Client import chain smoke (no GUI)
+        run: |
+          python -c "import src; import src.app; import src.runtime.http_api; import credentials"
+          python -c "from src.platform import MACOS, WINDOWS, OTHER, PlatformNotSupportedError, current_platform, get_autostart_backend, get_credentials_backend, acquire_single_instance, platform_paths, data_dir"
+      - name: Platform abstraction layer tests
+        run: >
+          python -m pytest -q
+          tests/test_platform_credentials.py
+          tests/test_platform_paths.py
+          tests/test_platform_single_instance.py
+          tests/test_platform_autostart.py
+          tests/test_platform_dispatch.py
+          tests/test_credentials_cross_platform.py
+          tests/test_credentials.py
+      - name: Portable client test subset
+        run: >
+          python -m pytest -q
+          tests/test_api_v3_media_routes.py
+          tests/test_auth_timeouts.py
+          tests/test_catalog_repository.py
+          tests/test_icourse_video_url.py
+          tests/test_legacy_cleanup.py
+          tests/test_optional_compute_imports.py
+          tests/test_remote_protocol.py
+          tests/test_worker_mirror.py
+          tests/test_worker_mirror_publish.py
+
+  macos-build:
+    name: py2app test build (macOS, arm64)
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Python 3.10
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.10"
+          cache: pip
+      - name: Build .app (staged source payload + py2app + ad-hoc sign)
+        run: bash packaging/macos/build_macos_app.sh
+      - name: Upload test-build artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: courselens-macos-test-build
+          path: |
+            dist/CourseLens-*.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+
+  macos-suite-probe:
+    name: Full client suite probe (non-gating, gap harvest)
+    runs-on: macos-latest
+    timeout-minutes: 50
+    continue-on-error: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Set up Python 3.10
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.10"
+          cache: pip
+      - name: Install pinned client and test runtime
+        run: |
+          python -m pip install --requirement requirements-client-py310.lock.txt
+          python -m pip install --requirement requirements-test-py310.lock.txt
+      - name: Full client suite probe
+        run: python -m pytest -q --tb=no -rEf --continue-on-collection-errors

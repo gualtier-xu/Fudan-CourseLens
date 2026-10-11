@@ -1,0 +1,1353 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CourseLens 把复旦 iCourse 录播变成字幕和复习材料，直播、课表也能在同一个 Windows 客户端里看，数据默认留在你自己的电脑上。">
+  <meta name="theme-color" content="#071D33">
+  <link rel="icon" href="data:,">
+  <title>CourseLens · 把录播变成字幕和复习材料</title>
+  <meta property="og:title" content="CourseLens · 把录播变成字幕和复习材料">
+  <meta property="og:description" content="CourseLens 把复旦 iCourse 录播变成字幕和复习材料，直播、课表也能在同一个 Windows 客户端里看，数据默认留在你自己的电脑上。">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://gualtier-xu.github.io/Fudan-CourseLens/assets/pages/subtitle-style.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <!--
+    CourseLens 发布页（GitHub Pages，main 分支 /docs 目录，纯静态单文件，零外部依赖）。
+    设计语言与客户端 frontend/styles/tokens.css 同源：亮暖纸 / 暗 navy-gold 双主题
+    （亮 #F7F3EB 暖纸底 / #211E19 暖墨；暗 #071D33 底 / #EFE9DC 象牙 / #D19E3F 琥珀金），
+    html[data-theme] 切换，无 JS 缺省=暗色「晚自习讲义」。
+    构图＝「晚自习讲义」：文字按印本排（窄栏阅读轴、mono 词轨/图号），四张客户端截图
+    以四姿态钉在纸面（卷首斜钉 / 复习节全出血＋便利贴 / 课表任务错位叠挂 / 数据节
+    零装饰郑重页），楷体便利贴×2 是全页仅有的手迹旁注。截图资产＝docs/assets/pages/ 2x 高分版。
+
+    v7 减法重构（2026-10-08，用户三输入：板块思路不清/演示组件杂/卖点不可见）：
+    ①删 v5/v6 累积演示组件：功能速览 tabs 整节（重复展示正文四图）、字幕样式实时
+      演示器（用户点名；样式信息已在图一截图与题注）、生成过程步进器（讲「我们怎么
+      工作」而非「你得到什么」）、放大镜细部（图二出血+灯箱已覆盖）、直播字幕打字
+      循环卡（纯装饰演示；早期功能披露小字保留，三面同句钉不变）；
+    ②卖点升格：下课即看从 hero-sub 从句升为主句首位+金线强调（.key）；代理共存从
+      FAQ 升入数据节正文（网络段可见表述：互不干扰+GitHub 直连提示），FAQ 原条移除；
+    ③节序=学生决策路径：能帮我什么（开场→复习→课表任务→小事）→ 凭什么信（数据）
+      →怎么开始（下载）→疑虑收口（问答）；
+    ④保留动效=辅助理解/引导视线：滚动渐显、词轨读位线程、进度发丝线、卷首视差、
+      真实数字滚动、截图灯箱、FAQ 平滑开合、图版轻倾斜与主钮磁性（全部 transform/
+      opacity 优先，:root --motion-*/--ease-* token，零弹跳）。
+    v8 读图引线（2026-10-09，用户令：README+Pages 深度调研升级，可增互动组件，
+      验收硬门=模拟真实使用）：唯一新增互动件=图二读图引线（2 个金点钉在截图真实
+      像素上，wayfinding 职能——灯箱管放大、题注管图名、引线管认路；hover/focus 出
+      常暗标签卡，点击开灯箱定位该区域；无 JS 不渲染与灯箱同命，命中区 28px≥24，
+      讲次卡「通过/N 处存疑」不在本截图可见像素内故不设点）；另打磨=图版键盘焦点
+      等效抬升（.plate-frame:focus-within，Vercel focus-within 准线）。调研后驳回：
+      钉住式 scrollytelling（与讲义隐喻冲突）、前后对比滑杆（无改造前真资产）、
+      tabs 复辟（v7 判决有效）、便利贴 hover 转正（不可点件不得伪装可点）。
+    v8.1 走查修道（2026-10-09，走查道 PAGES-V8-WALK 六件修复）：≤900px .bleed 出血
+      几何重置（block 布局无 88px 词轨列）；引线标签边缘翻面（贴视口上缘翻点下方/
+      越图框翻右侧/双侧紧居中收限）；.sec-lead 同位节奏补齐；主题钮/词轨/报头链
+      命中区≥24px（负 margin 保布局零位移）；main tabindex=-1 承接 skip 焦点。
+    红线：零外部依赖；REF-D 禁形（不弹跳/不粒子/不匀速大位移/不眨眼频闪）；
+    prefers-reduced-motion 全量降级；双主题 AA 不回退；LCP 元素（hero 图）不被动效
+    延迟；单文件+本地资产。发布前需回填两处（下载直链与版本行），均以「发布回填」注释标记。
+  -->
+  <script>
+  (function () {
+    var KEY = "courselens.pages-theme.v1";
+    function stored() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+    window.pagesTheme = {
+      resolve: function () {
+        var p = stored();
+        if (p === "light" || p === "dark") return p;
+        return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      },
+      apply: function (theme) {
+        document.documentElement.dataset.theme = theme;
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute("content", theme === "dark" ? "#071D33" : "#F7F3EB");
+      }
+    };
+    window.pagesTheme.apply(window.pagesTheme.resolve());
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+      if (!stored()) window.pagesTheme.apply(window.pagesTheme.resolve()); /* 自动模式 live 跟随系统 */
+    });
+    /* 滚动渐显总闸：仅「支持 IntersectionObserver 且未要求减少动效」时挂
+       has-reveal，正文初始态才隐藏；无 JS / 不支持 / 减少动效=静态全显。 */
+    try {
+      if ("IntersectionObserver" in window
+          && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        document.documentElement.classList.add("has-reveal");
+      }
+    } catch (e) {}
+  })();
+  </script>
+  <style>
+    @property --note-bg {
+      syntax: "<color>";
+      inherits: true;
+      initial-value: #12293F;
+    }
+    :root {
+      /* 暗 navy-gold（tokens.css --stage-* / --navy-deep） */
+      --bg: #071D33;
+      --ink: #EFE9DC;            /* stage-ink */
+      --ink-rgb: 239 233 220;
+      --muted: #A69E90;          /* dark --muted */
+      --gold: #D19E3F;           /* stage-accent · 非文字（下划线/放大镜边/图钉点/进度线） */
+      --gold-text: #D19E3F;      /* 金色文字专用（亮态加深，暗态同值） */
+      --gold-strong: #F0C97E;    /* stage-accent-strong */
+      --navy-link: #8FB3D9;      /* dark --navy-ink / --focus */
+      --danger: #E0705F;         /* dark --danger */
+      --danger-rgb: 224 112 95;
+      /* 主钮三件（暗=现值恒等） */
+      --btn-primary-bg: #D19E3F;
+      --btn-primary-ink: var(--bg);
+      --btn-primary-bg-hover: #F0C97E;
+      /* 面料与线均为 stage-ink 的 alpha 洗色（客户端既有复合手法） */
+      --panel: rgb(var(--ink-rgb) / 4%);
+      --panel-strong: rgb(var(--ink-rgb) / 8%);
+      --line: rgb(var(--ink-rgb) / 14%);
+      --line-strong: rgb(var(--ink-rgb) / 38%);
+      /* 便利贴实底（根修：4% alpha 洗色在亮面暖纸底上不可读）——
+         暗=navy 抬升阶（stage-lift-2 同族），亮=暖纸上的明签纸；
+         v5：@property 注册，主题切换时随全 token 联动过渡 */
+      --note-bg: #12293F;
+      /* 动效 token（REF2-A：0.2-0.4s 只做反馈、缓出曲线、零弹跳） */
+      --motion-fast: 160ms;
+      --motion-base: 240ms;
+      --motion-slow: 420ms;
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+      --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+      /* 几何取 tokens.css：控件 8px、面板 16px */
+      --radius: 8px;
+      --radius-panel: 16px;
+      /* 三轨字体（tokens.css 逐字同源） */
+      --font-editorial: Georgia, "Noto Serif SC", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", "NSimSun", "宋体", serif;
+      --font-ui: Georgia, "KaiTi", "Kaiti SC", "STKaiti", "楷体", system-ui, "Segoe UI", "Helvetica Neue", sans-serif;
+      --font-mono: Consolas, "Cascadia Mono", "Menlo", "Monaco", "Courier New", monospace;
+      /* 三档节距：紧（文图耦合）/ 常规节间 / 重心节前后 */
+      --space-tight: 40px;
+      --space-band: 96px;
+      --space-peak: clamp(112px, 12vh, 152px);
+      /* 书桌投影（桌面口径；<900px 减半；亮面=暖棕纸面影） */
+      --shadow-plate: 0 32px 64px rgb(0 0 0 / 45%);
+      --shadow-plate-hover: 0 40px 80px rgb(0 0 0 / 55%);
+      --shadow-mag: 0 16px 32px rgb(0 0 0 / 40%);
+      --shadow-note: 0 6px 16px rgb(0 0 0 / 30%);
+      color-scheme: dark;
+    }
+    :root[data-theme="light"] {
+      /* 亮暖纸（客户端 tokens.css 亮族同源 + 文字级加深金） */
+      --bg: #F7F3EB;
+      --ink: #211E19;
+      --ink-rgb: 33 30 25;
+      --muted: #6B6458;
+      --gold: #B7791F;
+      --gold-text: #96610F;
+      --gold-strong: #B45309;
+      --navy-link: #1E3A5F;
+      --danger: #B4232D;
+      --danger-rgb: 180 35 45;
+      --btn-primary-bg: #B45309;
+      --btn-primary-ink: #FFFFFF;
+      --btn-primary-bg-hover: #9C4408;
+      --line-strong: rgb(var(--ink-rgb) / 50%);
+      --note-bg: #FFFDF4;
+      --shadow-plate: 0 32px 64px rgb(64 53 33 / 16%);
+      --shadow-plate-hover: 0 40px 80px rgb(64 53 33 / 22%);
+      --shadow-mag: 0 16px 32px rgb(64 53 33 / 14%);
+      --shadow-note: 0 6px 16px rgb(64 53 33 / 12%);
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-editorial);
+      font-size: 17px;
+      line-height: 1.85;
+    }
+    /* 字重纪律：600 仅给标题组（含条术语头）；其余层级靠字号/留白/色彩 */
+    h1, h2, h3 { margin: 0; font-weight: 600; line-height: 1.3; }
+    h1 { font-size: clamp(40px, 4.5vw, 60px); line-height: 1.22; }
+    h2 { font-size: clamp(26px, 3vw, 30px); }
+    h3 { font-size: 1.3125rem; }
+    p { margin: 0; }
+    a { color: var(--navy-link); transition: color var(--motion-fast) var(--ease-standard), outline-color var(--motion-fast) var(--ease-standard), outline-offset var(--motion-fast) var(--ease-standard), text-underline-offset var(--motion-fast) var(--ease-standard); text-underline-offset: 3px; }
+    /* 正文链接 hover/focus 泛金＝全页统一的「可点即泛金」语言（词轨/报头同款），激活既有过渡；
+       v6：下划线偏移 3→5px 随色渐变，hover 反馈更完整 */
+    main p a:hover, main p a:focus-visible { color: var(--gold-text); text-underline-offset: 5px; }
+    img { display: block; max-width: 100%; height: auto; }
+    /* 焦点环动效化：交互件常态 outline 透明+外扩 5px，聚焦时落环（offset 5→2）
+       +色彩渐入；无过渡能力=瞬时呈现（可用性不降） */
+    a, button, summary, input, [tabindex] {
+      outline: 2px solid transparent; outline-offset: 5px;
+    }
+    :focus-visible { outline-color: var(--navy-link); outline-offset: 2px; border-radius: 4px; }
+    .shell { width: min(1120px, 100% - 48px); margin: 0 auto; }
+    .visually-hidden {
+      position: absolute; width: 1px; height: 1px; margin: -1px;
+      clip: rect(0 0 0 0); clip-path: inset(50%); overflow: hidden; white-space: nowrap;
+    }
+    .skip {
+      position: absolute; left: 16px; top: -48px; z-index: 30;
+      padding: 10px 16px; border-radius: var(--radius);
+      background: var(--ink); color: var(--bg);
+      font-family: var(--font-ui); font-size: 15px; text-decoration: none;
+      transition: top var(--motion-fast) var(--ease-standard), outline-color var(--motion-fast) var(--ease-standard), outline-offset var(--motion-fast) var(--ease-standard);
+    }
+    .skip:focus { top: 12px; }
+    /* skip 落点：main 承接程序化焦点（tabindex=-1），容器自身不画焦点环 */
+    #main:focus { outline: none; }
+    section { scroll-margin-top: 32px; }
+
+    /* v5 滚动进度发丝线：顶部 2px 金线，scaleX 由 rAF 滚动驱动（transform 合成层）；
+       reduce 下照常反映位置（位置反馈非装饰动画，静态回退=无过渡的直接跳变） */
+    .progress {
+      position: fixed; top: 0; left: 0; right: 0; height: 2px;
+      z-index: 50; pointer-events: none;
+    }
+    .progress i {
+      display: block; height: 100%; background: var(--gold);
+      transform: scaleX(0); transform-origin: 0 50%; will-change: transform;
+    }
+
+    /* 报头：静态一行（非吸顶），宋体字标 + mono 主题钮/GitHub 链 */
+    .masthead { border-bottom: 1px solid var(--line); }
+    .masthead-row { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand { font-weight: 500; font-size: 1.06rem; color: var(--ink); text-decoration: none; }
+    .masthead-side { display: flex; align-items: center; gap: 22px; }
+    .masthead-link {
+      display: inline-block; padding: 8px 6px; margin: -8px -6px; /* v8.1：命中区≥24px，负 margin 保布局零位移 */
+      font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em;
+      color: var(--muted); text-decoration: none;
+      transition: color var(--motion-fast) var(--ease-standard), outline-color var(--motion-fast) var(--ease-standard), outline-offset var(--motion-fast) var(--ease-standard);
+    }
+    #theme-toggle { background: none; border: 0; cursor: pointer; }
+    .masthead-link:hover, .masthead-link:focus-visible { color: var(--gold-text); }
+
+    /* 页框：左轨词轨 88px + 主栏（全页唯一导航，静态纵列） */
+    .page { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: stretch; }
+    .rail { grid-column: 1; grid-row: 2; }
+    .rail ul { list-style: none; margin: 0; padding: 100px 0 0 18px; display: flex; flex-direction: column; gap: 18px; }
+    .rail a {
+      display: inline-block; padding: 5px 6px; margin: -5px -6px; /* v8.1：命中区≥24px，负 margin 保布局零位移 */
+      font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em;
+      color: var(--muted); text-decoration: none;
+      transition: color var(--motion-fast) var(--ease-standard), outline-color var(--motion-fast) var(--ease-standard), outline-offset var(--motion-fast) var(--ease-standard);
+    }
+    .rail a:hover, .rail a:focus-visible { color: var(--gold-text); }
+    /* v5 词轨随读高亮：金色+金发丝下划线（.key 同语言），由 IO 中带检测驱动 */
+    .rail a.is-active {
+      color: var(--gold-text);
+      text-decoration: underline;
+      text-decoration-color: var(--gold);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 6px;
+    }
+    /* v6 词轨读位线程：左轨发丝线+金色读位标随当前节滑动（阅读进度与内容联动）。
+       线与标均由 JS 建（.has-thread），无 JS=纯词轨零装饰残留；≤900px 横轨隐藏 */
+    .rail ul.has-thread { position: relative; }
+    .rail ul.has-thread::before {
+      content: ""; position: absolute; left: 3px; top: 104px; bottom: 8px; width: 1px;
+      background: var(--line);
+    }
+    .rail-marker {
+      position: absolute; left: 1px; top: 0; width: 5px; height: 2px;
+      background: var(--gold);
+      transition: transform var(--motion-base) var(--ease-out);
+    }
+    .page main { grid-column: 2; grid-row: 2; min-width: 0; }
+
+    /* 功能条：run-in 术语头 + 一句话（COPY2 主功能四条形态） */
+    .f-row { max-width: 34em; }
+    .f-row + .f-row { margin-top: 26px; }
+    .f-term {
+      display: inline; margin: 0 0.45em 0 0;
+      font-size: inherit; line-height: inherit;
+    }
+    .f-term + p { display: inline; }
+
+    /* 卷首：58/42 非对称，文左图右；顶留白 96 入 REF2-A 适配带（留白即权威） */
+    .hero { padding-top: 96px; }
+    .hero-grid { display: grid; grid-template-columns: 58fr 42fr; gap: 48px; align-items: start; }
+    .kicker { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em; color: var(--muted); }
+    .hero h1 { margin-top: 14px; }
+    .hero-sub { margin-top: 22px; max-width: 30em; color: rgb(var(--ink-rgb) / 80%); }
+    .actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 30px; }
+    .button {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 48px; padding: 0 22px; border-radius: var(--radius);
+      font-family: var(--font-ui); font-size: 16px; font-weight: 500;
+      text-decoration: none; border: 1px solid transparent;
+      transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-out), outline-color var(--motion-fast) var(--ease-standard), outline-offset var(--motion-fast) var(--ease-standard);
+    }
+    .button:active { transform: translate3d(var(--mx, 0px), calc(var(--my, 0px) + 1px), 0); }
+    .button-primary {
+      background: var(--btn-primary-bg); color: var(--btn-primary-ink);
+      transform: translate3d(var(--mx, 0px), var(--my, 0px), 0);
+    }
+    .button-primary:hover, .button-primary:focus-visible { background: var(--btn-primary-bg-hover); }
+    .button-ghost { border-color: var(--line-strong); color: var(--ink); }
+    .button-ghost:hover, .button-ghost:focus-visible { background: var(--panel-strong); }
+    /* v6 缘起段升引文语言：金左缘细线（全页唯一的引文位＝作者自述，与便利贴手迹层呼应） */
+    .origin {
+      margin-top: var(--space-tight); max-width: 34em; color: rgb(var(--ink-rgb) / 80%);
+      border-left: 2px solid var(--gold); padding-left: 18px;
+    }
+
+    /* LIVE-DISCLOSURE-1：直播早期功能小字（与客户端/README 同源一句，test_documentation
+       钉）——v7 删打字演示卡后披露小字保留，muted 弱化+12.5px 细字档，双主题 AA
+       实测达标；正常文档流，读屏可达。 */
+    .live-fine {
+      margin-top: 16px; max-width: 480px;
+      font-family: var(--font-ui); font-size: 12.5px; line-height: 1.6;
+      color: var(--muted);
+    }
+
+    /* 图版窗（书桌照片）：1px 边 + 16px 圆角 + 深投影；倾斜只落在窗与道具上。
+       v5：hover 浮起+指针轻倾斜跟随（--rx/--ry 由 JS 指针驱动，精确指针+宽屏），
+       transform 全合成层；--lift 常态 0，hover/JS 倾斜时抬起 */
+    .plate { margin: 0; perspective: 1100px; }
+    .plate-1 { margin-bottom: -80px; }  /* 窗一下缘越出节底，S1 以 padding-top 补偿 */
+    .plate-1 .tilt { transform: rotate(-1.5deg); }
+    .plate-2 .tilt { transform: rotate(0.8deg); }
+    .plate-3 .tilt { transform: rotate(-1deg); }
+    .plate-4 .tilt { transform: rotate(1.8deg); }
+    .plate-frame {
+      position: relative;
+      border: 1px solid var(--line-strong); border-radius: var(--radius-panel);
+      overflow: hidden; background: var(--panel); box-shadow: var(--shadow-plate);
+      transform: translate3d(0, var(--lift, 0px), 0) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+      transition: transform var(--motion-fast) var(--ease-out), box-shadow var(--motion-base) var(--ease-out);
+    }
+    .plate:hover .plate-frame,
+    .plate-frame:focus-within { --lift: -4px; box-shadow: var(--shadow-plate-hover); }
+    html.lb-ready .plate-frame > img { cursor: zoom-in; }
+    .plate-caption { margin-top: 16px; font-family: var(--font-ui); font-size: 14px; line-height: 1.6; color: var(--muted); }
+    .fig-no { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em; margin-right: 12px; transition: color var(--motion-fast) var(--ease-standard); }
+    /* v6：图版 hover 时题注图号随图泛金（「图与注是一体」的微反馈） */
+    .plate:hover .fig-no { color: var(--gold-text); }
+
+    /* v8 图二读图引线：金点编号钉在截图真实像素上（wayfinding 职能，全页唯一
+       新互动件）；hover/focus 显常暗标签卡（灯箱同款恒定配色，双主题一致），
+       点击开灯箱定位该区域。无 JS=不渲染（lb-ready 闸与灯箱同命，无死区）；
+       命中区 28px≥24（WCAG 2.5.8 AA）；只动 transform/opacity，reduce 压回即时。 */
+    .figmark {
+      display: none;
+      position: absolute; left: var(--fx); top: var(--fy); z-index: 2;
+      width: 28px; height: 28px; margin: -14px 0 0 -14px;
+      align-items: center; justify-content: center;
+      appearance: none; cursor: pointer; padding: 0; background: none; border: 0;
+    }
+    html.lb-ready .figmark { display: flex; }
+    .figmark i {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--gold); color: #0B1520;
+      font-family: var(--font-mono); font-style: normal; font-size: 11.5px; font-weight: 700; line-height: 20px; text-align: center;
+      box-shadow: 0 0 0 3px rgb(11 21 32 / 35%), 0 2px 8px rgb(0 0 0 / 35%);
+      transition: transform var(--motion-fast) var(--ease-out);
+    }
+    .figmark:hover i, .figmark:focus-visible i { transform: scale(1.15); }
+    .figmark-label {
+      position: absolute; right: 36px; top: 50%; z-index: 3;
+      width: max-content; max-width: min(320px, 58vw);
+      padding: 9px 13px; border-radius: var(--radius);
+      background: rgb(11 21 32 / 94%); border: 1px solid rgb(239 233 220 / 24%);
+      box-shadow: var(--shadow-mag);
+      color: #F0ECE3; font-family: var(--font-ui); font-size: 13.5px; line-height: 1.6; text-align: left;
+      pointer-events: none;
+      opacity: 0; visibility: hidden; translate: -6px -50%;
+      /* 显=零延迟（响应即时线）；隐=延到淡出结束（防闪），方向分离 */
+      transition: opacity var(--motion-fast) var(--ease-standard), translate var(--motion-fast) var(--ease-out), visibility 0s linear 0s;
+    }
+    .figmark:hover .figmark-label, .figmark:focus-visible .figmark-label {
+      opacity: 1; visibility: visible; translate: 0 -50%;
+      transition: opacity var(--motion-fast) var(--ease-standard), translate var(--motion-fast) var(--ease-out), visibility 0s linear var(--motion-fast);
+    }
+    /* v8.1 标签边缘翻面（JS 于 hover/focus 时量测加类）：标签顶越视口上缘→翻到
+       点下方；左缘越图框→右侧有余量则翻右侧，双侧皆紧→居中并按量测平移回钳进框
+       （--lb-shift 由 JS 内联）。只改呈现位，不动点击/灯箱路径。 */
+    .figmark.flip-below .figmark-label { top: calc(100% + 10px); translate: -6px 0; }
+    .figmark.flip-below:hover .figmark-label,
+    .figmark.flip-below:focus-visible .figmark-label { translate: 0 0; }
+    .figmark.flip-right .figmark-label { right: auto; left: 36px; translate: 6px -50%; }
+    .figmark.flip-center .figmark-label { right: auto; left: 50%; translate: calc(-50% - 6px + var(--lb-shift, 0px)) -50%; }
+    .figmark.flip-center:hover .figmark-label,
+    .figmark.flip-center:focus-visible .figmark-label { translate: calc(-50% + var(--lb-shift, 0px)) -50%; }
+
+    /* 便利贴（手迹旁注，全页仅有的手迹层）；
+       实底 --note-bg + 发丝边：双主题下窗体轮廓与文字都可读（亮面根修：
+       原 4% alpha 洗色叠暖纸底≈不可见），金图钉点与投影照旧。
+       v5：便利贴与 hero 图版为视差双层（JS transform，随滚动错位） */
+    .note {
+      position: absolute; top: -16px; right: -14px; width: 220px;
+      padding: 18px 18px 15px; border-radius: 4px;
+      background: var(--note-bg); border: 1px solid var(--line-strong);
+      box-shadow: var(--shadow-note);
+      font-family: var(--font-ui); font-size: 15px; line-height: 1.7;
+      color: rgb(var(--ink-rgb) / 88%);
+    }
+    .note::before {
+      content: ""; position: absolute; top: -4px; left: 50%; width: 8px; height: 8px;
+      margin-left: -4px; border-radius: 50%; background: var(--gold);
+    }
+    .note-1 { transform: rotate(3.5deg); }
+    .plate-1, .note-1 { will-change: transform; }
+
+    /* S1 主推节：窄栏功能条 + 全出血图版 + 放大镜细部。
+       v6 节奏：底部 96→56px，与 S2 课表节收成叙事耦合档（复习完看本周课表），
+       与前后大留白拉开疏密差（版面节奏三档之外的第四档） */
+    .sec-review { padding-top: 128px; padding-bottom: 56px; }
+    .prose { max-width: 34em; }
+    .key {
+      font-style: normal; text-decoration: underline;
+      text-decoration-color: var(--gold); text-decoration-thickness: 2px; text-underline-offset: 7px;
+    }
+    .bleed { margin-top: 72px; width: calc(100% + 88px); margin-left: -88px; padding: 0 24px; }
+    /* v6 图文关系破均匀：全出血图版的题注右对齐（宽屏），与左置图注的主图版拉开编排差 */
+    @media (min-width: 901px) {
+      .bleed-caption { text-align: right; }
+    }
+    .after-plate {
+      margin-top: -48px; position: relative; z-index: 2;
+      display: flex; flex-direction: column; align-items: flex-start; gap: 14px;
+      padding-left: 8px;
+    }
+    .after-plate .note { position: static; transform: rotate(-2deg); }
+
+    /* S2 课表与任务：错位叠挂（全页唯一的图叠图） */
+    .duo-float { display: flex; align-items: flex-start; margin-top: 56px; }
+    .plate-3 { width: 55%; }
+    .plate-4 { width: 34%; margin-left: -12%; margin-top: 72px; position: relative; z-index: 2; }
+
+    /* S3 还有的小事：纯文窄栏带（功能条两段 + 收束行）；v7 密度档回 band 96px
+       （v6 的 72px「速览-小事收紧半档」随速览节删除而失去语境） */
+    .sec-extras { padding-top: var(--space-band); }
+    .f-tail { margin-top: 30px; max-width: 34em; font-size: 15.5px; line-height: 1.7; color: var(--muted); }
+    kbd {
+      font-family: var(--font-mono); font-size: .85em; padding: 1px 6px;
+      border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px;
+      background: var(--panel-strong);
+    }
+
+    /* S4 数据留在桌上：全页密度重心，道具全退场的郑重页。
+       v6 节间转场：入口发丝线由 border 改 ::before，随滚动自左画入（scaleX 0→1，
+       has-reveal 总闸内；无 JS/reduce=静止全线，print=全线） */
+    .sec-privacy {
+      padding-top: var(--space-peak); padding-bottom: var(--space-peak);
+      position: relative;
+    }
+    .sec-privacy::before {
+      content: ""; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: var(--line);
+    }
+    html.has-reveal .sec-privacy::before {
+      transform: scaleX(0); transform-origin: 0 50%;
+      transition: transform 900ms var(--ease-out) 120ms;
+    }
+    html.has-reveal .sec-privacy.is-visible::before { transform: scaleX(1); }
+    .narrow { max-width: 46em; }
+    .manifesto { font-size: clamp(32px, 3.8vw, 38px); }
+    .privacy-body { margin-top: 20px; max-width: 34em; }
+    .table-scroll { overflow-x: auto; margin-top: 22px; }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 15px;
+      border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong);
+    }
+    th, td { padding: 13px 18px 13px 0; text-align: left; vertical-align: top; }
+    /* v6 微交互：表格行 hover 洗色（可读性参考的闭集表也值得一行安静的反馈） */
+    tbody tr { transition: background-color var(--motion-fast) var(--ease-standard); }
+    tbody tr:hover { background: rgb(var(--ink-rgb) / 3%); }
+    thead th { font-family: var(--font-ui); font-weight: 500; font-size: 13.5px; color: var(--muted); }
+    td.hosts { font-family: var(--font-mono); font-size: 13px; line-height: 1.9; color: var(--navy-link); min-width: 220px; }
+    td.use { color: rgb(var(--ink-rgb) / 82%); }
+    .readmore { margin-top: 26px; font-family: var(--font-ui); font-size: 15.5px; }
+
+    /* S5 收工：一步一句话 + 行式面板 */
+    .sec-download { padding-bottom: var(--space-band); }
+    /* v8.1：h2→首段同位节奏对齐 .privacy-body（原 .sec-lead 类无定义，段距塌 0） */
+    .sec-lead { margin-top: 20px; max-width: 34em; }
+    .dl-step { margin-top: 22px; max-width: 34em; }
+    .dl-panel { margin-top: 40px; max-width: 560px; padding: 28px; border-radius: var(--radius-panel); background: var(--panel); }
+    .dl-panel .button { width: 100%; }
+    .smartnote {
+      margin-top: 18px; padding: 12px 16px; border-left: 3px solid var(--danger);
+      border-radius: 0 var(--radius) var(--radius) 0; background: rgb(var(--danger-rgb) / 8%);
+      font-family: var(--font-ui); font-size: 14.5px; line-height: 1.7; color: rgb(var(--ink-rgb) / 88%);
+    }
+    .dl-fineprint { margin-top: 14px; font-family: var(--font-ui); font-size: 13.5px; color: var(--muted); }
+    .build-line { margin-top: 18px; font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em; color: var(--muted); }
+
+    /* S6 问答：原生折叠（v5+平滑高度动画），条目间发丝线（编辑部条目带），
+       节尾补 band 呼吸承接页脚 */
+    .sec-faq { padding-bottom: var(--space-band); }
+    .faq-list { max-width: 46em; margin-top: 28px; }
+    .faq-list details { padding: 16px 0; }
+    .faq-list details:first-child { padding-top: 0; }
+    .faq-list details:last-child { padding-bottom: 0; }
+    details + details { border-top: 1px solid var(--line); }
+    summary {
+      position: relative; padding: 0 40px 0 0; cursor: pointer;
+      font-weight: 500; font-size: 1.05rem; list-style: none;
+      transition: outline-color var(--motion-fast) var(--ease-standard), outline-offset var(--motion-fast) var(--ease-standard);
+    }
+    /* v6：折叠行 hover 洗色（行级反馈，与表格行同语言） */
+    details { transition: background-color var(--motion-fast) var(--ease-standard); }
+    details:hover { background: rgb(var(--ink-rgb) / 3%); }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: "+"; position: absolute; right: 6px; top: 50%; translate: 0 -55%;
+      font-family: var(--font-mono); font-size: 1.2rem; color: var(--gold-text);
+      transition: color var(--motion-fast) var(--ease-standard);
+    }
+    details[open] summary::after { content: "\2212"; }
+    /* 折叠符 hover/focus 提亮＝折叠行的可点反馈（反馈级动效，文字本体不动） */
+    summary:hover::after, summary:focus-visible::after { color: var(--gold-strong); }
+    details p { margin-top: 10px; color: rgb(var(--ink-rgb) / 80%); max-width: 38em; }
+
+    /* v5 截图灯箱：暗房式双主题恒定（照片观看惯例），scrim 模糊可选增强；
+       入场=backdrop fade + 主体 fade/微移/微缩（缓出零弹跳）；reduce=瞬时 */
+    .lightbox {
+      position: fixed; inset: 0; z-index: 60;
+      display: flex; align-items: center; justify-content: center;
+      padding: 28px;
+    }
+    .lightbox[hidden] { display: none; }
+    html.lb-open { overflow: hidden; }
+    .lightbox-backdrop {
+      position: absolute; inset: 0; background: rgb(5 10 17 / 90%);
+      opacity: 0; transition: opacity var(--motion-base) var(--ease-standard);
+    }
+    @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+      .lightbox-backdrop {
+        background: rgb(5 10 17 / 74%);
+        -webkit-backdrop-filter: blur(14px) saturate(120%);
+        backdrop-filter: blur(14px) saturate(120%);
+      }
+    }
+    .lightbox.open .lightbox-backdrop { opacity: 1; }
+    .lightbox-body {
+      position: relative; margin: 0; max-width: min(1240px, 100%);
+      width: 100%; display: flex; flex-direction: column;
+      opacity: 0; translate: 0 16px; scale: 0.975;
+      transition: opacity var(--motion-base) var(--ease-out), translate var(--motion-base) var(--ease-out), scale var(--motion-base) var(--ease-out);
+    }
+    .lightbox.open .lightbox-body { opacity: 1; translate: 0 0; scale: 1; }
+    .lightbox-frame {
+      overflow: auto; overscroll-behavior: contain;
+      max-height: calc(100vh - 150px);
+      border: 1px solid rgb(239 233 220 / 24%); border-radius: var(--radius-panel);
+      background: #0B1520; box-shadow: 0 40px 90px rgb(0 0 0 / 55%);
+      touch-action: pan-x pan-y;
+    }
+    .lightbox-frame img { display: block; width: 100%; height: auto; cursor: zoom-in; }
+    .lightbox.zoomed .lightbox-frame img { width: 2880px; max-width: none; cursor: zoom-out; }
+    .lightbox-cap {
+      margin-top: 12px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+      font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em;
+      color: rgb(240 236 227 / 78%);
+    }
+    /* AVATAR-POLISH-1 UP-3（Pages v8 走查）：键盘提示对触屏用户半数无效——粗指针
+       环境换触屏说法；精确指针维持键盘说法。纯呈现层，零 JS 零行为改动。 */
+    .lb-hint-touch { display: none; }
+    @media (pointer: coarse) {
+      .lb-hint-keys { display: none; }
+      .lb-hint-touch { display: inline; }
+    }
+    .lightbox-btn {
+      position: absolute; z-index: 2;
+      appearance: none; cursor: pointer;
+      width: 44px; height: 44px; border-radius: 50%;
+      border: 1px solid rgb(239 233 220 / 32%); background: rgb(11 21 32 / 78%);
+      color: #F0ECE3; font-family: var(--font-mono); font-size: 20px; line-height: 1;
+      display: flex; align-items: center; justify-content: center; padding: 0;
+      transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), outline-color var(--motion-fast) var(--ease-standard), outline-offset var(--motion-fast) var(--ease-standard);
+    }
+    .lightbox-btn:hover { background: rgb(23 36 52 / 90%); border-color: rgb(239 233 220 / 58%); }
+    .lightbox :focus-visible { outline-color: var(--gold); }
+    .lightbox-close { top: 16px; right: 16px; }
+    .lightbox-prev { left: 14px; top: 50%; translate: 0 -50%; }
+    .lightbox-next { right: 14px; top: 50%; translate: 0 -50%; }
+
+    /* 页脚：致谢按用户裁定（2026-10-06）降为页脚小字（12.5px 弱字，colophon 位） */
+    footer { padding: 34px 0 46px; border-top: 1px solid var(--line); font-family: var(--font-ui); font-size: 14.5px; color: var(--muted); }
+    .footer-row { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .footer-row a { color: var(--muted); }
+    .footer-row a:hover, .footer-row a:focus-visible { color: var(--ink); }
+    .footer-links { display: flex; gap: 22px; }
+    .footer-thanks { margin-top: 14px; font-size: 12.5px; line-height: 1.7; }
+    .footer-thanks a { color: inherit; }
+    .footer-thanks a:hover, .footer-thanks a:focus-visible { color: var(--ink); }
+
+    /* 主题切换交叉淡变：切换瞬间由接线脚本挂 .theming（280ms 后摘除），
+       色彩面 240ms 过渡；v5 扩到 outline/fill/stroke 全 token 联动，
+       --note-bg 经 @property 注册参与过渡（不支持=瞬时，优雅降级）；
+       reduced-motion 下被 reduce 块压回即时 */
+    html.theming body, html.theming body *, html.theming body *::before, html.theming body *::after {
+      transition: background-color var(--motion-base) var(--ease-standard),
+        color var(--motion-base) var(--ease-standard),
+        border-color var(--motion-base) var(--ease-standard),
+        box-shadow var(--motion-base) var(--ease-standard),
+        text-decoration-color var(--motion-base) var(--ease-standard),
+        outline-color var(--motion-base) var(--ease-standard),
+        fill var(--motion-base) var(--ease-standard),
+        stroke var(--motion-base) var(--ease-standard);
+    }
+    html.theming .note {
+      transition: --note-bg var(--motion-base) var(--ease-standard),
+        background-color var(--motion-base) var(--ease-standard),
+        border-color var(--motion-base) var(--ease-standard),
+        box-shadow var(--motion-base) var(--ease-standard),
+        color var(--motion-base) var(--ease-standard);
+    }
+
+    /* 节进入与 hero 层次入场：IntersectionObserver 渐显（14px 微移+透明度，
+       一次性，缓出曲线零弹跳）。初始隐藏态只在 html.has-reveal 下生效——
+       该类由头部脚本在「支持 IO 且未要求减少动效」时才挂，无 JS/不支持/
+       减少动效=静态全显。v5 各节 reveal 错峰编排：词级 0 / 图级 80-240 /
+       表级 160-260，节奏按阅读轴梯度递进。 */
+    .has-reveal [data-reveal] {
+      opacity: 0; translate: 0 14px;
+      transition: opacity var(--motion-slow) var(--ease-out), translate var(--motion-slow) var(--ease-out);
+      transition-delay: var(--reveal-delay, 0ms);
+    }
+    .has-reveal [data-reveal].is-visible { opacity: 1; translate: 0 0; }
+
+    @media print {
+      *, *::before, *::after { animation: none !important; }
+      .has-reveal [data-reveal] { opacity: 1 !important; translate: none !important; }
+      .sec-privacy::before { transform: none !important; }
+      .progress, .lightbox, .figmark { display: none !important; }
+    }
+    /* <900px：词轨横滚、rotate 归零、叠压纵排、投影减半、放大镜内联；视差关（JS 同步守卫） */
+    @media (max-width: 900px) {
+      .page { display: block; }
+      .rail ul { flex-direction: row; gap: 24px; padding: 14px 24px 0; overflow-x: auto; }
+      .hero { padding-top: 48px; }
+      .hero-grid { grid-template-columns: 1fr; gap: 36px; }
+      .plate-1 { margin-bottom: 0; }
+      .plate-1 .tilt, .plate-2 .tilt, .plate-3 .tilt, .plate-4 .tilt { transform: none; }
+      .note { position: static; transform: none; width: min(220px, 60%); margin: 0 0 12px; padding: 14px 16px 12px; }
+      .after-plate { margin-top: 16px; padding-left: 0; }
+      .after-plate .note { margin: 0; }
+      .plate-frame { box-shadow: var(--shadow-mag); }
+
+      .duo-float { display: block; }
+      .plate-3, .plate-4 { width: 100%; margin: 0 0 36px; }
+      .sec-review { padding-top: 96px; }
+      .rail ul.has-thread::before, .rail-marker { display: none; }
+      .rail ul { padding-bottom: 5px; } /* v8.1：吸收纳词轨链命中区的 5px 下溢，不出纵滚条 */
+      /* v8.1：出血几何为 >900px 网格（88px 词轨列）而设，block 布局下重置回内容轴 */
+      .bleed { width: auto; margin-left: 0; padding: 0; }
+      .bleed-caption { text-align: left; }
+      .lightbox { padding: 16px; }
+      .lightbox-frame { max-height: calc(100vh - 170px); }
+      .lightbox-prev { left: 6px; }
+      .lightbox-next { right: 6px; }
+      .lightbox-close { top: 8px; right: 8px; }
+    }
+    @media (max-width: 640px) {
+      .shell { width: calc(100% - 32px); }
+      .note { width: 180px; font-size: 14px; }
+      .plate-caption { font-size: 13px; }
+      .lightbox-meta { flex-basis: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+      .plate-1, .note-1 { will-change: auto; }
+    }
+  </style>
+</head>
+<body id="top">
+  <a class="skip" href="#main">跳到主要内容</a>
+
+  <div class="progress" aria-hidden="true"><i></i></div>
+
+  <header class="masthead">
+    <div class="shell masthead-row">
+      <a class="brand" href="#top">CourseLens</a>
+      <div class="masthead-side">
+        <button id="theme-toggle" class="masthead-link" type="button"
+                aria-label="主题偏好：自动（跟随系统），点击切换为浅色">主题·自动</button>
+        <a class="masthead-link" href="https://github.com/gualtier-xu/Fudan-CourseLens">GitHub</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="page">
+    <nav class="rail" aria-label="章节导航">
+      <ul>
+        <li><a href="#top">开场</a></li>
+        <li><a href="#review">复习</a></li>
+        <li><a href="#timetable">课表</a></li>
+        <li><a href="#extras">提问</a></li>
+        <li><a href="#privacy">数据</a></li>
+        <li><a href="#download">收工</a></li>
+        <li><a href="#faq">问答</a></li>
+      </ul>
+    </nav>
+
+    <main id="main" tabindex="-1">
+      <!-- M0 卷首·开场 -->
+      <section class="hero">
+        <div class="shell hero-grid">
+          <div>
+            <!-- 缺省稿·用户可改（施工图 S5.3-⑧）；「24」为真实安装包体积，IO 触发数字滚动；v6 场景化开头（晚自习/备考时刻） -->
+            <p class="kicker" data-reveal>Windows 10 / 11 · 安装包约 <span data-countup="24">24</span> MB</p>
+            <h1 data-reveal style="--reveal-delay: 60ms">把录播变成字幕和复习材料</h1>
+            <p class="hero-sub" data-reveal style="--reveal-delay: 120ms">给复旦学生的 Windows 客户端：<em class="key">下课即看</em>，不用等平台审核；晚自习看录播，字幕逐句自动跟上；备考前点一下，总结和章节就开始生成。数据默认留在你自己的电脑上。</p>
+            <div class="actions" data-reveal style="--reveal-delay: 180ms">
+              <a class="button button-primary" href="#download">下载安装包</a>
+              <a class="button button-ghost" href="#privacy">先看数据与隐私</a>
+            </div>
+            <!-- LIVE-DISCLOSURE-1：直播早期功能小字（与客户端/README 同源一句，钉在
+                 test_documentation）——v7 删打字演示卡后披露小字保留，读屏可达 -->
+            <p class="live-fine" data-reveal style="--reveal-delay: 260ms">直播转写为早期功能，可用性视网络与课程环境而定。</p>
+          </div>
+          <!-- LCP 元素（hero 图）不进 reveal：首屏即完整绘制（AUDIT3 修复；
+               便利贴旁注单独 reveal，节奏不受影响） -->
+          <figure class="plate plate-1">
+            <div class="tilt">
+              <div class="plate-frame">
+                <img src="assets/pages/subtitle-style.png" width="1440" height="900" fetchpriority="high"
+                     data-lb-title="图 一 · 录播与字幕"
+                     alt="CourseLens 播放器截图：讲座画面上叠加句级字幕，弹出的字幕样式面板可调字号、背景深浅与贴底位置">
+              </div>
+              <!-- 缺省稿·用户可改（施工图 S5.3-②，README《录播与字幕》背书） -->
+              <aside class="note note-1" data-reveal style="--reveal-delay: 420ms">直播进来也有实时字幕</aside>
+            </div>
+            <figcaption class="plate-caption"><span class="fig-no">图 一</span>录播播放器：句级字幕自动生成，经多道校对（可选 AI 校对＋自动抽检），质量优于平台自带字幕；字号、背景、贴底位置随手调，改动只存在这台电脑上。</figcaption>
+          </figure>
+        </div>
+        <div class="shell">
+          <!-- 缺省稿·用户可改：缘起段系作者第一人称自述，终稿须作者本人定稿（施工图 S5.3-①） -->
+          <p class="origin" data-reveal style="--reveal-delay: 320ms">CourseLens 起初是我期末周自用的小工具，后来发现赶 due 的晚上同样好用，就整理成了现在这个客户端。数据留在你自己的电脑上，这条从第一行代码起没变过。</p>
+        </div>
+      </section>
+
+      <!-- S1 复习材料（主推节；v7 减法后 reveal 编排：词 0 / 图 90 / 旁注 190） -->
+      <section class="sec-review" id="review">
+        <div class="shell">
+          <div class="prose" data-reveal>
+            <!-- 缺省稿·用户可改（COPY2 功能条 1；v6 场景化开头） -->
+            <div class="f-row">
+              <h2 class="f-term">复习材料</h2>
+              <p>备考夜把一讲从头捋：总结、章节、关键问答自动归到同一讲，课件 PDF 也能合成进来；生成后讲次卡上写<em class="key">「通过」或「N 处存疑」</em>。点时间戳跳回原话。</p>
+            </div>
+          </div>
+        </div>
+        <div class="bleed">
+          <div class="shell">
+            <figure class="plate plate-2" data-reveal style="--reveal-delay: 90ms">
+              <div class="tilt">
+                <div class="plate-frame">
+                  <img src="assets/pages/review-multiview.png" width="1440" height="900" loading="lazy"
+                       data-lb-title="图 二 · 复习材料"
+                       alt="CourseLens 复习页截图：左侧是讲座视频与时间轴，右侧是多视图复习包，按时间列出章节要点与关键时间点">
+                  <!-- v8 读图引线：金点钉在截图真实像素上（wayfinding），hover/focus 出
+                       标签，点击开灯箱定位该区域；无 JS=不渲染（lb-ready 闸）。坐标为
+                       截图内真实界面位置的百分比；讲次卡「通过/N 处存疑」不在本截图
+                       可见像素内，故不设点（诚实边界）。 -->
+                  <button class="figmark" type="button" style="--fx:63.8%; --fy:27.8%"
+                          data-lb-region="多视图复习包：时间轴、章节、关键问答、提纲、FAQ、考前简报"
+                          aria-label="放大查看：多视图复习包，含时间轴、章节、关键问答、提纲、FAQ、考前简报"><i>1</i><span class="figmark-label">多视图复习包：时间轴、章节、关键问答、提纲、FAQ、考前简报</span></button>
+                  <button class="figmark" type="button" style="--fx:67.5%; --fy:43%"
+                          data-lb-region="章节与时间戳：点时间戳，跳回原话"
+                          aria-label="放大查看：章节与时间戳，点时间戳跳回原话"><i>2</i><span class="figmark-label">点时间戳，跳回原话</span></button>
+                </div>
+              </div>
+            </figure>
+            <div class="after-plate" data-reveal style="--reveal-delay: 190ms">
+              <!-- 缺省稿·用户可改（施工图 S5.3-③，README《AI 总结与笔记》背书） -->
+              <aside class="note">抽检结论就写在讲次卡上</aside>
+            </div>
+            <p class="plate-caption bleed-caption"><span class="fig-no">图 二</span>复习页全貌。图上两处金点可点，放大看对应区域。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- S2 课表与任务（错位叠挂；v5 reveal 编排：词 0 / 图三 90 / 图四 220） -->
+      <section class="sec-timetable" id="timetable">
+        <div class="shell">
+          <div class="f-row" data-reveal>
+            <h2 class="f-term">课表与任务</h2>
+            <p>周一早上打开，本周的课就在眼前，按学期、周次排好，可导出 ICS 日历；任务失败时，原因用中文写在任务中心。可以重试。</p>
+          </div>
+          <div class="duo-float">
+            <figure class="plate plate-3" data-reveal style="--reveal-delay: 90ms">
+              <div class="tilt">
+                <div class="plate-frame">
+                  <img src="assets/pages/timetable-week.png" width="1440" height="900" loading="lazy"
+                       data-lb-title="图 三 · 周课表"
+                       alt="CourseLens 周课表截图：一周七天的课程格子，标出每节课的时间、课程名与教室">
+                </div>
+              </div>
+              <figcaption class="plate-caption"><span class="fig-no">图 三</span>周课表</figcaption>
+            </figure>
+            <figure class="plate plate-4" data-reveal style="--reveal-delay: 220ms">
+              <div class="tilt">
+                <div class="plate-frame">
+                  <img src="assets/pages/tasks-drawer.png" width="1440" height="900" loading="lazy"
+                       data-lb-title="图 四 · 任务中心"
+                       alt="CourseLens 任务中心截图：进行中与失败的任务分栏列出，失败原因用中文说明并附重试按钮">
+                </div>
+              </div>
+              <figcaption class="plate-caption"><span class="fig-no">图 四</span>任务中心</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- S3 还有的小事（纯文窄栏带；v5 reveal 编排：0 / 90 / 180） -->
+      <section class="sec-extras" id="extras">
+        <div class="shell">
+          <div class="f-row" data-reveal>
+            <h2 class="f-term">提问</h2>
+            <p>备考到深夜卡在一个概念，直接问：回答只基于这门课的字幕和课件，每条带时间戳。点引用看原始片段。</p>
+          </div>
+          <div class="f-row" data-reveal style="--reveal-delay: 90ms">
+            <h2 class="f-term">解释</h2>
+            <p>看不懂的地方按 <kbd>X</kbd> 插一面「没听懂」小旗，AI 把那段讲清楚。懂了删旗。</p>
+          </div>
+          <p class="f-tail" data-reveal style="--reveal-delay: 180ms">还有直播字幕、校外看回放（多数情况不用设置）、<kbd>Ctrl K</kbd> 全文检索和课程记忆。</p>
+        </div>
+      </section>
+
+      <!-- S4 数据留在桌上（郑重页：零 rotate、零便利贴、零投影；v6 reveal 编排 0/90/180/260 + 入口线画入） -->
+      <section class="sec-privacy" id="privacy" data-line-reveal>
+        <div class="shell narrow">
+          <h2 class="manifesto" data-reveal>你的数据在哪里，谁能看到什么</h2>
+          <!-- 「10」为真实外联主机闭集数（下表），IO 触发数字滚动 -->
+          <p class="privacy-body" data-reveal style="--reveal-delay: 90ms">课程、字幕、总结都存在你自己的电脑上；学号、密码和 API Key 加密存盘，文件里只有密文。AI 任务经端到端加密交给你自己的云端 Worker，链路上只有密文。没有遥测；客户端只连下面这 <span data-countup="10">10</span> 个主机。</p>
+          <div class="table-scroll" data-reveal style="--reveal-delay: 180ms">
+            <table>
+              <caption class="visually-hidden">客户端固定外联主机清单</caption>
+              <thead>
+                <tr><th scope="col">主机</th><th scope="col">用途</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="hosts">id.fudan.edu.cn<br>webvpn.fudan.edu.cn<br>icourse.fudan.edu.cn<br>fdjwgl.fudan.edu.cn<br>yjsxktest.fudan.sh.cn</td>
+                  <td class="use">复旦统一身份认证、课程与课表数据（含研究生课表数据源）；webvpn 也是学校官方的校外访问通道</td>
+                </tr>
+                <tr>
+                  <td class="hosts">github.com<br>api.github.com</td>
+                  <td class="use">GitHub 授权、你的专属仓库与学习任务</td>
+                </tr>
+                <tr>
+                  <td class="hosts">api.deepseek.com</td>
+                  <td class="use">AI 校对与摘要（可选，使用你自己配置的 DeepSeek Key）</td>
+                </tr>
+                <tr>
+                  <td class="hosts">release-assets.githubusercontent.com<br>objects.githubusercontent.com</td>
+                  <td class="use">检查与下载应用更新</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- v7 卖点升格：代理共存从 FAQ 上浮为数据节可见正文（网络段：互不干扰承诺
+               +GitHub 直连提示，FAQ 原条全部事实零丢失并入本段） -->
+          <p class="privacy-body" data-reveal style="--reveal-delay: 230ms">开着代理（VPN）也能正常用，互不干扰，网络设置一个都不用改；只是下载安装包、应用更新和云端学习任务需要够得着 GitHub，直连不稳时开着代理再试就行。</p>
+          <p class="readmore" data-reveal style="--reveal-delay: 300ms">完整的数据边界与核对方法，见 <a href="https://github.com/gualtier-xu/Fudan-CourseLens#安全与隐私架构">README 的「安全与隐私架构」</a>。</p>
+        </div>
+      </section>
+
+      <!-- S5 收工·获取（v5 reveal 编排：文 0 / 面板 140；主钮磁性位移+按压反馈） -->
+      <section class="sec-download" id="download">
+        <div class="shell">
+          <div class="narrow" data-reveal>
+            <h2>下载安装，一两分钟的事</h2>
+            <p class="sec-lead">Windows 10/11，安装包约 24 MB。顺利的话，一两分钟就能装完进入学习台。</p>
+            <p class="dl-step">点下面的按钮下载，双击安装；首次运行按引导用复旦统一身份认证登录，选你有权访问的课程就能开始。</p>
+            <p class="smartnote">首次安装若 Windows 弹出「已保护你的电脑」：点「更多信息」，再点「仍要运行」。</p>
+          </div>
+          <div class="dl-panel" data-reveal style="--reveal-delay: 140ms">
+            <!-- 发布回填 1：下载直链（发版时更新 href 现值） -->
+            <a class="button button-primary" href="https://github.com/gualtier-xu/Fudan-CourseLens/releases/download/client-v0.1.0/CourseLens-0.1.0-setup.exe">下载 CourseLens-0.1.0-setup.exe</a>
+            <p class="dl-fineprint">当前版本 0.1.0（Windows）。之后的更新在应用内完成，不用重跑安装包。</p>
+            <!-- mac 测试版注记（MAC-2 B2 成稿微调：arm64 单架构/macOS 12+/独立 prerelease 通道指向 /releases；与 README《macOS 测试版（体验版）》节同源维护，避免整节重复） -->
+            <p class="dl-fineprint">也有 macOS 测试版（体验版）：Apple Silicon 版，需 macOS 12 或更新版本，到<a href="https://github.com/gualtier-xu/Fudan-CourseLens/releases">发布页</a>下载带「Pre-release」标记的安装包。它由 CI 自动构建，还没在真机上深度实测，遇到问题欢迎到 Issues 说一声。首次打开若被 macOS 拦一下，右键点 CourseLens 选「打开」，或到 系统设置 → 隐私与安全性 点「仍要打开」；数据规矩与 Windows 版一致，都留在你自己的电脑上。</p>
+            <!-- 缺省稿·用户可改（施工图 S5.3-⑨，活件行） -->
+            <!-- 发布回填 2：版本行（发版时更新） -->
+            <p class="build-line">CourseLens 0.1.0 · Windows</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- S6 装之前可能想问（v5：平滑高度动画开合 + 条目 reveal 错峰 70/140/210；
+           v7：代理条升格入数据节，余三条） -->
+      <section class="sec-faq" id="faq">
+        <div class="shell">
+          <h2 data-reveal>装之前可能想问</h2>
+          <div class="faq-list">
+            <!-- 处置①缺省=加·用户可改（含是否保留这两条，施工图 S5.2） -->
+            <details data-reveal style="--reveal-delay: 70ms">
+              <summary>卸载了，我的数据会没吗？</summary>
+              <div class="faq-body"><p>默认不会。卸载时会问「要保留你的学习数据吗」，选「是」，笔记、字幕、进度原地不动，重装回来一切如旧；选「否」才是真删，不可恢复。</p></div>
+            </details>
+            <details data-reveal style="--reveal-delay: 140ms">
+              <summary>AI 功能必须要自己配 Key 吗？</summary>
+              <div class="faq-body"><p>不必须。不填 DeepSeek Key 也有高精度的非 AI 字幕回退；想用 AI 校对与问答，再在设置里填你自己的 Key。</p></div>
+            </details>
+            <details data-reveal style="--reveal-delay: 210ms">
+              <summary>遇到报错怎么办？</summary>
+              <div class="faq-body"><p>多数问题按任务中心里的中文提示重试或按步骤修复就行。解决不了去 <a href="https://github.com/gualtier-xu/Fudan-CourseLens/issues">Issues</a> 反馈，每一条报障都有人回，说的是人话；贴截图前先脱敏，不要出现学号、密码和真实课程名。</p></div>
+            </details>
+            <!-- mac 测试版折叠细节（MAC-2 B2 成稿微调；首开指引与 S5 小字段/README 节同源，reveal 错峰 +280ms） -->
+            <details data-reveal style="--reveal-delay: 280ms">
+              <summary>macOS 测试版：装之前想知道的</summary>
+              <div class="faq-body">
+                <p>适用的电脑：Apple Silicon（M 系列）Mac，系统要求 macOS 12 或更新版本；安装包在发布页的 macOS 测试版通道（带「Pre-release」标记），认准标记再下载。</p>
+                <p>为什么会被拦：安装包没有做 Apple 公证，那需要按年付费的开发者资质，测试版还没办。第一次打开：在访达里右键点 CourseLens 选「打开」，再点一次「打开」；如果系统没给这个选项（macOS 15 常见），到 系统设置 → 隐私与安全性，最下面能看到 CourseLens 被拦的记录，点「仍要打开」。之后就不会再拦了。安装包的 SHA256 校验和随发布附上，想核对的同学可以自行比对。</p>
+                <p>和 Windows 版一样的部分：数据都在你自己的电脑上，学号密码加密存进 macOS 钥匙串（第一次询问访问权限时点「允许」即可），没有遥测；字幕、总结、问答照旧在你的云端 Worker 上完成，你的电脑上没有 AI 模型。</p>
+                <p>测试版暂时没有：托盘最小化、应用内自动更新（有新版本请回发布页手动下载）、每日定时任务。遇到别的问题，去 Issues 说一声，每一条都有人回；贴截图前先脱敏，不要出现学号、密码和真实课程名。</p>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="shell">
+      <div class="footer-row">
+        <span>CourseLens · 由 Gualtier 开发，数据留在你自己的电脑上</span>
+        <span class="footer-links">
+          <a href="https://github.com/gualtier-xu/Fudan-CourseLens/releases">发布页</a>
+          <a href="https://github.com/gualtier-xu/Fudan-CourseLens/issues">问题反馈</a>
+          <a href="https://github.com/gualtier-xu/Fudan-CourseLens">GitHub</a>
+        </span>
+      </div>
+      <!-- 致谢名单终版由作者定稿：直接增删下面这一行即可 -->
+      <p class="footer-thanks">感谢 <a href="https://github.com/LeafCreeper/Fudan_iCourse_Subscriber">LeafCreeper 的 Fudan_iCourse_Subscriber</a> 等复旦课程工具作者的思路启发，以及每一位报过问题、提过建议的同学。</p>
+      <!-- AVATAR-POLISH-1 UP-2（Pages v8 走查）：README 有合成数据声明，页面此前没有——信任素材对齐 -->
+      <p class="footer-thanks">页面里的截图都是合成课程数据，不含任何真实课程或同学的信息。</p>
+    </div>
+  </footer>
+
+  <!-- v5 截图灯箱（暗房式恒定配色，双主题一致；JS 接线，无 JS=永不出现） -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="截图放大查看" hidden>
+    <div class="lightbox-backdrop"></div>
+    <figure class="lightbox-body">
+      <div class="lightbox-frame">
+        <img class="lightbox-img" alt="" tabindex="0">
+      </div>
+      <figcaption class="lightbox-cap">
+        <span class="lightbox-title"></span>
+        <span class="lightbox-meta"><span class="lightbox-count"></span> · <span class="lb-hint-keys">← → 切换 · 点击缩放 · Esc 关闭</span><span class="lb-hint-touch">点图缩放 · 点空白处关闭</span></span>
+      </figcaption>
+    </figure>
+    <button class="lightbox-btn lightbox-close" type="button" aria-label="关闭（Esc）">×</button>
+    <button class="lightbox-btn lightbox-prev" type="button" aria-label="上一张（←）">‹</button>
+    <button class="lightbox-btn lightbox-next" type="button" aria-label="下一张（→）">›</button>
+  </div>
+
+  <script>
+  (function () {
+    var btn = document.getElementById("theme-toggle");
+    var KEY = "courselens.pages-theme.v1";
+    var LABEL = { auto: "主题·自动", light: "主题·浅色", dark: "主题·深色" };
+    var NAME = { auto: "自动（跟随系统）", light: "浅色", dark: "深色" };
+    var NEXT = { auto: "light", light: "dark", dark: "auto" };
+    var fadeT = 0;
+    function pref() {
+      try {
+        var p = localStorage.getItem(KEY);
+        if (p === "light" || p === "dark") return p;
+      } catch (e) {}
+      return "auto";
+    }
+    /* 主题切换走 240ms 全 token 联动过渡：先挂 .theming 并强制落一次样式（过渡起点），
+       再换 data-theme，280ms 后摘除；reduced-motion 由 reduce 块压回即时 */
+    function applyFaded(theme) {
+      var root = document.documentElement;
+      root.classList.add("theming");
+      void root.offsetWidth;
+      window.pagesTheme.apply(theme);
+      clearTimeout(fadeT);
+      fadeT = setTimeout(function () { root.classList.remove("theming"); }, 280);
+    }
+    function paint() {
+      btn.textContent = LABEL[pref()];
+      btn.setAttribute("aria-label", "主题偏好：" + NAME[pref()] + "，点击切换为" + NAME[NEXT[pref()]]);
+    }
+    btn.addEventListener("click", function () {
+      var next = NEXT[pref()];
+      try {
+        if (next === "auto") localStorage.removeItem(KEY);
+        else localStorage.setItem(KEY, next);
+      } catch (e) {}
+      applyFaded(window.pagesTheme.resolve());
+      paint();
+    });
+    paint();
+  })();
+
+  /* 滚动渐显观察器：has-reveal 总闸已由头部脚本按「支持 IO 且未要求减少
+     动效」挂好；此处一次性揭示（相交即揭示并停观察），观察器构造失败时
+     兜底全量揭示，内容永不因脚本失败而缺席。v6：选择器并入 [data-line-reveal]
+     （郑重页入口线画入共用同一揭示时机）。 */
+  (function () {
+    var items = document.querySelectorAll("[data-reveal], [data-line-reveal]");
+    if (!items.length) return;
+    try {
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        });
+      }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+      items.forEach(function (item) { observer.observe(item); });
+    } catch (e) {
+      items.forEach(function (item) { item.classList.add("is-visible"); });
+    }
+  })();
+
+  /* ===== v7：互动与动效（原生无依赖；v7 减法后保留=灯箱/FAQ 平滑/微交互/
+     词轨线程/进度线+视差/数字滚动，全部有 reduce/无 JS 静态回退） ===== */
+  (function () {
+    var docEl = document.documentElement;
+    var reduceMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
+    function motionOK() { return !reduceMQ.matches; }
+    function each(list, fn) { Array.prototype.forEach.call(list, fn); }
+    function fine(e) { return motionOK() && window.innerWidth > 900 && e.pointerType === "mouse"; }
+
+    /* 词轨随读高亮：视口中带（-42%/-52%）相交节 → 金色词轨项。
+       v6：左轨读位线程（发丝线+金色读位标随当前节滑动，阅读进度与内容联动）；
+       JS 建线建标（无 JS=纯词轨零装饰残留），≤900px 由 CSS 隐藏 */
+    (function () {
+      var links = [].slice.call(document.querySelectorAll(".rail a"));
+      if (!links.length || !("IntersectionObserver" in window)) return;
+      var map = [];
+      links.forEach(function (a) {
+        var hash = a.getAttribute("href") || "";
+        var target = hash === "#top" ? document.querySelector(".hero") : document.querySelector(hash);
+        if (target) map.push([target, a]);
+      });
+      if (!map.length) return;
+      var railList = document.querySelector(".rail ul");
+      var marker = null;
+      if (railList) {
+        railList.classList.add("has-thread");
+        marker = document.createElement("span");
+        marker.className = "rail-marker";
+        marker.setAttribute("aria-hidden", "true");
+        railList.appendChild(marker);
+      }
+      function placeMarker(a) {
+        if (!marker) return;
+        var y = a.offsetTop + (a.offsetHeight - marker.offsetHeight) / 2;
+        marker.style.transform = "translateY(" + Math.round(y) + "px)";
+      }
+      try {
+        var spy = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            map.forEach(function (pair) {
+              var on = pair[0] === entry.target;
+              pair[1].classList.toggle("is-active", on);
+              if (on) { pair[1].setAttribute("aria-current", "true"); placeMarker(pair[1]); }
+              else pair[1].removeAttribute("aria-current");
+            });
+          });
+        }, { rootMargin: "-42% 0px -52% 0px", threshold: 0 });
+        map.forEach(function (pair) { spy.observe(pair[0]); });
+      } catch (e) { if (railList) railList.classList.remove("has-thread"); if (marker) marker.remove(); }
+      window.addEventListener("resize", function () {
+        var on = document.querySelector(".rail a.is-active");
+        if (on) placeMarker(on);
+      }, { passive: true });
+    })();
+
+    /* 滚动进度发丝线 + hero 双层视差（单 rAF 节流；reduce/窄屏=静止） */
+    (function () {
+      var bar = document.querySelector(".progress i");
+      var heroPlate = document.querySelector(".plate-1");
+      var heroNote = document.querySelector(".note-1");
+      if (!bar && !heroPlate) return;
+      var ticking = false;
+      function frame() {
+        ticking = false;
+        var max = docEl.scrollHeight - window.innerHeight;
+        if (bar) bar.style.transform = "scaleX(" + (max > 0 ? Math.min(1, window.scrollY / max).toFixed(4) : 0) + ")";
+        if (heroPlate && motionOK() && window.innerWidth > 900) {
+          var p = Math.max(0, Math.min(1, window.scrollY / (heroPlate.offsetHeight + window.innerHeight * 0.4)));
+          heroPlate.style.transform = "translate3d(0," + (p * 36).toFixed(1) + "px,0)";
+          if (heroNote) heroNote.style.transform = "translate3d(0," + (p * 60).toFixed(1) + "px,0) rotate(3.5deg)";
+        } else if (heroPlate && (heroPlate.style.transform || (heroNote && heroNote.style.transform))) {
+          heroPlate.style.transform = "";
+          if (heroNote) heroNote.style.transform = "";
+        }
+      }
+      function onScroll() { if (!ticking) { ticking = true; window.requestAnimationFrame(frame); } }
+      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", onScroll, { passive: true });
+      if (reduceMQ.addEventListener) reduceMQ.addEventListener("change", onScroll);
+      frame();
+    })();
+
+    /* 数字滚动：仅真实数字（安装包 24 MB / 外联主机 10 个），IO 一次触发；reduce=静态终值 */
+    (function () {
+      var nums = document.querySelectorAll("[data-countup]");
+      if (!nums.length || !("IntersectionObserver" in window)) return;
+      function run(el) {
+        var target = parseInt(el.getAttribute("data-countup"), 10);
+        if (!motionOK() || isNaN(target)) return;
+        var t0 = null;
+        function step(ts) {
+          if (t0 === null) t0 = ts;
+          var k = Math.min(1, (ts - t0) / 900);
+          el.textContent = String(Math.round(target * (1 - Math.pow(1 - k, 3))));
+          if (k < 1) window.requestAnimationFrame(step);
+        }
+        window.requestAnimationFrame(step);
+      }
+      try {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            io.unobserve(entry.target);
+            run(entry.target);
+          });
+        }, { threshold: 0.6 });
+        each(nums, function (el) { io.observe(el); });
+      } catch (e) {}
+    })();
+
+    /* 截图灯箱：Esc/←→/Tab 圈焦/Enter 缩放/拖拽平移，焦点归还触发图 */
+    (function () {
+      var lb = document.getElementById("lightbox");
+      if (!lb) return;
+      var imgEl = lb.querySelector(".lightbox-img");
+      var capTitle = lb.querySelector(".lightbox-title");
+      var capCount = lb.querySelector(".lightbox-count");
+      var frame = lb.querySelector(".lightbox-frame");
+      var closeBtn = lb.querySelector(".lightbox-close");
+      var prevBtn = lb.querySelector(".lightbox-prev");
+      var nextBtn = lb.querySelector(".lightbox-next");
+      if (!imgEl || !frame || !closeBtn) return;
+      var seen = {}, items = [], wired = [];
+      /* 同 src 去重只影响画廊项列表，click/键盘接线绑到全部图版图，
+         按 src 映射到同一画廊项（去重保留为不变式；v7 减法后四图 src 唯一） */
+      each(document.querySelectorAll(".plate-frame img"), function (im) {
+        var src = im.getAttribute("src");
+        if (!src) return;
+        if (seen[src] === undefined) {
+          seen[src] = items.length;
+          items.push({ src: src, alt: im.alt || "", title: im.getAttribute("data-lb-title") || "", el: im });
+        }
+        wired.push({ im: im, idx: seen[src] });
+      });
+      if (!items.length) return;
+      docEl.classList.add("lb-ready");
+      var current = 0, lastFocus = null, hideT = 0;
+      function focusables() {
+        /* DOM 顺序＝自然 Tab 序：图（缩放钮）→ 关闭 → 上一张 → 下一张 */
+        return [imgEl, closeBtn, prevBtn, nextBtn].filter(function (el) { return el && el.getClientRects().length > 0; });
+      }
+      function render(i, fade) {
+        current = ((i % items.length) + items.length) % items.length;
+        var it = items[current];
+        lb.classList.remove("zoomed");
+        frame.scrollTop = 0; frame.scrollLeft = 0;
+        imgEl.src = it.src;
+        imgEl.alt = it.alt;
+        if (capTitle) capTitle.textContent = it.title;
+        if (capCount) capCount.textContent = (current + 1) + " / " + items.length;
+        if (fade && imgEl.animate && motionOK()) imgEl.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 180, easing: "ease-out" });
+      }
+      function open(i, opener, region) {
+        lastFocus = opener || document.activeElement;
+        render(i);
+        if (capTitle && region) capTitle.textContent = region; /* v8 引线进入：题注换区域名 */
+        lb.hidden = false;
+        docEl.classList.add("lb-open");
+        window.requestAnimationFrame(function () {
+          window.requestAnimationFrame(function () { lb.classList.add("open"); });
+        });
+        closeBtn.focus();
+      }
+      function close() {
+        lb.classList.remove("open", "zoomed");
+        docEl.classList.remove("lb-open");
+        window.clearTimeout(hideT);
+        hideT = window.setTimeout(function () { lb.hidden = true; }, 280);
+        if (lastFocus && lastFocus.focus) lastFocus.focus();
+      }
+      function zoomToggle() {
+        var on = lb.classList.toggle("zoomed");
+        if (on) window.requestAnimationFrame(function () { frame.scrollLeft = (frame.scrollWidth - frame.clientWidth) / 2; });
+        else { frame.scrollTop = 0; frame.scrollLeft = 0; }
+      }
+      each(wired, function (w) {
+        var im = w.im, it = items[w.idx];
+        im.setAttribute("tabindex", "0");
+        im.setAttribute("role", "button"); im.setAttribute("aria-haspopup", "dialog");
+        im.setAttribute("aria-label", "放大查看：" + (it.title || it.alt || "截图"));
+        function activate() { open(w.idx, im); }
+        im.addEventListener("click", activate);
+        im.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); activate(); }
+        });
+      });
+      /* v8 读图引线：点击=开灯箱定位该区域（题注换区域名）；找不到宿主图=自拆（防死区）。
+         焦点归还由 close() 落回引线点本身。 */
+      each(document.querySelectorAll(".figmark"), function (m) {
+        var holder = m.closest ? m.closest(".plate-frame") : null;
+        var im = holder ? holder.querySelector("img") : null;
+        var idx = im ? seen[im.getAttribute("src")] : undefined;
+        if (idx === undefined) { m.parentNode.removeChild(m); return; }
+        m.addEventListener("click", function () {
+          open(idx, m, m.getAttribute("data-lb-region") || "");
+        });
+      });
+      closeBtn.addEventListener("click", close);
+      prevBtn.addEventListener("click", function () { render(current - 1, true); });
+      nextBtn.addEventListener("click", function () { render(current + 1, true); });
+      imgEl.addEventListener("click", zoomToggle);
+      imgEl.addEventListener("keydown", function (e) { /* role=button 键盘激活：Enter/Space 切换缩放 */
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); zoomToggle(); }
+      });
+      lb.addEventListener("click", function (e) {
+        if (e.target === lb || e.target.classList.contains("lightbox-backdrop")) close();
+      });
+      (function () { /* 放大态拖拽平移 */
+        var down = null;
+        frame.addEventListener("pointerdown", function (e) {
+          if (!lb.classList.contains("zoomed")) return;
+          down = { x: e.clientX, y: e.clientY, sl: frame.scrollLeft, st: frame.scrollTop };
+          try { frame.setPointerCapture(e.pointerId); } catch (err) {}
+        });
+        frame.addEventListener("pointermove", function (e) {
+          if (!down) return;
+          frame.scrollLeft = down.sl - (e.clientX - down.x); frame.scrollTop = down.st - (e.clientY - down.y);
+        });
+        ["pointerup", "pointercancel"].forEach(function (t) {
+          frame.addEventListener(t, function () { down = null; });
+        });
+      })();
+      document.addEventListener("keydown", function (e) {
+        if (lb.hidden) return;
+        if (e.key === "Escape") { e.preventDefault(); close(); return; }
+        if (e.key === "ArrowLeft") { render(current - 1, true); return; }
+        if (e.key === "ArrowRight") { render(current + 1, true); return; }
+        if (e.key === "Tab") {
+          var f = focusables(), i = f.indexOf(document.activeElement);
+          if (!f.length) return;
+          if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
+          else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+        }
+      });
+    })();
+
+    /* v8.1 引线标签边缘翻面：hover/focus 时量测——顶越视口上缘翻点下方，
+       左越图框翻右侧，双侧皆紧居中收限；悬停中滚动随滚重测（rAF 节流）。
+       纯呈现层修正，不动点击/键盘/灯箱路径。 */
+    (function () {
+      var hot = null, ticking = false;
+      function clear(m) {
+        m.classList.remove("flip-below", "flip-right", "flip-center");
+        var label = m.querySelector(".figmark-label");
+        if (label) label.style.removeProperty("--lb-shift");
+      }
+      function place(m) {
+        var label = m.querySelector(".figmark-label");
+        var holder = m.closest(".plate-frame");
+        if (!label || !holder) return;
+        clear(m);
+        if (label.getBoundingClientRect().top < 4) m.classList.add("flip-below"); /* 上缘：翻到点下方 */
+        var lr = label.getBoundingClientRect();
+        var hr = holder.getBoundingClientRect();
+        if (lr.left < hr.left + 2) { /* 左缘越框：右侧放得下就翻右，放不下就居中并回钳进框 */
+          if (lr.right + 16 + lr.width <= hr.right - 2) m.classList.add("flip-right");
+          else {
+            m.classList.add("flip-center");
+            var lc = label.getBoundingClientRect();
+            var shift = 0;
+            if (lc.right > hr.right - 2) shift = Math.round((hr.right - 2) - lc.right);
+            else if (lc.left < hr.left + 2) shift = Math.round((hr.left + 2) - lc.left);
+            if (shift) label.style.setProperty("--lb-shift", shift + "px");
+          }
+        }
+      }
+      function queue() {
+        if (!ticking) {
+          ticking = true;
+          window.requestAnimationFrame(function () {
+            ticking = false;
+            if (hot && (hot.matches(":hover") || hot === document.activeElement)) place(hot);
+          });
+        }
+      }
+      each(document.querySelectorAll(".figmark"), function (m) {
+        m.addEventListener("mouseenter", function () { hot = m; place(m); });
+        m.addEventListener("focus", function () { hot = m; place(m); });
+        m.addEventListener("mouseleave", function () { if (hot === m) { hot = null; clear(m); } });
+        m.addEventListener("blur", function () { if (hot === m) { hot = null; clear(m); } });
+      });
+      window.addEventListener("scroll", queue, { passive: true });
+    })();
+
+    /* FAQ 平滑高度：WAAPI 缓出开合；reduce/无 JS=原生瞬时 */
+    (function () {
+      if (!("animate" in Element.prototype)) return;
+      var list = document.querySelector(".faq-list");
+      if (!list) return;
+      each(list.querySelectorAll("details"), function (d) {
+        var sum = d.querySelector("summary");
+        var body = d.querySelector(".faq-body");
+        if (!sum || !body) return;
+        sum.addEventListener("click", function (e) {
+          if (reduceMQ.matches) return; /* 原生瞬时开合 */
+          e.preventDefault();
+          body.style.overflow = "hidden";
+          var closing = d.open;
+          if (!closing) d.open = true; /* 先开，量得目标高度再播放生长动画 */
+          var h = body.offsetHeight;
+          var a = body.animate(
+            closing
+              ? [{ height: h + "px", opacity: 1 }, { height: "0px", opacity: 0 }]
+              : [{ height: "0px", opacity: 0 }, { height: h + "px", opacity: 1 }],
+            {
+              duration: closing ? 240 : 260, easing: closing ? "cubic-bezier(0.2,0,0,1)" : "cubic-bezier(0.22,1,0.36,1)"
+            }
+          );
+          a.onfinish = a.oncancel = function () { if (closing) d.open = false; body.style.overflow = ""; };
+        });
+      });
+    })();
+
+    /* 微交互：图版轻倾斜跟随 + 主钮磁性位移；移出即移除内联变量，回退=纯 CSS hover */
+    (function () {
+      if (!window.matchMedia("(pointer: fine)").matches) return;
+      each(document.querySelectorAll(".plate-frame"), function (el) {
+        el.addEventListener("pointermove", function (e) {
+          if (!fine(e)) return;
+          var r = el.getBoundingClientRect();
+          if (!r.width || !r.height) return;
+          el.style.setProperty("--ry", (((e.clientX - r.left) / r.width - 0.5) * 3.2).toFixed(2) + "deg");
+          el.style.setProperty("--rx", ((0.5 - (e.clientY - r.top) / r.height) * 2.6).toFixed(2) + "deg");
+          el.style.setProperty("--lift", "-6px");
+        });
+        el.addEventListener("pointerleave", function () { el.style.removeProperty("--ry"); el.style.removeProperty("--rx"); el.style.removeProperty("--lift"); });
+      });
+      each(document.querySelectorAll(".button-primary"), function (el) {
+        el.addEventListener("pointermove", function (e) {
+          if (!fine(e)) return;
+          var r = el.getBoundingClientRect();
+          el.style.setProperty("--mx", (Math.max(-5, Math.min(5, (e.clientX - (r.left + r.width / 2)) * 0.08))).toFixed(1) + "px");
+          el.style.setProperty("--my", (Math.max(-4, Math.min(4, (e.clientY - (r.top + r.height / 2)) * 0.14))).toFixed(1) + "px");
+        });
+        el.addEventListener("pointerleave", function () { el.style.removeProperty("--mx"); el.style.removeProperty("--my"); });
+      });
+    })();
+
+  })();
+  </script>
+</body>
+</html>
