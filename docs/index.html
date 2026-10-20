@@ -45,6 +45,13 @@
       几何重置（block 布局无 88px 词轨列）；引线标签边缘翻面（贴视口上缘翻点下方/
       越图框翻右侧/双侧紧居中收限）；.sec-lead 同位节奏补齐；主题钮/词轨/报头链
       命中区≥24px（负 margin 保布局零位移）；main tabindex=-1 承接 skip 焦点。
+    v8.2 打磨（2026-10-20，PAGES-2 全套走查=几何/间距审计+axe+双视口双主题+学生
+      视角内容审读）：axe serious「无障碍名须含可见文本」三节点修复（主题钮 aria
+      改以「主题·自动」起头；图二两引线补「标注 N」）；文案打磨=课表节「可以重试」
+      孤句并入前句（点「重试」就行）、下载区 mac 段与问答节去重（首开处理细节归
+      问答节，下载区留指路句）。几何审计 4 组合（420/1440×亮暗）零真缺陷：对比度
+      全过 WCAG，无横向溢出，既有越界均为设计故意形（便利贴偏移/引线钉点/负
+      margin 命中区）。
     红线：零外部依赖；REF-D 禁形（不弹跳/不粒子/不匀速大位移/不眨眼频闪）；
     prefers-reduced-motion 全量降级；双主题 AA 不回退；LCP 元素（hero 图）不被动效
     延迟；单文件+本地资产。发布前需回填两处（下载直链与版本行），均以「发布回填」注释标记。
@@ -671,7 +678,7 @@
       <a class="brand" href="#top">CourseLens</a>
       <div class="masthead-side">
         <button id="theme-toggle" class="masthead-link" type="button"
-                aria-label="主题偏好：自动（跟随系统），点击切换为浅色">主题·自动</button>
+                aria-label="主题·自动（跟随系统），点击切换为主题·浅色">主题·自动</button>
         <a class="masthead-link" href="https://github.com/gualtier-xu/Fudan-CourseLens">GitHub</a>
       </div>
     </div>
@@ -755,10 +762,10 @@
                        可见像素内，故不设点（诚实边界）。 -->
                   <button class="figmark" type="button" style="--fx:63.8%; --fy:27.8%"
                           data-lb-region="多视图复习包：时间轴、章节、关键问答、提纲、FAQ、考前简报"
-                          aria-label="放大查看：多视图复习包，含时间轴、章节、关键问答、提纲、FAQ、考前简报"><i>1</i><span class="figmark-label">多视图复习包：时间轴、章节、关键问答、提纲、FAQ、考前简报</span></button>
+                          aria-label="标注 1 · 放大查看：多视图复习包，含时间轴、章节、关键问答、提纲、FAQ、考前简报"><i>1</i><span class="figmark-label">多视图复习包：时间轴、章节、关键问答、提纲、FAQ、考前简报</span></button>
                   <button class="figmark" type="button" style="--fx:67.5%; --fy:43%"
                           data-lb-region="章节与时间戳：点时间戳，跳回原话"
-                          aria-label="放大查看：章节与时间戳，点时间戳跳回原话"><i>2</i><span class="figmark-label">点时间戳，跳回原话</span></button>
+                          aria-label="标注 2 · 放大查看：章节与时间戳，点时间戳跳回原话"><i>2</i><span class="figmark-label">点时间戳，跳回原话</span></button>
                 </div>
               </div>
             </figure>
@@ -776,7 +783,7 @@
         <div class="shell">
           <div class="f-row" data-reveal>
             <h2 class="f-term">课表与任务</h2>
-            <p>周一早上打开，本周的课就在眼前，按学期、周次排好，可导出 ICS 日历；任务失败时，原因用中文写在任务中心。可以重试。</p>
+            <p>周一早上打开，本周的课就在眼前，按学期、周次排好，可导出 ICS 日历；任务失败时，原因用中文写在任务中心，点「重试」就行。</p>
           </div>
           <div class="duo-float">
             <figure class="plate plate-3" data-reveal style="--reveal-delay: 90ms">
@@ -873,7 +880,7 @@
             <!-- V010-BETA-1：测试版定位声明·下载区（0.x=测试版；与 README/客户端/首屏小字同文案，诚实不吓人） -->
             <p class="dl-fineprint">当前为测试版：功能仍在完善中；处理速度依赖免费云端算力与网络状况，偶尔需要几分钟，请耐心等待。遇到问题欢迎到 Issues 反馈。</p>
             <!-- mac 测试版注记（MAC-2 B2 成稿微调：arm64 单架构/macOS 12+/独立 prerelease 通道指向 /releases；与 README《macOS 测试版（体验版）》节同源维护，避免整节重复） -->
-            <p class="dl-fineprint">也有 macOS 测试版（体验版）：Apple Silicon 版，需 macOS 12 或更新版本，到<a href="https://github.com/gualtier-xu/Fudan-CourseLens/releases">发布页</a>下载带「Pre-release」标记的安装包。它由 CI 自动构建，还没在真机上深度实测，遇到问题欢迎到 Issues 说一声。首次打开若被 macOS 拦一下，右键点 CourseLens 选「打开」，或到 系统设置 → 隐私与安全性 点「仍要打开」；数据规矩与 Windows 版一致，都留在你自己的电脑上。</p>
+            <p class="dl-fineprint">也有 macOS 测试版（体验版）：Apple Silicon 版，需 macOS 12 或更新版本，到<a href="https://github.com/gualtier-xu/Fudan-CourseLens/releases">发布页</a>下载带「Pre-release」标记的安装包。它由 CI 自动构建，还没在真机上深度实测，遇到问题欢迎到 Issues 说一声；首次打开被 macOS 拦住怎么处理，看下面的问答。数据规矩与 Windows 版一致，都留在你自己的电脑上。</p>
             <!-- 缺省稿·用户可改（施工图 S5.3-⑨，活件行） -->
             <!-- 发布回填 2：版本行（发版时更新） -->
             <p class="build-line">CourseLens 0.1.0 · Windows</p>
@@ -955,7 +962,9 @@
     var btn = document.getElementById("theme-toggle");
     var KEY = "courselens.pages-theme.v1";
     var LABEL = { auto: "主题·自动", light: "主题·浅色", dark: "主题·深色" };
-    var NAME = { auto: "自动（跟随系统）", light: "浅色", dark: "深色" };
+    /* PAGES-2 axe 修复：aria-label 须含可见文本（label-content-name-mismatch）——
+       无障碍名以「主题·自动」等可见字样开头，附注与下一步跟在其后 */
+    var SUFFIX = { auto: "（跟随系统）", light: "", dark: "" };
     var NEXT = { auto: "light", light: "dark", dark: "auto" };
     var fadeT = 0;
     function pref() {
@@ -977,7 +986,7 @@
     }
     function paint() {
       btn.textContent = LABEL[pref()];
-      btn.setAttribute("aria-label", "主题偏好：" + NAME[pref()] + "，点击切换为" + NAME[NEXT[pref()]]);
+      btn.setAttribute("aria-label", LABEL[pref()] + SUFFIX[pref()] + "，点击切换为" + LABEL[NEXT[pref()]]);
     }
     btn.addEventListener("click", function () {
       var next = NEXT[pref()];
