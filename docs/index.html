@@ -45,13 +45,6 @@
       几何重置（block 布局无 88px 词轨列）；引线标签边缘翻面（贴视口上缘翻点下方/
       越图框翻右侧/双侧紧居中收限）；.sec-lead 同位节奏补齐；主题钮/词轨/报头链
       命中区≥24px（负 margin 保布局零位移）；main tabindex=-1 承接 skip 焦点。
-    v8.2 打磨（2026-10-20，PAGES-2 全套走查=几何/间距审计+axe+双视口双主题+学生
-      视角内容审读）：axe serious「无障碍名须含可见文本」三节点修复（主题钮 aria
-      改以「主题·自动」起头；图二两引线补「标注 N」）；文案打磨=课表节「可以重试」
-      孤句并入前句（点「重试」就行）、下载区 mac 段与问答节去重（首开处理细节归
-      问答节，下载区留指路句）。几何审计 4 组合（420/1440×亮暗）零真缺陷：对比度
-      全过 WCAG，无横向溢出，既有越界均为设计故意形（便利贴偏移/引线钉点/负
-      margin 命中区）。
     红线：零外部依赖；REF-D 禁形（不弹跳/不粒子/不匀速大位移/不眨眼频闪）；
     prefers-reduced-motion 全量降级；双主题 AA 不回退；LCP 元素（hero 图）不被动效
     延迟；单文件+本地资产。发布前需回填两处（下载直链与版本行），均以「发布回填」注释标记。
@@ -298,11 +291,6 @@
     .button-primary:hover, .button-primary:focus-visible { background: var(--btn-primary-bg-hover); }
     .button-ghost { border-color: var(--line-strong); color: var(--ink); }
     .button-ghost:hover, .button-ghost:focus-visible { background: var(--panel-strong); }
-    /* v6 缘起段升引文语言：金左缘细线（全页唯一的引文位＝作者自述，与便利贴手迹层呼应） */
-    .origin {
-      margin-top: var(--space-tight); max-width: 34em; color: rgb(var(--ink-rgb) / 80%);
-      border-left: 2px solid var(--gold); padding-left: 18px;
-    }
 
     /* LIVE-DISCLOSURE-1：直播早期功能小字（与客户端/README 同源一句，test_documentation
        钉）——v7 删打字演示卡后披露小字保留，muted 弱化+12.5px 细字档，双主题 AA
@@ -485,6 +473,13 @@
       font-family: var(--font-ui); font-size: 14.5px; line-height: 1.7; color: rgb(var(--ink-rgb) / 88%);
     }
     .dl-fineprint { margin-top: 14px; font-family: var(--font-ui); font-size: 13.5px; color: var(--muted); }
+    /* POLISH-1 F1：词轨「更新」激活时 release 行的金色左发丝线锚（与词轨读位标同语言）。
+       静态=透明边零位移（-12 边距+2 边+10 内距=0），pinned 仅边线显色渐入 */
+    .dl-release {
+      border-left: 2px solid transparent; padding-left: 10px; margin-left: -12px;
+      transition: border-color var(--motion-fast) var(--ease-standard);
+    }
+    .dl-release.is-pinned { border-left-color: var(--gold); }
     .build-line { margin-top: 18px; font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em; color: var(--muted); }
 
     /* S6 问答：原生折叠（v5+平滑高度动画），条目间发丝线（编辑部条目带），
@@ -510,6 +505,13 @@
       transition: color var(--motion-fast) var(--ease-standard);
     }
     details[open] summary::after { content: "\2212"; }
+    /* POLISH-1 F2：+/− 为装饰符（开合状态由 details 原生披露语义播报），经伪元素
+       备选文本语法移出可访问名，否则「+」混进折叠条 AX 名称（「问题 +」）。
+       不支持该语法的浏览器整条声明无效回落上行原值，视觉与名称均不变 */
+    @supports (content: "x" / "") {
+      summary::after { content: "+" / ""; }
+      details[open] summary::after { content: "\2212" / ""; }
+    }
     /* 折叠符 hover/focus 提亮＝折叠行的可点反馈（反馈级动效，文字本体不动） */
     summary:hover::after, summary:focus-visible::after { color: var(--gold-strong); }
     details p { margin-top: 10px; color: rgb(var(--ink-rgb) / 80%); max-width: 38em; }
@@ -678,7 +680,7 @@
       <a class="brand" href="#top">CourseLens</a>
       <div class="masthead-side">
         <button id="theme-toggle" class="masthead-link" type="button"
-                aria-label="主题·自动（跟随系统），点击切换为主题·浅色">主题·自动</button>
+                aria-label="主题偏好：自动（跟随系统），点击切换为浅色">主题·自动</button>
         <a class="masthead-link" href="https://github.com/gualtier-xu/Fudan-CourseLens">GitHub</a>
       </div>
     </div>
@@ -690,10 +692,13 @@
         <li><a href="#top">开场</a></li>
         <li><a href="#review">复习</a></li>
         <li><a href="#timetable">课表</a></li>
-        <li><a href="#extras">提问</a></li>
+        <li><a href="#extras">还能</a></li>
         <li><a href="#privacy">数据</a></li>
-        <li><a href="#download">收工</a></li>
-        <li><a href="#faq">问答</a></li>
+        <li><a href="#download">收工与下载</a></li>
+        <!-- IA-5（S 冻结规格 03 §一）：第 8 项「更新」承接下载区 release notes 链接行（IA-4/UI-3），与「收工」同锚；
+             POLISH-1 F1：同锚保持，scroll-spy 改单亮；「更新」激活时经 data-pin 给 release 行视觉锚定，双亮=wayfinding 失准 -->
+        <li><a href="#download" data-pin="release-line">更新</a></li>
+        <li><a href="#faq">常见问题</a></li>
       </ul>
     </nav>
 
@@ -710,11 +715,11 @@
               <a class="button button-primary" href="#download">下载安装包</a>
               <a class="button button-ghost" href="#privacy">先看数据与隐私</a>
             </div>
-            <!-- LIVE-DISCLOSURE-1：直播早期功能小字（与客户端/README 同源一句，钉在
-                 test_documentation）——v7 删打字演示卡后披露小字保留，读屏可达 -->
-            <p class="live-fine" data-reveal style="--reveal-delay: 260ms">直播转写为早期功能，可用性视网络与课程环境而定。</p>
-            <!-- V010-BETA-1：测试版定位声明·首屏小字（0.x=测试版；与 README/客户端/Pages 下载区同文案） -->
-            <p class="live-fine" data-reveal style="--reveal-delay: 300ms">当前为测试版：功能仍在完善中；处理速度依赖免费云端算力与网络状况，偶尔需要几分钟，请耐心等待。</p>
+            <!-- V010-PUBFACE-B2（盲评胜者 C2 上稿，2026-10-23 用户单胜制裁决；S 冻结规格 03 §二样张 c）：
+                 首屏两条 live-fine 合并一行——测试版声明（V010-BETA-1，与 README/客户端/Pages 下载区同文案）
+                 ＋直播披露（LIVE-DISCLOSURE-1，与客户端/README 同源一句、钉在 test_documentation，读屏可达）；
+                 直播披露句钉句清单按面记形态（IA-7） -->
+            <p class="live-fine" data-reveal style="--reveal-delay: 260ms">当前为测试版：功能仍在完善中；处理速度依赖免费云端算力与网络状况，偶尔需要几分钟。直播转写为早期功能，可用性视网络与课程环境而定。</p>
           </div>
           <!-- LCP 元素（hero 图）不进 reveal：首屏即完整绘制（AUDIT3 修复；
                便利贴旁注单独 reveal，节奏不受影响） -->
@@ -728,12 +733,8 @@
               <!-- 缺省稿·用户可改（施工图 S5.3-②，README《录播与字幕》背书） -->
               <aside class="note note-1" data-reveal style="--reveal-delay: 420ms">直播进来也有实时字幕</aside>
             </div>
-            <figcaption class="plate-caption"><span class="fig-no">图 一</span>录播播放器：句级字幕自动生成，经多道校对（可选 AI 校对＋自动抽检），质量优于平台自带字幕；字号、背景、贴底位置随手调，改动只存在这台电脑上。</figcaption>
+            <figcaption class="plate-caption"><span class="fig-no">图 一</span>录播播放器：句级字幕自动生成，经多道校对（可选 AI 校对＋自动抽检），不直接采用平台文稿。</figcaption>
           </figure>
-        </div>
-        <div class="shell">
-          <!-- 缺省稿·用户可改：缘起段系作者第一人称自述，终稿须作者本人定稿（施工图 S5.3-①） -->
-          <p class="origin" data-reveal style="--reveal-delay: 320ms">CourseLens 起初是我期末周自用的小工具，后来发现赶 due 的晚上同样好用，就整理成了现在这个客户端。数据留在你自己的电脑上，这条从第一行代码起没变过。</p>
         </div>
       </section>
 
@@ -744,7 +745,7 @@
             <!-- 缺省稿·用户可改（COPY2 功能条 1；v6 场景化开头） -->
             <div class="f-row">
               <h2 class="f-term">复习材料</h2>
-              <p>备考夜把一讲从头捋：总结、章节、关键问答自动归到同一讲，课件 PDF 也能合成进来；生成后讲次卡上写<em class="key">「通过」或「N 处存疑」</em>。点时间戳跳回原话。</p>
+              <p>总结、章节、关键问答，归在一讲里。备考 PDF 从课件直接合成，公式原样，没有封面目录这类废页，试点讲次先行。老师更新了课件，材料自动出新版。生成后讲次卡上写<em class="key">「通过」或「N 处存疑」</em>。点时间戳跳回原话；该复习哪一讲，按 FSRS-5 记忆规律排好。</p>
             </div>
           </div>
         </div>
@@ -762,10 +763,10 @@
                        可见像素内，故不设点（诚实边界）。 -->
                   <button class="figmark" type="button" style="--fx:63.8%; --fy:27.8%"
                           data-lb-region="多视图复习包：时间轴、章节、关键问答、提纲、FAQ、考前简报"
-                          aria-label="标注 1 · 放大查看：多视图复习包，含时间轴、章节、关键问答、提纲、FAQ、考前简报"><i>1</i><span class="figmark-label">多视图复习包：时间轴、章节、关键问答、提纲、FAQ、考前简报</span></button>
+                          aria-label="放大查看：多视图复习包，含时间轴、章节、关键问答、提纲、FAQ、考前简报"><i>1</i><span class="figmark-label">多视图复习包：时间轴、章节、关键问答、提纲、FAQ、考前简报</span></button>
                   <button class="figmark" type="button" style="--fx:67.5%; --fy:43%"
                           data-lb-region="章节与时间戳：点时间戳，跳回原话"
-                          aria-label="标注 2 · 放大查看：章节与时间戳，点时间戳跳回原话"><i>2</i><span class="figmark-label">点时间戳，跳回原话</span></button>
+                          aria-label="放大查看：章节与时间戳，点时间戳跳回原话"><i>2</i><span class="figmark-label">点时间戳，跳回原话</span></button>
                 </div>
               </div>
             </figure>
@@ -783,7 +784,7 @@
         <div class="shell">
           <div class="f-row" data-reveal>
             <h2 class="f-term">课表与任务</h2>
-            <p>周一早上打开，本周的课就在眼前，按学期、周次排好，可导出 ICS 日历；任务失败时，原因用中文写在任务中心，点「重试」就行。</p>
+            <p>周一早上打开，本周的课就在眼前，按学期、周次排好。任务失败了，原因用中文写在任务中心，重试从断点接着跑，不整讲重来。批量任务自动挑半价时段，省约一半。</p>
           </div>
           <div class="duo-float">
             <figure class="plate plate-3" data-reveal style="--reveal-delay: 90ms">
@@ -815,13 +816,13 @@
         <div class="shell">
           <div class="f-row" data-reveal>
             <h2 class="f-term">提问</h2>
-            <p>备考到深夜卡在一个概念，直接问：回答只基于这门课的字幕和课件，每条带时间戳。点引用看原始片段。</p>
+            <p>备考到深夜卡在一个概念，直接问：回答只基于这门课的字幕和课件，每条带时间戳。点引用看原始片段。配上你自己的 DeepSeek Key，还能让模型作答，按次调用，走你自己的额度。</p>
           </div>
           <div class="f-row" data-reveal style="--reveal-delay: 90ms">
             <h2 class="f-term">解释</h2>
             <p>看不懂的地方按 <kbd>X</kbd> 插一面「没听懂」小旗，AI 把那段讲清楚。懂了删旗。</p>
           </div>
-          <p class="f-tail" data-reveal style="--reveal-delay: 180ms">还有直播字幕、校外看回放（多数情况不用设置）、<kbd>Ctrl K</kbd> 全文检索和课程记忆。</p>
+          <p class="f-tail" data-reveal style="--reveal-delay: 180ms">还有直播字幕、校外看回放，多数情况不用设置。<kbd>Ctrl K</kbd> 全文检索，点开就到课件那一页、视频那一秒。课程记忆和学习统计标出你的弱项。资料预览里公式正常显示，Word 文档也读得出文字。</p>
         </div>
       </section>
 
@@ -831,6 +832,7 @@
           <h2 class="manifesto" data-reveal>你的数据在哪里，谁能看到什么</h2>
           <!-- 「10」为真实外联主机闭集数（下表），IO 触发数字滚动 -->
           <p class="privacy-body" data-reveal style="--reveal-delay: 90ms">课程、字幕、总结都存在你自己的电脑上；学号、密码和 API Key 加密存盘，文件里只有密文。AI 任务经端到端加密交给你自己的云端 Worker，链路上只有密文。没有遥测；客户端只连下面这 <span data-countup="10">10</span> 个主机。</p>
+          <p class="dl-fineprint">费用怎么算、这个月用了多少？见下文「下载安装」的成本说明与「常见问题」的用量问答。</p>
           <div class="table-scroll" data-reveal style="--reveal-delay: 180ms">
             <table>
               <caption class="visually-hidden">客户端固定外联主机清单</caption>
@@ -859,7 +861,7 @@
           </div>
           <!-- v7 卖点升格：代理共存从 FAQ 上浮为数据节可见正文（网络段：互不干扰承诺
                +GitHub 直连提示，FAQ 原条全部事实零丢失并入本段） -->
-          <p class="privacy-body" data-reveal style="--reveal-delay: 230ms">开着代理（VPN）也能正常用，互不干扰，网络设置一个都不用改；只是下载安装包、应用更新和云端学习任务需要够得着 GitHub，直连不稳时开着代理再试就行。</p>
+          <p class="privacy-body" data-reveal style="--reveal-delay: 230ms">开着代理（VPN）也能正常用，互不干扰，网络设置一个都不用改。只有下载安装包、应用更新和云端学习任务需要够得着 GitHub，直连不稳时开着代理再试就行。</p>
           <p class="readmore" data-reveal style="--reveal-delay: 300ms">完整的数据边界与核对方法，见 <a href="https://github.com/gualtier-xu/Fudan-CourseLens#安全与隐私架构">README 的「安全与隐私架构」</a>。</p>
         </div>
       </section>
@@ -868,19 +870,25 @@
       <section class="sec-download" id="download">
         <div class="shell">
           <div class="narrow" data-reveal>
-            <h2>下载安装，一两分钟的事</h2>
-            <p class="sec-lead">Windows 10/11，安装包约 24 MB。顺利的话，一两分钟就能装完进入学习台。</p>
-            <p class="dl-step">点下面的按钮下载，双击安装；首次运行按引导用复旦统一身份认证登录，选你有权访问的课程就能开始。</p>
+            <h2>下载安装</h2>
+            <p class="sec-lead">Windows 10 / 11，安装包约 24 MB。</p>
+            <p class="dl-step">双击安装；首次运行按引导用复旦统一身份认证登录，选你有权访问的课程就能开始。</p>
             <p class="smartnote">首次安装若 Windows 弹出「已保护你的电脑」：点「更多信息」，再点「仍要运行」。</p>
           </div>
           <div class="dl-panel" data-reveal style="--reveal-delay: 140ms">
             <!-- 发布回填 1：下载直链（发版时更新 href 现值） -->
             <a class="button button-primary" href="https://github.com/gualtier-xu/Fudan-CourseLens/releases/download/client-v0.1.0/CourseLens-0.1.0-setup.exe">下载 CourseLens-0.1.0-setup.exe</a>
             <p class="dl-fineprint">当前版本 0.1.0（Windows）。之后的更新在应用内完成，不用重跑安装包。</p>
+            <!-- IA-4/UI-3（S 冻结规格 03 §一/§三）：release notes 出口·双面链接行（README「测试版说明」节尾同款；发版时随 href 更新）；
+                 POLISH-1 F1：词轨「更新」（data-pin=本行）激活时本行加金色左发丝线视觉锚，静态零位移 -->
+            <p class="dl-fineprint dl-release" id="release-line">这次版本改了什么：<a href="https://github.com/gualtier-xu/Fudan-CourseLens/releases/tag/client-v0.1.0">发布页 Release Notes</a></p>
+            <!-- 成本三句话（IA-7 同句钉新成员·Pages 面；与 README「它给谁用」段逐字同句） -->
+            <p class="dl-fineprint">客户端不收钱；字幕和总结跑在免费的云端算力上；想开 AI 校对与问答，在设置里填你自己的 DeepSeek Key，费用走你自己的账号。</p>
+            <p class="dl-fineprint">数据存在哪里、连了哪些服务？见上文「数据与安全」；本月用了多少，见下文「常见问题」的用量问答。</p>
             <!-- V010-BETA-1：测试版定位声明·下载区（0.x=测试版；与 README/客户端/首屏小字同文案，诚实不吓人） -->
             <p class="dl-fineprint">当前为测试版：功能仍在完善中；处理速度依赖免费云端算力与网络状况，偶尔需要几分钟，请耐心等待。遇到问题欢迎到 Issues 反馈。</p>
             <!-- mac 测试版注记（MAC-2 B2 成稿微调：arm64 单架构/macOS 12+/独立 prerelease 通道指向 /releases；与 README《macOS 测试版（体验版）》节同源维护，避免整节重复） -->
-            <p class="dl-fineprint">也有 macOS 测试版（体验版）：Apple Silicon 版，需 macOS 12 或更新版本，到<a href="https://github.com/gualtier-xu/Fudan-CourseLens/releases">发布页</a>下载带「Pre-release」标记的安装包。它由 CI 自动构建，还没在真机上深度实测，遇到问题欢迎到 Issues 说一声；首次打开被 macOS 拦住怎么处理，看下面的问答。数据规矩与 Windows 版一致，都留在你自己的电脑上。</p>
+            <p class="dl-fineprint">也有 macOS 测试版（体验版）：Apple Silicon 版，需 macOS 12 或更新版本，到<a href="https://github.com/gualtier-xu/Fudan-CourseLens/releases">发布页</a>下载带「Pre-release」标记的安装包。它由 CI 自动构建，还没在真机上深度实测，遇到问题欢迎到 Issues 说一声。首次打开若被 macOS 拦一下，右键点 CourseLens 选「打开」，或到 系统设置 → 隐私与安全性 点「仍要打开」；数据规矩与 Windows 版一致，都留在你自己的电脑上。</p>
             <!-- 缺省稿·用户可改（施工图 S5.3-⑨，活件行） -->
             <!-- 发布回填 2：版本行（发版时更新） -->
             <p class="build-line">CourseLens 0.1.0 · Windows</p>
@@ -901,14 +909,19 @@
             </details>
             <details data-reveal style="--reveal-delay: 140ms">
               <summary>AI 功能必须要自己配 Key 吗？</summary>
-              <div class="faq-body"><p>不必须。不填 DeepSeek Key 也有高精度的非 AI 字幕回退；想用 AI 校对与问答，再在设置里填你自己的 Key。</p></div>
+              <div class="faq-body"><p>不必须。不填 DeepSeek Key 也有非 AI 字幕回退；想用 AI 校对与问答，再在设置里填你自己的 Key。</p></div>
             </details>
+            <!-- 样张 d（S 冻结规格 03 §二补四）：AI 要花多少钱 FAQ，两面同步（README 面由 PUBFACE-A 上稿）；紧随配 Key 问，答费用三问 -->
             <details data-reveal style="--reveal-delay: 210ms">
-              <summary>遇到报错怎么办？</summary>
-              <div class="faq-body"><p>多数问题按任务中心里的中文提示重试或按步骤修复就行。解决不了去 <a href="https://github.com/gualtier-xu/Fudan-CourseLens/issues">Issues</a> 反馈，每一条报障都有人回，说的是人话；贴截图前先脱敏，不要出现学号、密码和真实课程名。</p></div>
+              <summary>AI 功能要花多少钱？</summary>
+              <div class="faq-body"><p>字幕识别和总结跑在免费的云端算力上，这部分不花钱。开 AI 校对与问答要用你自己的 DeepSeek Key：费用由 DeepSeek 按用量向你收，计费方式以 DeepSeek 官方说明为准，客户端里没有付费环节。大批量处理会自动避开高峰（工作日 9-12、14-18 是双倍价时段，节假日除外），改约到半价时段再跑，省约一半；单讲任务不受影响，默认开启、设置里能关。设置里的用量视图能看到本月用了多少（解释几次、总结几讲）和 token 档位，统计都在本机。</p></div>
             </details>
-            <!-- mac 测试版折叠细节（MAC-2 B2 成稿微调；首开指引与 S5 小字段/README 节同源，reveal 错峰 +280ms） -->
             <details data-reveal style="--reveal-delay: 280ms">
+              <summary>遇到报错怎么办？</summary>
+              <div class="faq-body"><p>多数问题按任务中心里的中文提示重试或按步骤修复就行。下载或更新一直连不上的，多半和网络环境有关，先看上文「数据与安全」里的代理说明。解决不了去 <a href="https://github.com/gualtier-xu/Fudan-CourseLens/issues">Issues</a> 反馈，每一条报障都有人回，说的是人话；贴截图前先脱敏，不要出现学号、密码和真实课程名。</p></div>
+            </details>
+            <!-- mac 测试版折叠细节（MAC-2 B2 成稿微调；首开指引与 S5 小字段/README 节同源，reveal 错峰 +350ms，为样张 d FAQ 让出 +210ms 档位） -->
+            <details data-reveal style="--reveal-delay: 350ms">
               <summary>macOS 测试版：装之前想知道的</summary>
               <div class="faq-body">
                 <p>适用的电脑：Apple Silicon（M 系列）Mac，系统要求 macOS 12 或更新版本；安装包在发布页的 macOS 测试版通道（带「Pre-release」标记），认准标记再下载。</p>
@@ -962,9 +975,7 @@
     var btn = document.getElementById("theme-toggle");
     var KEY = "courselens.pages-theme.v1";
     var LABEL = { auto: "主题·自动", light: "主题·浅色", dark: "主题·深色" };
-    /* PAGES-2 axe 修复：aria-label 须含可见文本（label-content-name-mismatch）——
-       无障碍名以「主题·自动」等可见字样开头，附注与下一步跟在其后 */
-    var SUFFIX = { auto: "（跟随系统）", light: "", dark: "" };
+    var NAME = { auto: "自动（跟随系统）", light: "浅色", dark: "深色" };
     var NEXT = { auto: "light", light: "dark", dark: "auto" };
     var fadeT = 0;
     function pref() {
@@ -986,7 +997,7 @@
     }
     function paint() {
       btn.textContent = LABEL[pref()];
-      btn.setAttribute("aria-label", LABEL[pref()] + SUFFIX[pref()] + "，点击切换为" + LABEL[NEXT[pref()]]);
+      btn.setAttribute("aria-label", "主题偏好：" + NAME[pref()] + "，点击切换为" + NAME[NEXT[pref()]]);
     }
     btn.addEventListener("click", function () {
       var next = NEXT[pref()];
@@ -1057,16 +1068,68 @@
         var y = a.offsetTop + (a.offsetHeight - marker.offsetHeight) / 2;
         marker.style.transform = "translateY(" + Math.round(y) + "px)";
       }
+      /* POLISH-1 F1：同锚单亮：同节多词轨项（收工/更新同锚 #download，IA-5 规格）
+         只亮一个：点击意图项优先，否则同锚首项；「更新」亮时对 data-pin 指向的
+         release 行加视觉锚。双亮双 aria-current=wayfinding 失准，此处收敛为一 */
+      var intent = null;
+      function pickFor(target) {
+        var candidates = map.filter(function (pair) { return pair[0] === target; });
+        if (!candidates.length) return null;
+        for (var i = 0; i < candidates.length; i++) {
+          if (candidates[i][1] === intent) return intent;
+        }
+        return candidates[0][1];
+      }
+      function applyActive(pick) {
+        if (!pick) return;
+        map.forEach(function (pair) {
+          var on = pair[1] === pick;
+          pair[1].classList.toggle("is-active", on);
+          if (on) pair[1].setAttribute("aria-current", "true");
+          else pair[1].removeAttribute("aria-current");
+        });
+        var pinId = pick.getAttribute("data-pin");
+        var pin = pinId ? document.getElementById(pinId) : null;
+        each(document.querySelectorAll(".dl-release.is-pinned"), function (el) {
+          if (el !== pin) el.classList.remove("is-pinned");
+        });
+        if (pin) pin.classList.add("is-pinned");
+        placeMarker(pick);
+      }
+      var guard = false, guardTimer = null;
+      function endGuard() {
+        guard = false;
+        if (guardTimer) { clearTimeout(guardTimer); guardTimer = null; }
+      }
+      window.addEventListener("scrollend", endGuard);
+      links.forEach(function (a) {
+        a.addEventListener("click", function () {
+          intent = a;
+          /* POLISH-1 F1 守卫：点击已即时置态（零呆等）；平滑滚动期间到达的
+             迟到/中间 IO 条目不再覆盖点击态（scrollend 结守卫，无该事件浏览器
+             由 1.6s 兜底定时结守卫），守卫后恢复随读高亮 */
+          guard = true;
+          if (guardTimer) clearTimeout(guardTimer);
+          guardTimer = setTimeout(endGuard, 1600);
+          var hash = a.getAttribute("href") || "";
+          var target = hash === "#top" ? document.querySelector(".hero") : document.querySelector(hash);
+          if (!target) return;
+          if (location.hash === hash) {
+            /* 同 hash 再点（收工/更新同锚互点、回顶重读后再点）：浏览器对同
+               锚不滚动，补一次平滑滚动，否则点击无位移=死点。rAF 延后一帧，
+               避免与并发程序化滚动同 tick 相冲被取消 */
+            requestAnimationFrame(function () {
+              target.scrollIntoView({ behavior: "smooth", block: "start" });
+            });
+          }
+          applyActive(pickFor(target));
+        });
+      });
       try {
         var spy = new IntersectionObserver(function (entries) {
           entries.forEach(function (entry) {
-            if (!entry.isIntersecting) return;
-            map.forEach(function (pair) {
-              var on = pair[0] === entry.target;
-              pair[1].classList.toggle("is-active", on);
-              if (on) { pair[1].setAttribute("aria-current", "true"); placeMarker(pair[1]); }
-              else pair[1].removeAttribute("aria-current");
-            });
+            if (!entry.isIntersecting || guard) return;
+            applyActive(pickFor(entry.target));
           });
         }, { rootMargin: "-42% 0px -52% 0px", threshold: 0 });
         map.forEach(function (pair) { spy.observe(pair[0]); });
