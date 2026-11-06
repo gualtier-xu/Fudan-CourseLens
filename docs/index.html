@@ -22,50 +22,19 @@
     宽幅 / 数据节零装饰郑重页），楷体便利贴是全页仅有的手迹旁注。
     截图资产＝docs/assets/pages/ 2x 高分版（1440×900 逻辑尺寸，deviceScaleFactor 2），
     全部来自真实客户端渲染的合成演示数据（合成课程与内容，零真实姓名）。
-
-    v9 全量升级（2026-11-07 夜批，0.1.0 新代发布面；WEBFACE-RENEW-1 构建）：
-    ①截图全量焕新：真机实拍（真实客户端+合成演示数据），卷首图=讲次页公式渲染，
-      复习节=讲次总结（要点锚+概览），课表任务节=浅色主题首页+任务中心，新增
-      检索面板宽幅图版与首跑引导图版；
-    ②功能有感全覆盖：讲解/总结/资料/复习四页签、章卡、练习与闪卡、术语与符号表、
-      锚点跳转、检索直达、用量透明、搬家与备份（明处 3-15 字名词标签）；暗处细节
-      （本地优先/DPAPI/零遥测/上传仅密文/失败不覆盖原稿/更新链签名）归数据节；
-    ③新增互动演示带（零 JS）：章卡折叠（details）、术语与符号对照（hover 表）、
-      一题一解析（details 查看解析），全部用真实产品形态与设计 token；
-    ④动效放开（transform/opacity 优先）：图版 hover 内缩放、演示件 hover 泛金、
-      骨架动效（渐显/词轨线程/数字滚动/灯箱/倾斜）全数保留；
-    ⑤发布面零内部代号（版本宪章 §1）：全页 0.1.0 SemVer 叙事，旧编号全面退役。
-    红线不变：零外部依赖；REF-D 禁形；prefers-reduced-motion 全量降级；双主题 AA
-    不回退；LCP 元素不被动效延迟；单文件+本地资产。发布前需回填两处（下载直链与
-    版本行），均以「发布回填」注释标记。
-
-    v7 减法重构（2026-10-08，用户三输入：板块思路不清/演示组件杂/卖点不可见）：
-    ①删 v5/v6 累积演示组件：功能速览 tabs 整节（重复展示正文四图）、字幕样式实时
-      演示器（用户点名；样式信息已在图一截图与题注）、生成过程步进器（讲「我们怎么
-      工作」而非「你得到什么」）、放大镜细部（图二出血+灯箱已覆盖）、直播字幕打字
-      循环卡（纯装饰演示；早期功能披露小字保留，三面同句钉不变）；
-    ②卖点升格：下课即看从 hero-sub 从句升为主句首位+金线强调（.key）；代理共存从
-      FAQ 升入数据节正文（网络段可见表述：互不干扰+GitHub 直连提示），FAQ 原条移除；
-    ③节序=学生决策路径：能帮我什么（开场→复习→课表任务→小事）→ 凭什么信（数据）
-      →怎么开始（下载）→疑虑收口（问答）；
-    ④保留动效=辅助理解/引导视线：滚动渐显、词轨读位线程、进度发丝线、卷首视差、
-      真实数字滚动、截图灯箱、FAQ 平滑开合、图版轻倾斜与主钮磁性（全部 transform/
-      opacity 优先，:root --motion-*/--ease-* token，零弹跳）。
-    v8 读图引线（2026-10-09，用户令：README+Pages 深度调研升级，可增互动组件，
-      验收硬门=模拟真实使用）：唯一新增互动件=图二读图引线（2 个金点钉在截图真实
-      像素上，wayfinding 职能——灯箱管放大、题注管图名、引线管认路；hover/focus 出
-      常暗标签卡，点击开灯箱定位该区域；无 JS 不渲染与灯箱同命，命中区 28px≥24，
-      讲次卡「通过/N 处存疑」不在本截图可见像素内故不设点）；另打磨=图版键盘焦点
-      等效抬升（.plate-frame:focus-within，Vercel focus-within 准线）。调研后驳回：
-      钉住式 scrollytelling（与讲义隐喻冲突）、前后对比滑杆（无改造前真资产）、
-      tabs 复辟（v7 判决有效）、便利贴 hover 转正（不可点件不得伪装可点）。
-    v8.1 走查修道（2026-10-09，走查道 PAGES-V8-WALK 六件修复）：≤900px .bleed 出血
-      几何重置（block 布局无 88px 词轨列）；引线标签边缘翻面（贴视口上缘翻点下方/
-      越图框翻右侧/双侧紧居中收限）；.sec-lead 同位节奏补齐；主题钮/词轨/报头链
-      命中区≥24px（负 margin 保布局零位移）；main tabindex=-1 承接 skip 焦点。
-    红线：零外部依赖；REF-D 禁形（不弹跳/不粒子/不匀速大位移/不眨眼频闪）；
-    prefers-reduced-motion 全量降级；双主题 AA 不回退；LCP 元素（hero 图）不被动效
-    延迟；单文件+本地资产。发布前需回填两处（下载直链与版本行），均以「发布回填」注释标记。
+    功能覆盖：讲解/总结/资料/复习四页签、章卡、练习与闪卡、术语与符号表、锚点跳转、
+    检索直达、用量透明、搬家与备份；暗处细节（本地优先/DPAPI/零遥测/上传仅密文/
+    失败不覆盖原稿/更新链签名）归数据节。互动演示带（零 JS）：章卡折叠、术语与
+    符号对照、一题一解析，全部取真实产品形态与设计 token。
+    图二读图引线：2 个金点钉在截图真实像素上（wayfinding 职能：灯箱管放大、题注管
+    图名、引线管认路；hover/focus 出常暗标签卡，点击开灯箱定位该区域；无 JS 不渲染
+    与灯箱同命，命中区 28px≥24）。
+    动效纪律：滚动渐显、词轨读位线程、进度发丝线、卷首视差、真实数字滚动、截图
+    灯箱、FAQ 平滑开合、图版轻倾斜与 hover 内缩放，全部 transform/opacity 优先、
+    零弹跳；禁形=不弹跳/不粒子/不匀速大位移/不眨眼频闪。
+    红线：零外部依赖；prefers-reduced-motion 全量降级；双主题 AA 不回退；LCP 元素
+    （hero 图）不被动效延迟；单文件+本地资产；发布面零内部代号（全页 0.1.0 SemVer
+    叙事）。发布前需回填两处（下载直链与版本行），均以「发布回填」注释标记。
   -->
   <script>
   (function () {
@@ -124,9 +93,9 @@
       --panel-strong: rgb(var(--ink-rgb) / 8%);
       --line: rgb(var(--ink-rgb) / 14%);
       --line-strong: rgb(var(--ink-rgb) / 38%);
-      /* 便利贴实底（根修：4% alpha 洗色在亮面暖纸底上不可读）——
+      /* 便利贴实底（根修：4% alpha 洗色在亮面暖纸底上不可读）；
          暗=navy 抬升阶（stage-lift-2 同族），亮=暖纸上的明签纸；
-         v5：@property 注册，主题切换时随全 token 联动过渡 */
+         @property 注册，主题切换时随全 token 联动过渡 */
       --note-bg: #12293F;
       /* 动效 token：0.2-0.4s 只做反馈、缓出曲线、零弹跳 */
       --motion-fast: 160ms;
@@ -159,7 +128,7 @@
       --ink-rgb: 33 30 25;
       --muted: #6B6458;
       --gold: #B7791F;
-      --gold-text: #96610F;
+      --gold-text: #8A570D;
       --gold-strong: #B45309;
       --navy-link: #1E3A5F;
       --danger: #B4232D;
@@ -194,7 +163,7 @@
     p { margin: 0; }
     a { color: var(--navy-link); transition: color var(--motion-fast) var(--ease-standard), outline-color var(--motion-fast) var(--ease-standard), outline-offset var(--motion-fast) var(--ease-standard), text-underline-offset var(--motion-fast) var(--ease-standard); text-underline-offset: 3px; }
     /* 正文链接 hover/focus 泛金＝全页统一的「可点即泛金」语言（词轨/报头同款），激活既有过渡；
-       v6：下划线偏移 3→5px 随色渐变，hover 反馈更完整 */
+       下划线偏移 3→5px 随色渐变，hover 反馈更完整 */
     main p a:hover, main p a:focus-visible { color: var(--gold-text); text-underline-offset: 5px; }
     img { display: block; max-width: 100%; height: auto; }
     /* 焦点环动效化：交互件常态 outline 透明+外扩 5px，聚焦时落环（offset 5→2）
@@ -220,7 +189,7 @@
     #main:focus { outline: none; }
     section { scroll-margin-top: 32px; }
 
-    /* v5 滚动进度发丝线：顶部 2px 金线，scaleX 由 rAF 滚动驱动（transform 合成层）；
+    /* 滚动进度发丝线：顶部 2px 金线，scaleX 由 rAF 滚动驱动（transform 合成层）；
        reduce 下照常反映位置（位置反馈非装饰动画，静态回退=无过渡的直接跳变） */
     .progress {
       position: fixed; top: 0; left: 0; right: 0; height: 2px;
@@ -237,7 +206,7 @@
     .brand { font-weight: 500; font-size: 1.06rem; color: var(--ink); text-decoration: none; }
     .masthead-side { display: flex; align-items: center; gap: 22px; }
     .masthead-link {
-      display: inline-block; padding: 8px 6px; margin: -8px -6px; /* v8.1：命中区≥24px，负 margin 保布局零位移 */
+      display: inline-block; padding: 8px 6px; margin: -8px -6px; /* 命中区≥24px，负 margin 保布局零位移 */
       font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em;
       color: var(--muted); text-decoration: none;
       transition: color var(--motion-fast) var(--ease-standard), outline-color var(--motion-fast) var(--ease-standard), outline-offset var(--motion-fast) var(--ease-standard);
@@ -250,13 +219,13 @@
     .rail { grid-column: 1; grid-row: 2; }
     .rail ul { list-style: none; margin: 0; padding: 100px 0 0 18px; display: flex; flex-direction: column; gap: 18px; }
     .rail a {
-      display: inline-block; padding: 5px 6px; margin: -5px -6px; /* v8.1：命中区≥24px，负 margin 保布局零位移 */
+      display: inline-block; padding: 5px 6px; margin: -5px -6px; /* 命中区≥24px，负 margin 保布局零位移 */
       font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em;
       color: var(--muted); text-decoration: none;
       transition: color var(--motion-fast) var(--ease-standard), outline-color var(--motion-fast) var(--ease-standard), outline-offset var(--motion-fast) var(--ease-standard);
     }
     .rail a:hover, .rail a:focus-visible { color: var(--gold-text); }
-    /* v5 词轨随读高亮：金色+金发丝下划线（.key 同语言），由 IO 中带检测驱动 */
+    /* 词轨随读高亮：金色+金发丝下划线（.key 同语言），由 IO 中带检测驱动 */
     .rail a.is-active {
       color: var(--gold-text);
       text-decoration: underline;
@@ -264,7 +233,7 @@
       text-decoration-thickness: 2px;
       text-underline-offset: 6px;
     }
-    /* v6 词轨读位线程：左轨发丝线+金色读位标随当前节滑动（阅读进度与内容联动）。
+    /* 词轨读位线程：左轨发丝线+金色读位标随当前节滑动（阅读进度与内容联动）。
        线与标均由 JS 建（.has-thread），无 JS=纯词轨零装饰残留；≤900px 横轨隐藏 */
     .rail ul.has-thread { position: relative; }
     .rail ul.has-thread::before {
@@ -311,7 +280,7 @@
     .button-ghost:hover, .button-ghost:focus-visible { background: var(--panel-strong); }
 
     /* 直播早期功能小字（与客户端/README 同源一句，文档钉
-       钉）——v7 删打字演示卡后披露小字保留，muted 弱化+12.5px 细字档，双主题 AA
+       钉）；披露小字保留，muted 弱化+12.5px 细字档，双主题 AA
        实测达标；正常文档流，读屏可达。 */
     .live-fine {
       margin-top: 16px; max-width: 480px;
@@ -320,7 +289,7 @@
     }
 
     /* 图版窗（书桌照片）：1px 边 + 16px 圆角 + 深投影；倾斜只落在窗与道具上。
-       v5：hover 浮起+指针轻倾斜跟随（--rx/--ry 由 JS 指针驱动，精确指针+宽屏），
+       hover 浮起+指针轻倾斜跟随（--rx/--ry 由 JS 指针驱动，精确指针+宽屏），
        transform 全合成层；--lift 常态 0，hover/JS 倾斜时抬起 */
     .plate { margin: 0; perspective: 1100px; }
     .plate-1 { margin-bottom: -80px; }  /* 窗一下缘越出节底，S1 以 padding-top 补偿 */
@@ -340,7 +309,7 @@
     html.lb-ready .plate-frame > img { cursor: zoom-in; }
     .plate-caption { margin-top: 16px; font-family: var(--font-ui); font-size: 14px; line-height: 1.6; color: var(--muted); }
     .fig-no { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em; margin-right: 12px; transition: color var(--motion-fast) var(--ease-standard); }
-    /* v6：图版 hover 时题注图号随图泛金（「图与注是一体」的微反馈） */
+    /* 图版 hover 时题注图号随图泛金（「图与注是一体」的微反馈） */
     .plate:hover .fig-no { color: var(--gold-text); }
 
     /* v8 图二读图引线：金点编号钉在截图真实像素上（wayfinding 职能，全页唯一
@@ -379,7 +348,7 @@
       opacity: 1; visibility: visible; translate: 0 -50%;
       transition: opacity var(--motion-fast) var(--ease-standard), translate var(--motion-fast) var(--ease-out), visibility 0s linear var(--motion-fast);
     }
-    /* v8.1 标签边缘翻面（JS 于 hover/focus 时量测加类）：标签顶越视口上缘→翻到
+    /* 标签边缘翻面（JS 于 hover/focus 时量测加类）：标签顶越视口上缘→翻到
        点下方；左缘越图框→右侧有余量则翻右侧，双侧皆紧→居中并按量测平移回钳进框
        （--lb-shift 由 JS 内联）。只改呈现位，不动点击/灯箱路径。 */
     .figmark.flip-below .figmark-label { top: calc(100% + 10px); translate: -6px 0; }
@@ -393,7 +362,7 @@
     /* 便利贴（手迹旁注，全页仅有的手迹层）；
        实底 --note-bg + 发丝边：双主题下窗体轮廓与文字都可读（亮面根修：
        原 4% alpha 洗色叠暖纸底≈不可见），金图钉点与投影照旧。
-       v5：便利贴与 hero 图版为视差双层（JS transform，随滚动错位） */
+       便利贴与 hero 图版为视差双层（JS transform，随滚动错位） */
     .note {
       position: absolute; top: -16px; right: -14px; width: 220px;
       padding: 18px 18px 15px; border-radius: 4px;
@@ -410,7 +379,7 @@
     .plate-1, .note-1 { will-change: transform; }
 
     /* S1 主推节：窄栏功能条 + 全出血图版 + 放大镜细部。
-       v6 节奏：底部 96→56px，与 S2 课表节收成叙事耦合档（复习完看本周课表），
+       节奏：底部 96→56px，与 S2 课表节收成叙事耦合档（复习完看本周课表），
        与前后大留白拉开疏密差（版面节奏三档之外的第四档） */
     .sec-review { padding-top: 128px; padding-bottom: 56px; }
     .prose { max-width: 34em; }
@@ -419,7 +388,7 @@
       text-decoration-color: var(--gold); text-decoration-thickness: 2px; text-underline-offset: 7px;
     }
     .bleed { margin-top: 72px; width: calc(100% + 88px); margin-left: -88px; padding: 0 24px; }
-    /* v6 图文关系破均匀：全出血图版的题注右对齐（宽屏），与左置图注的主图版拉开编排差 */
+    /* 图文关系破均匀：全出血图版的题注右对齐（宽屏），与左置图注的主图版拉开编排差 */
     @media (min-width: 901px) {
       .bleed-caption { text-align: right; }
     }
@@ -435,8 +404,8 @@
     .plate-3 { width: 55%; }
     .plate-4 { width: 34%; margin-left: -12%; margin-top: 72px; position: relative; z-index: 2; }
 
-    /* S3 还有的小事：纯文窄栏带（功能条两段 + 收束行）；v7 密度档回 band 96px
-       （v6 的 72px「速览-小事收紧半档」随速览节删除而失去语境） */
+    /* S3 还有的小事：纯文窄栏带（功能条两段 + 收束行），节距与 band 档一致 */
+    .sec-timetable { padding-top: var(--space-band); }
     .sec-extras { padding-top: var(--space-band); }
     .f-tail { margin-top: 30px; max-width: 34em; font-size: 15.5px; line-height: 1.7; color: var(--muted); }
     kbd {
@@ -446,7 +415,7 @@
     }
 
     /* S4 数据留在桌上：全页密度重心，道具全退场的郑重页。
-       v6 节间转场：入口发丝线由 border 改 ::before，随滚动自左画入（scaleX 0→1，
+       节间转场：入口发丝线由 border 改 ::before，随滚动自左画入（scaleX 0→1，
        has-reveal 总闸内；无 JS/reduce=静止全线，print=全线） */
     .sec-privacy {
       padding-top: var(--space-peak); padding-bottom: var(--space-peak);
@@ -470,7 +439,7 @@
       border-top: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong);
     }
     th, td { padding: 13px 18px 13px 0; text-align: left; vertical-align: top; }
-    /* v6 微交互：表格行 hover 洗色（可读性参考的闭集表也值得一行安静的反馈） */
+    /* 微交互：表格行 hover 洗色（可读性参考的闭集表也值得一行安静的反馈） */
     tbody tr { transition: background-color var(--motion-fast) var(--ease-standard); }
     tbody tr:hover { background: rgb(var(--ink-rgb) / 3%); }
     thead th { font-family: var(--font-ui); font-weight: 500; font-size: 13.5px; color: var(--muted); }
@@ -480,7 +449,7 @@
 
     /* S5 收工：一步一句话 + 行式面板 */
     .sec-download { padding-bottom: var(--space-band); }
-    /* v8.1：h2→首段同位节奏对齐 .privacy-body（原 .sec-lead 类无定义，段距塌 0） */
+    /* h2→首段同位节奏对齐 .privacy-body（原 .sec-lead 类无定义，段距塌 0） */
     .sec-lead { margin-top: 20px; max-width: 34em; }
     .dl-step { margin-top: 22px; max-width: 34em; }
     .dl-panel { margin-top: 40px; max-width: 560px; padding: 28px; border-radius: var(--radius-panel); background: var(--panel); }
@@ -500,7 +469,7 @@
     .dl-release.is-pinned { border-left-color: var(--gold); }
     .build-line { margin-top: 18px; font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em; color: var(--muted); }
 
-    /* S6 问答：原生折叠（v5+平滑高度动画），条目间发丝线（编辑部条目带），
+    /* S6 问答：原生折叠（平滑高度动画），条目间发丝线（编辑部条目带），
        节尾补 band 呼吸承接页脚 */
     .sec-faq { padding-bottom: var(--space-band); }
     .faq-list { max-width: 46em; margin-top: 28px; }
@@ -513,7 +482,7 @@
       font-weight: 500; font-size: 1.05rem; list-style: none;
       transition: outline-color var(--motion-fast) var(--ease-standard), outline-offset var(--motion-fast) var(--ease-standard);
     }
-    /* v6：折叠行 hover 洗色（行级反馈，与表格行同语言） */
+    /* 折叠行 hover 洗色（行级反馈，与表格行同语言） */
     details { transition: background-color var(--motion-fast) var(--ease-standard); }
     details:hover { background: rgb(var(--ink-rgb) / 3%); }
     summary::-webkit-details-marker { display: none; }
@@ -534,7 +503,7 @@
     summary:hover::after, summary:focus-visible::after { color: var(--gold-strong); }
     details p { margin-top: 10px; color: rgb(var(--ink-rgb) / 80%); max-width: 38em; }
 
-    /* v5 截图灯箱：暗房式双主题恒定（照片观看惯例），scrim 模糊可选增强；
+    /* 截图灯箱：暗房式双主题恒定（照片观看惯例），scrim 模糊可选增强；
        入场=backdrop fade + 主体 fade/微移/微缩（缓出零弹跳）；reduce=瞬时 */
     .lightbox {
       position: fixed; inset: 0; z-index: 60;
@@ -576,7 +545,7 @@
       font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em;
       color: rgb(240 236 227 / 78%);
     }
-    /* 键盘提示对触屏用户半数无效——粗指针
+    /* 键盘提示对触屏用户半数无效：粗指针
        环境换触屏说法；精确指针维持键盘说法。纯呈现层，零 JS 零行为改动。 */
     .lb-hint-touch { display: none; }
     @media (pointer: coarse) {
@@ -609,7 +578,7 @@
     .footer-thanks a:hover, .footer-thanks a:focus-visible { color: var(--ink); }
 
     /* 主题切换交叉淡变：切换瞬间由接线脚本挂 .theming（280ms 后摘除），
-       色彩面 240ms 过渡；v5 扩到 outline/fill/stroke 全 token 联动，
+       色彩面 240ms 过渡，扩到 outline/fill/stroke 全 token 联动，
        --note-bg 经 @property 注册参与过渡（不支持=瞬时，优雅降级）；
        reduced-motion 下被 reduce 块压回即时 */
     html.theming body, html.theming body *, html.theming body *::before, html.theming body *::after {
@@ -631,9 +600,9 @@
     }
 
     /* 节进入与 hero 层次入场：IntersectionObserver 渐显（14px 微移+透明度，
-       一次性，缓出曲线零弹跳）。初始隐藏态只在 html.has-reveal 下生效——
+       一次性，缓出曲线零弹跳）。初始隐藏态只在 html.has-reveal 下生效；
        该类由头部脚本在「支持 IO 且未要求减少动效」时才挂，无 JS/不支持/
-       减少动效=静态全显。v5 各节 reveal 错峰编排：词级 0 / 图级 80-240 /
+       减少动效=静态全显。各节 reveal 错峰编排：词级 0 / 图级 80-240 /
        表级 160-260，节奏按阅读轴梯度递进。 */
     .has-reveal [data-reveal] {
       opacity: 0; translate: 0 14px;
@@ -665,8 +634,8 @@
       .plate-3, .plate-4 { width: 100%; margin: 0 0 36px; }
       .sec-review { padding-top: 96px; }
       .rail ul.has-thread::before, .rail-marker { display: none; }
-      .rail ul { padding-bottom: 5px; } /* v8.1：吸收纳词轨链命中区的 5px 下溢，不出纵滚条 */
-      /* v8.1：出血几何为 >900px 网格（88px 词轨列）而设，block 布局下重置回内容轴 */
+      .rail ul { padding-bottom: 5px; } /* 吸收纳词轨链命中区的 5px 下溢，不出纵滚条 */
+      /* 出血几何为 >900px 网格（88px 词轨列）而设，block 布局下重置回内容轴 */
       .bleed { width: auto; margin-left: 0; padding: 0; }
       .bleed-caption { text-align: left; }
       .lightbox { padding: 16px; }
@@ -681,7 +650,7 @@
       .plate-caption { font-size: 13px; }
       .lightbox-meta { flex-basis: 100%; }
     }
-    /* ===== v9 互动演示带（零 JS）＋图版 hover 缩放（transform/opacity 优先） ===== */
+    /* ===== 互动演示带（零 JS）＋图版 hover 缩放（transform/opacity 优先） ===== */
     .sec-demos { padding-top: 96px; }
     .demo-grid { display: grid; grid-template-columns: 1.08fr 1fr 1fr; gap: 30px; align-items: start; }
     .demo-title { font-size: 1.15rem; }
@@ -763,8 +732,8 @@
         <li><a href="#demos">演示</a></li>
         <li><a href="#privacy">数据</a></li>
         <li><a href="#download">收工与下载</a></li>
-        <!-- IA-5（S 冻结规格 03 §一）：第 8 项「更新」承接下载区 release notes 链接行（IA-4/UI-3），与「收工」同锚；
-             POLISH-1 F1：同锚保持，scroll-spy 改单亮；「更新」激活时经 data-pin 给 release 行视觉锚定，双亮=wayfinding 失准 -->
+        <!-- 词轨第 8 项「更新」承接下载区 release notes 链接行，与「收工」同锚；
+             同锚单亮：「更新」激活时经 data-pin 给 release 行视觉锚定，双亮=wayfinding 失准 -->
         <li><a href="#download" data-pin="release-line">更新</a></li>
         <li><a href="#faq">常见问题</a></li>
       </ul>
@@ -775,7 +744,7 @@
       <section class="hero">
         <div class="shell hero-grid">
           <div>
-            <!-- 缺省稿·用户可改；「24」为真实安装包体积，IO 触发数字滚动；v6 场景化开头（晚自习/备考时刻） -->
+            <!-- 缺省稿·用户可改；「24」为真实安装包体积，IO 触发数字滚动 -->
             <p class="kicker" data-reveal>Windows 10 / 11｜安装包约 <span data-countup="24">24</span> MB｜当前版本 0.1.0</p>
             <h1 data-reveal style="--reveal-delay: 60ms">把录播变成字幕和复习材料</h1>
             <p class="hero-sub" data-reveal style="--reveal-delay: 120ms">给复旦学生的 Windows 客户端：<em class="key">下课即看</em>，不用等平台审核；晚自习看录播，字幕逐句自动跟上；备考前点一下，总结、章节和练习就开始生成。公式按课堂原样渲染，数据默认留在你自己的电脑上。</p>
@@ -783,13 +752,11 @@
               <a class="button button-primary" href="#download">下载安装包</a>
               <a class="button button-ghost" href="#privacy">先看数据与隐私</a>
             </div>
-            <!-- V010-PUBFACE-B2（盲评胜者 C2 上稿，2026-10-23 用户单胜制裁决；S 冻结规格 03 §二样张 c）：
-                 首屏两条 live-fine 合并一行——测试版声明（V010-BETA-1，与 README/客户端/Pages 下载区同文案）
-                 ＋直播披露（LIVE-DISCLOSURE-1，与客户端/README 同源一句、钉在 test_documentation，读屏可达）；
-                 直播披露句钉句清单按面记形态（IA-7） -->
+            <!-- 首屏两条 live-fine 合并一行：测试版声明（与 README/客户端/Pages 下载区同文案）
+                 ＋直播披露（与客户端/README 同源一句，读屏可达）；直播披露句与客户端/README 同源维护 -->
             <p class="live-fine" data-reveal style="--reveal-delay: 260ms">当前为测试版：功能仍在完善中；处理速度依赖免费云端算力与网络状况，偶尔需要几分钟。直播转写为早期功能，可用性视网络与课程环境而定。</p>
           </div>
-          <!-- LCP 元素（hero 图）不进 reveal：首屏即完整绘制（AUDIT3 修复；
+          <!-- LCP 元素（hero 图）不进 reveal：首屏即完整绘制；
                便利贴旁注单独 reveal，节奏不受影响） -->
           <figure class="plate plate-1">
             <div class="tilt">
@@ -822,18 +789,18 @@
             <figure class="plate plate-2" data-reveal style="--reveal-delay: 90ms">
               <div class="tilt">
                 <div class="plate-frame">
-                  <img src="assets/pages/lecture-notes.png" width="1440" height="900" loading="lazy"
+                  <img src="assets/pages/lecture-notes.png" width="893" height="693" loading="lazy"
                        data-lb-title="图 二 · 讲次总结"
-                       alt="CourseLens 讲次总结截图：左侧是播放器与字幕，右侧总结面板列出带时间戳的要点与分段概览">
-                  <!-- v9 读图引线：金点钉在截图真实像素上（wayfinding），hover/focus 出
+                       alt="CourseLens 讲次总结截图：要点带时间戳锚点，概览里费米分布等公式按课堂原样渲染">
+                  <!-- 读图引线：金点钉在截图真实像素上（wayfinding），hover/focus 出
                        标签，点击开灯箱定位该区域；无 JS=不渲染（lb-ready 闸）。坐标为
                        截图内真实界面位置的百分比。 -->
-                  <button class="figmark" type="button" style="--fx:74.2%; --fy:29.5%"
+                  <button class="figmark" type="button" style="--fx:55%; --fy:24%"
                           data-lb-region="要点：带时间戳锚点，点一下跳回原话"
-                          aria-label="放大查看：要点，带时间戳锚点，点一下跳回原话"><i>1</i><span class="figmark-label">要点：带时间戳锚点，点一下跳回原话</span></button>
-                  <button class="figmark" type="button" style="--fx:70%; --fy:52%"
-                          data-lb-region="概览：总结按段展开，公式原样渲染"
-                          aria-label="放大查看：概览，总结按段展开，公式原样渲染"><i>2</i><span class="figmark-label">概览：总结按段展开，公式原样渲染</span></button>
+                          aria-label="放大查看 1：要点，带时间戳锚点，点一下跳回原话"><i>1</i><span class="figmark-label">要点：带时间戳锚点，点一下跳回原话</span></button>
+                  <button class="figmark" type="button" style="--fx:66%; --fy:58%"
+                          data-lb-region="公式：按课堂原样渲染"
+                          aria-label="放大查看 2：公式，按课堂原样渲染"><i>2</i><span class="figmark-label">公式：按课堂原样渲染</span></button>
                 </div>
               </div>
             </figure>
@@ -841,7 +808,7 @@
               <!-- 缺省稿·用户可改 -->
               <aside class="note">抽检结论就写在讲次卡上</aside>
             </div>
-            <p class="plate-caption bleed-caption"><span class="fig-no">图 二</span>讲次总结。图上两处金点可点，放大看对应区域。</p>
+            <p class="plate-caption bleed-caption"><span class="fig-no">图 二</span>讲次总结：要点带时间戳锚点，公式按课堂原样渲染。图上两处金点可点，放大看对应区域。</p>
           </div>
         </div>
       </section>
@@ -868,13 +835,13 @@
             </div>
             <div class="demo demo-terms" data-reveal style="--reveal-delay: 90ms">
               <h3 class="demo-title">术语与符号表</h3>
-              <p class="demo-lead">这一讲的概念逐条列出，hover 逐行看，解释就地给。</p>
+              <p class="demo-lead">这一讲的概念逐条列出，鼠标悬停逐行看，解释就地给。</p>
               <table class="terms-table">
                 <caption class="visually-hidden">术语与符号示例</caption>
                 <tbody>
                   <tr><td class="term">f(ε)</td><td class="mean">费米分布：占据概率随能量在 μ 附近陡降</td></tr>
                   <tr><td class="term">μ</td><td class="mean">化学势：由数密度积分条件确定</td></tr>
-                  <tr><td class="term">k_B</td><td class="mean">玻尔兹曼常数：Sommerfeld 展开的温标</td></tr>
+                  <tr><td class="term">k_B</td><td class="mean">玻尔兹曼常数：能量与温度之间的换算标尺</td></tr>
                   <tr><td class="term">g(ε)</td><td class="mean">态密度：单位能量上的可用态数</td></tr>
                 </tbody>
               </table>
@@ -912,10 +879,10 @@
                 <div class="plate-frame">
                   <img src="assets/pages/home-light.png" width="1440" height="900" loading="lazy"
                        data-lb-title="图 三 · 学习台"
-                       alt="CourseLens 浅色主题学习台截图：课程网格、今日与本周安排、周课表与直播入口">
+                       alt="CourseLens 浅色主题学习台截图：本周安排、直播入口、课程列表与选中课程的讲次列表">
                 </div>
               </div>
-              <figcaption class="plate-caption"><span class="fig-no">图 三</span>学习台：课程、本周安排与直播入口（浅色主题）。</figcaption>
+              <figcaption class="plate-caption"><span class="fig-no">图 三</span>学习台：本周安排、直播入口与课程讲次（浅色主题）。</figcaption>
             </figure>
             <figure class="plate plate-4" data-reveal style="--reveal-delay: 220ms">
               <div class="tilt">
@@ -949,7 +916,7 @@
             <figure class="plate plate-wide" data-reveal style="--reveal-delay: 240ms">
               <div class="tilt">
                 <div class="plate-frame">
-                  <img src="assets/pages/search-palette.png" width="1440" height="900" loading="lazy"
+                  <img src="assets/pages/search-palette.png" width="806" height="483" loading="lazy"
                        data-lb-title="图 五 · 检索面板"
                        alt="CourseLens 检索面板截图：Ctrl K 呼出，可跳转课程与讲次，或全文检索并生成带出处的证据回答">
                 </div>
@@ -960,7 +927,7 @@
         </div>
       </section>
 
-      <!-- S4 数据留在桌上（郑重页：零 rotate、零便利贴、零投影；v6 reveal 编排 0/90/180/260 + 入口线画入） -->
+      <!-- S4 数据留在桌上（郑重页：零 rotate、零便利贴、零投影；reveal 编排 0/90/180/260 + 入口线画入） -->
       <section class="sec-privacy" id="privacy" data-line-reveal>
         <div class="shell narrow">
           <h2 class="manifesto" data-reveal>你的数据在哪里，谁能看到什么</h2>
@@ -993,15 +960,14 @@
               </tbody>
             </table>
           </div>
-          <!-- v7 卖点升格：代理共存从 FAQ 上浮为数据节可见正文（网络段：互不干扰承诺
-               +GitHub 直连提示，FAQ 原条全部事实零丢失并入本段） -->
+          <!-- 代理共存为数据节可见正文（网络段：互不干扰承诺+GitHub 直连提示） -->
           <p class="privacy-body" data-reveal style="--reveal-delay: 230ms">开着代理（VPN）也能正常用，互不干扰，网络设置一个都不用改。只有下载安装包、应用更新和云端学习任务需要够得着 GitHub，直连不稳时开着代理再试就行。</p>
           <p class="privacy-body" data-reveal style="--reveal-delay: 260ms">两条工程细节，给细看的人：生成任务失败时如实报错、断点重试，已经拿到的材料原地保留，不会被半成品覆盖；应用更新的清单必须通过签名校验，验不过一律拒绝安装。想搬家或清理，设置里的数据管理页可以统计、打包和逐项删除，换电脑也带得走。</p>
           <p class="readmore" data-reveal style="--reveal-delay: 300ms">完整的数据边界与核对方法，见 <a href="https://github.com/gualtier-xu/Fudan-CourseLens#安全与隐私架构">README 的「安全与隐私架构」</a>。</p>
         </div>
       </section>
 
-      <!-- S5 收工·获取（v5 reveal 编排：文 0 / 面板 140；主钮磁性位移+按压反馈） -->
+      <!-- S5 收工·获取（reveal 编排：文 0 / 面板 140；主钮磁性位移+按压反馈） -->
       <section class="sec-download" id="download">
         <div class="shell">
           <div class="narrow" data-reveal>
@@ -1014,30 +980,29 @@
             <!-- 发布回填 1：下载直链（发版时更新 href 现值） -->
             <a class="button button-primary" href="https://github.com/gualtier-xu/Fudan-CourseLens/releases/download/client-v0.1.0/CourseLens-0.1.0-setup.exe">下载 CourseLens-0.1.0-setup.exe</a>
             <p class="dl-fineprint">当前版本 0.1.0（Windows）。之后的更新在应用内完成，不用重跑安装包。</p>
-            <!-- IA-4/UI-3（S 冻结规格 03 §一/§三）：release notes 出口·双面链接行（README「测试版说明」节尾同款；发版时随 href 更新）；
-                 POLISH-1 F1：词轨「更新」（data-pin=本行）激活时本行加金色左发丝线视觉锚，静态零位移 -->
+            <!-- release notes 出口双面链接行（README「测试版说明」节尾同款；发版时随 href 更新）；
+                 词轨「更新」（data-pin=本行）激活时本行加金色左发丝线视觉锚，静态零位移 -->
             <p class="dl-fineprint dl-release" id="release-line">这次版本改了什么：<a href="https://github.com/gualtier-xu/Fudan-CourseLens/releases/tag/client-v0.1.0">发布页 Release Notes</a></p>
-            <!-- 成本三句话（IA-7 同句钉新成员·Pages 面；与 README「它给谁用」段逐字同句） -->
+            <!-- 成本三句话（与 README「它给谁用」段逐字同句） -->
             <p class="dl-fineprint">客户端不收钱；字幕和总结跑在免费的云端算力上；想开 AI 校对与问答，在设置里填你自己的 DeepSeek Key，费用走你自己的账号。</p>
             <p class="dl-fineprint">数据存在哪里、连了哪些服务？见上文「数据与安全」；本月用了多少，见下文「常见问题」的用量问答。</p>
-            <!-- V010-BETA-1：测试版定位声明·下载区（0.x=测试版；与 README/客户端/首屏小字同文案，诚实不吓人） -->
+            <!-- 测试版定位声明下载区（0.x=测试版；与 README/客户端/首屏小字同文案，诚实不吓人） -->
             <p class="dl-fineprint">当前为测试版：功能仍在完善中；处理速度依赖免费云端算力与网络状况，偶尔需要几分钟，请耐心等待。遇到问题欢迎到 Issues 反馈。</p>
             <!-- mac 测试版注记（MAC-2 B2 成稿微调：arm64 单架构/macOS 12+/独立 prerelease 通道指向 /releases；与 README《macOS 测试版（体验版）》节同源维护，避免整节重复） -->
             <p class="dl-fineprint">也有 macOS 测试版（体验版）：Apple Silicon 版，需 macOS 12 或更新版本，到<a href="https://github.com/gualtier-xu/Fudan-CourseLens/releases">发布页</a>下载带「Pre-release」标记的安装包。它由 CI 自动构建，还没在真机上深度实测，遇到问题欢迎到 Issues 说一声。首次打开若被 macOS 拦一下，右键点 CourseLens 选「打开」，或到 系统设置 → 隐私与安全性 点「仍要打开」；数据规矩与 Windows 版一致，都留在你自己的电脑上。</p>
-            <!-- 缺省稿·用户可改（施工图 S5.3-⑨，活件行） -->
+            <!-- 缺省稿·用户可改（活件行） -->
             <!-- 发布回填 2：版本行（发版时更新） -->
             <p class="build-line">CourseLens 0.1.0 · Windows</p>
           </div>
         </div>
       </section>
 
-      <!-- S6 装之前可能想问（v5：平滑高度动画开合 + 条目 reveal 错峰 70/140/210；
-           v7：代理条升格入数据节，余三条） -->
+      <!-- S6 装之前可能想问（平滑高度动画开合 + 条目 reveal 错峰 70/140/210） -->
       <section class="sec-faq" id="faq">
         <div class="shell">
           <h2 data-reveal>装之前可能想问</h2>
           <div class="faq-list">
-            <!-- 处置①缺省=加·用户可改（含是否保留这两条，施工图 S5.2） -->
+            <!-- 处置①缺省=加·用户可改（含是否保留这两条） -->
             <details data-reveal style="--reveal-delay: 70ms">
               <summary>卸载了，我的数据会没吗？</summary>
               <div class="faq-body"><p>默认不会。卸载时会问「要保留你的学习数据吗」，选「是」，笔记、字幕、进度原地不动，重装回来一切如旧；选「否」才是真删，不可恢复。</p></div>
@@ -1046,7 +1011,7 @@
               <summary>AI 功能必须要自己配 Key 吗？</summary>
               <div class="faq-body"><p>不必须。不填 DeepSeek Key 也有非 AI 字幕回退；想用 AI 校对与问答，再在设置里填你自己的 Key。</p></div>
             </details>
-            <!-- 样张 d（S 冻结规格 03 §二补四）：AI 要花多少钱 FAQ，两面同步（README 面由 PUBFACE-A 上稿）；紧随配 Key 问，答费用三问 -->
+            <!-- AI 要花多少钱 FAQ：两面同步（README 面同款文案）；紧随配 Key 问，答费用三问 -->
             <details data-reveal style="--reveal-delay: 210ms">
               <summary>AI 功能要花多少钱？</summary>
               <div class="faq-body"><p>字幕识别和总结跑在免费的云端算力上，这部分不花钱。开 AI 校对与问答要用你自己的 DeepSeek Key：费用由 DeepSeek 按用量向你收，计费方式以 DeepSeek 官方说明为准，客户端里没有付费环节。大批量处理会自动避开高峰（工作日 9-12、14-18 是双倍价时段，节假日除外），改约到半价时段再跑，省约一半；单讲任务不受影响，默认开启、设置里能关。设置里的用量视图能看到本月用了多少（解释几次、总结几讲）和 token 档位，统计都在本机。</p></div>
@@ -1088,7 +1053,7 @@
     </div>
   </footer>
 
-  <!-- v5 截图灯箱（暗房式恒定配色，双主题一致；JS 接线，无 JS=永不出现） -->
+  <!-- 截图灯箱（暗房式恒定配色，双主题一致；JS 接线，无 JS=永不出现） -->
   <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="截图放大查看" hidden>
     <div class="lightbox-backdrop"></div>
     <figure class="lightbox-body">
@@ -1148,7 +1113,7 @@
 
   /* 滚动渐显观察器：has-reveal 总闸已由头部脚本按「支持 IO 且未要求减少
      动效」挂好；此处一次性揭示（相交即揭示并停观察），观察器构造失败时
-     兜底全量揭示，内容永不因脚本失败而缺席。v6：选择器并入 [data-line-reveal]
+     兜底全量揭示，内容永不因脚本失败而缺席。选择器并入 [data-line-reveal]
      （郑重页入口线画入共用同一揭示时机）。 */
   (function () {
     var items = document.querySelectorAll("[data-reveal], [data-line-reveal]");
@@ -1167,7 +1132,7 @@
     }
   })();
 
-  /* ===== v7：互动与动效（原生无依赖；v7 减法后保留=灯箱/FAQ 平滑/微交互/
+  /* ===== 互动与动效（原生无依赖：灯箱/FAQ 平滑/微交互/
      词轨线程/进度线+视差/数字滚动，全部有 reduce/无 JS 静态回退） ===== */
   (function () {
     var docEl = document.documentElement;
@@ -1177,7 +1142,7 @@
     function fine(e) { return motionOK() && window.innerWidth > 900 && e.pointerType === "mouse"; }
 
     /* 词轨随读高亮：视口中带（-42%/-52%）相交节 → 金色词轨项。
-       v6：左轨读位线程（发丝线+金色读位标随当前节滑动，阅读进度与内容联动）；
+       左轨读位线程（发丝线+金色读位标随当前节滑动，阅读进度与内容联动）；
        JS 建线建标（无 JS=纯词轨零装饰残留），≤900px 由 CSS 隐藏 */
     (function () {
       var links = [].slice.call(document.querySelectorAll(".rail a"));
@@ -1344,7 +1309,7 @@
       if (!imgEl || !frame || !closeBtn) return;
       var seen = {}, items = [], wired = [];
       /* 同 src 去重只影响画廊项列表，click/键盘接线绑到全部图版图，
-         按 src 映射到同一画廊项（去重保留为不变式；v7 减法后四图 src 唯一） */
+         按 src 映射到同一画廊项（去重保留为不变式；四图 src 唯一） */
       each(document.querySelectorAll(".plate-frame img"), function (im) {
         var src = im.getAttribute("src");
         if (!src) return;
@@ -1456,7 +1421,7 @@
       });
     })();
 
-    /* v8.1 引线标签边缘翻面：hover/focus 时量测——顶越视口上缘翻点下方，
+    /* 引线标签边缘翻面：hover/focus 时量测：顶越视口上缘翻点下方，
        左越图框翻右侧，双侧皆紧居中收限；悬停中滚动随滚重测（rAF 节流）。
        纯呈现层修正，不动点击/键盘/灯箱路径。 */
     (function () {
