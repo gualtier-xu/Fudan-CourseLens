@@ -10,16 +10,34 @@
   <meta property="og:title" content="CourseLens · 把录播变成字幕和复习材料">
   <meta property="og:description" content="CourseLens 把复旦 iCourse 录播变成字幕和复习材料，直播、课表也能在同一个 Windows 客户端里看，数据默认留在你自己的电脑上。">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="https://gualtier-xu.github.io/Fudan-CourseLens/assets/pages/subtitle-style.png">
+  <meta property="og:image" content="https://gualtier-xu.github.io/Fudan-CourseLens/assets/pages/lecture-math.png">
   <meta name="twitter:card" content="summary_large_image">
   <!--
     CourseLens 发布页（GitHub Pages，main 分支 /docs 目录，纯静态单文件，零外部依赖）。
     设计语言与客户端 frontend/styles/tokens.css 同源：亮暖纸 / 暗 navy-gold 双主题
     （亮 #F7F3EB 暖纸底 / #211E19 暖墨；暗 #071D33 底 / #EFE9DC 象牙 / #D19E3F 琥珀金），
     html[data-theme] 切换，无 JS 缺省=暗色「晚自习讲义」。
-    构图＝「晚自习讲义」：文字按印本排（窄栏阅读轴、mono 词轨/图号），四张客户端截图
-    以四姿态钉在纸面（卷首斜钉 / 复习节全出血＋便利贴 / 课表任务错位叠挂 / 数据节
-    零装饰郑重页），楷体便利贴×2 是全页仅有的手迹旁注。截图资产＝docs/assets/pages/ 2x 高分版。
+    构图＝「晚自习讲义」：文字按印本排（窄栏阅读轴、mono 词轨/图号），客户端真机截图
+    以多姿态钉在纸面（卷首斜钉 / 复习节全出血＋便利贴 / 课表任务错位叠挂 / 检索面板
+    宽幅 / 数据节零装饰郑重页），楷体便利贴是全页仅有的手迹旁注。
+    截图资产＝docs/assets/pages/ 2x 高分版（1440×900 逻辑尺寸，deviceScaleFactor 2），
+    全部来自真实客户端渲染的合成演示数据（合成课程与内容，零真实姓名）。
+
+    v9 全量升级（2026-11-07 夜批，0.1.0 新代发布面；WEBFACE-RENEW-1 构建）：
+    ①截图全量焕新：真机实拍（真实客户端+合成演示数据），卷首图=讲次页公式渲染，
+      复习节=讲次总结（要点锚+概览），课表任务节=浅色主题首页+任务中心，新增
+      检索面板宽幅图版与首跑引导图版；
+    ②功能有感全覆盖：讲解/总结/资料/复习四页签、章卡、练习与闪卡、术语与符号表、
+      锚点跳转、检索直达、用量透明、搬家与备份（明处 3-15 字名词标签）；暗处细节
+      （本地优先/DPAPI/零遥测/上传仅密文/失败不覆盖原稿/更新链签名）归数据节；
+    ③新增互动演示带（零 JS）：章卡折叠（details）、术语与符号对照（hover 表）、
+      一题一解析（details 查看解析），全部用真实产品形态与设计 token；
+    ④动效放开（transform/opacity 优先）：图版 hover 内缩放、演示件 hover 泛金、
+      骨架动效（渐显/词轨线程/数字滚动/灯箱/倾斜）全数保留；
+    ⑤发布面零内部代号（版本宪章 §1）：全页 0.1.0 SemVer 叙事，旧编号全面退役。
+    红线不变：零外部依赖；REF-D 禁形；prefers-reduced-motion 全量降级；双主题 AA
+    不回退；LCP 元素不被动效延迟；单文件+本地资产。发布前需回填两处（下载直链与
+    版本行），均以「发布回填」注释标记。
 
     v7 减法重构（2026-10-08，用户三输入：板块思路不清/演示组件杂/卖点不可见）：
     ①删 v5/v6 累积演示组件：功能速览 tabs 整节（重复展示正文四图）、字幕样式实时
@@ -110,7 +128,7 @@
          暗=navy 抬升阶（stage-lift-2 同族），亮=暖纸上的明签纸；
          v5：@property 注册，主题切换时随全 token 联动过渡 */
       --note-bg: #12293F;
-      /* 动效 token（REF2-A：0.2-0.4s 只做反馈、缓出曲线、零弹跳） */
+      /* 动效 token：0.2-0.4s 只做反馈、缓出曲线、零弹跳 */
       --motion-fast: 160ms;
       --motion-base: 240ms;
       --motion-slow: 420ms;
@@ -260,7 +278,7 @@
     }
     .page main { grid-column: 2; grid-row: 2; min-width: 0; }
 
-    /* 功能条：run-in 术语头 + 一句话（COPY2 主功能四条形态） */
+    /* 功能条：run-in 术语头 + 一句话 */
     .f-row { max-width: 34em; }
     .f-row + .f-row { margin-top: 26px; }
     .f-term {
@@ -269,7 +287,7 @@
     }
     .f-term + p { display: inline; }
 
-    /* 卷首：58/42 非对称，文左图右；顶留白 96 入 REF2-A 适配带（留白即权威） */
+    /* 卷首：58/42 非对称，文左图右；顶留白 96（留白即权威） */
     .hero { padding-top: 96px; }
     .hero-grid { display: grid; grid-template-columns: 58fr 42fr; gap: 48px; align-items: start; }
     .kicker { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em; color: var(--muted); }
@@ -292,7 +310,7 @@
     .button-ghost { border-color: var(--line-strong); color: var(--ink); }
     .button-ghost:hover, .button-ghost:focus-visible { background: var(--panel-strong); }
 
-    /* LIVE-DISCLOSURE-1：直播早期功能小字（与客户端/README 同源一句，test_documentation
+    /* 直播早期功能小字（与客户端/README 同源一句，文档钉
        钉）——v7 删打字演示卡后披露小字保留，muted 弱化+12.5px 细字档，双主题 AA
        实测达标；正常文档流，读屏可达。 */
     .live-fine {
@@ -473,7 +491,7 @@
       font-family: var(--font-ui); font-size: 14.5px; line-height: 1.7; color: rgb(var(--ink-rgb) / 88%);
     }
     .dl-fineprint { margin-top: 14px; font-family: var(--font-ui); font-size: 13.5px; color: var(--muted); }
-    /* POLISH-1 F1：词轨「更新」激活时 release 行的金色左发丝线锚（与词轨读位标同语言）。
+    /* 词轨「更新」激活时 release 行的金色左发丝线锚（与词轨读位标同语言）。
        静态=透明边零位移（-12 边距+2 边+10 内距=0），pinned 仅边线显色渐入 */
     .dl-release {
       border-left: 2px solid transparent; padding-left: 10px; margin-left: -12px;
@@ -505,7 +523,7 @@
       transition: color var(--motion-fast) var(--ease-standard);
     }
     details[open] summary::after { content: "\2212"; }
-    /* POLISH-1 F2：+/− 为装饰符（开合状态由 details 原生披露语义播报），经伪元素
+    /* +/− 为装饰符（开合状态由 details 原生披露语义播报），经伪元素
        备选文本语法移出可访问名，否则「+」混进折叠条 AX 名称（「问题 +」）。
        不支持该语法的浏览器整条声明无效回落上行原值，视觉与名称均不变 */
     @supports (content: "x" / "") {
@@ -558,7 +576,7 @@
       font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .08em;
       color: rgb(240 236 227 / 78%);
     }
-    /* AVATAR-POLISH-1 UP-3（Pages v8 走查）：键盘提示对触屏用户半数无效——粗指针
+    /* 键盘提示对触屏用户半数无效——粗指针
        环境换触屏说法；精确指针维持键盘说法。纯呈现层，零 JS 零行为改动。 */
     .lb-hint-touch { display: none; }
     @media (pointer: coarse) {
@@ -663,6 +681,55 @@
       .plate-caption { font-size: 13px; }
       .lightbox-meta { flex-basis: 100%; }
     }
+    /* ===== v9 互动演示带（零 JS）＋图版 hover 缩放（transform/opacity 优先） ===== */
+    .sec-demos { padding-top: 96px; }
+    .demo-grid { display: grid; grid-template-columns: 1.08fr 1fr 1fr; gap: 30px; align-items: start; }
+    .demo-title { font-size: 1.15rem; }
+    .demo-lead { margin-top: 8px; max-width: 30em; color: rgb(var(--ink-rgb) / 76%); font-size: 15px; }
+    /* 章卡折叠 */
+    .chapter-card {
+      border: 1px solid var(--line); border-radius: var(--radius);
+      background: var(--panel); margin-top: 12px; overflow: hidden;
+    }
+    .chapter-card summary {
+      cursor: pointer; list-style: none; display: flex; gap: 10px; align-items: baseline;
+      padding: 10px 14px; font-family: var(--font-ui); font-weight: 600; font-size: 14.5px;
+      transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+    }
+    .chapter-card summary::-webkit-details-marker { display: none; }
+    .chapter-card summary::after { content: "+"; font-family: var(--font-mono); color: var(--gold-text); }
+    .chapter-card[open] summary::after { content: "−"; }
+    .chapter-card summary:hover, .chapter-card summary:focus-visible { background: var(--panel-strong); color: var(--gold-text); }
+    .chapter-card .stamp { font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--muted); margin-left: auto; }
+    .chapter-card p { padding: 0 14px 12px; font-size: 14px; color: rgb(var(--ink-rgb) / 82%); }
+    /* 术语与符号对照表 */
+    .terms-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+    .terms-table tbody tr { border-bottom: 1px solid var(--line); transition: background var(--motion-fast) var(--ease-standard); }
+    .terms-table tbody tr:last-child { border-bottom: 0; }
+    .terms-table td { padding: 9px 10px 9px 0; vertical-align: top; }
+    .terms-table .term { font-family: var(--font-mono); font-size: 13px; color: var(--gold-text); white-space: nowrap; padding-right: 14px; }
+    .terms-table .mean { color: rgb(var(--ink-rgb) / 84%); }
+    .terms-table tbody tr:hover { background: var(--panel); }
+    /* 测验卡 */
+    .quiz-card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); margin-top: 12px; padding: 14px 16px; }
+    .quiz-q { font-family: var(--font-ui); font-weight: 600; font-size: 14.5px; }
+    .quiz-opts { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 7px; font-size: 14px; color: rgb(var(--ink-rgb) / 86%); }
+    .quiz-opts li { padding: 7px 11px; border: 1px solid var(--line); border-radius: var(--radius); transition: border-color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard); }
+    .quiz-opts li:hover { border-color: var(--line-strong); background: var(--panel-strong); }
+    .quiz-opts li.is-answer { border-color: rgb(209 158 63 / 55%); }
+    .quiz-opts li.is-answer::after { content: "正解"; font-family: var(--font-ui); font-size: 12px; color: var(--gold-text); margin-left: 8px; }
+    .quiz-why { margin-top: 12px; }
+    .quiz-why summary { cursor: pointer; font-family: var(--font-ui); font-size: 13.5px; color: var(--gold-text); }
+    .quiz-why p { margin-top: 8px; font-size: 14px; color: rgb(var(--ink-rgb) / 80%); }
+    /* 检索面板宽幅图版 */
+    .plate-wide { margin: 48px 0 0; }
+    /* 图版 hover 内缩放（合成层，LCP 图除外） */
+    .plate-frame > img { transition: transform var(--motion-slow) var(--ease-out); }
+    html.lb-ready .plate-frame:hover > img { transform: scale(1.015); }
+    @media (max-width: 900px) {
+      .demo-grid { grid-template-columns: 1fr; }
+      .sec-demos { padding-top: 72px; }
+    }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
@@ -680,7 +747,7 @@
       <a class="brand" href="#top">CourseLens</a>
       <div class="masthead-side">
         <button id="theme-toggle" class="masthead-link" type="button"
-                aria-label="主题偏好：自动（跟随系统），点击切换为浅色">主题·自动</button>
+                aria-label="主题·自动（跟随系统），点击切换为浅色">主题·自动</button>
         <a class="masthead-link" href="https://github.com/gualtier-xu/Fudan-CourseLens">GitHub</a>
       </div>
     </div>
@@ -693,6 +760,7 @@
         <li><a href="#review">复习</a></li>
         <li><a href="#timetable">课表</a></li>
         <li><a href="#extras">还能</a></li>
+        <li><a href="#demos">演示</a></li>
         <li><a href="#privacy">数据</a></li>
         <li><a href="#download">收工与下载</a></li>
         <!-- IA-5（S 冻结规格 03 §一）：第 8 项「更新」承接下载区 release notes 链接行（IA-4/UI-3），与「收工」同锚；
@@ -707,10 +775,10 @@
       <section class="hero">
         <div class="shell hero-grid">
           <div>
-            <!-- 缺省稿·用户可改（施工图 S5.3-⑧）；「24」为真实安装包体积，IO 触发数字滚动；v6 场景化开头（晚自习/备考时刻） -->
-            <p class="kicker" data-reveal>Windows 10 / 11 · 安装包约 <span data-countup="24">24</span> MB</p>
+            <!-- 缺省稿·用户可改；「24」为真实安装包体积，IO 触发数字滚动；v6 场景化开头（晚自习/备考时刻） -->
+            <p class="kicker" data-reveal>Windows 10 / 11｜安装包约 <span data-countup="24">24</span> MB｜当前版本 0.1.0</p>
             <h1 data-reveal style="--reveal-delay: 60ms">把录播变成字幕和复习材料</h1>
-            <p class="hero-sub" data-reveal style="--reveal-delay: 120ms">给复旦学生的 Windows 客户端：<em class="key">下课即看</em>，不用等平台审核；晚自习看录播，字幕逐句自动跟上；备考前点一下，总结和章节就开始生成。数据默认留在你自己的电脑上。</p>
+            <p class="hero-sub" data-reveal style="--reveal-delay: 120ms">给复旦学生的 Windows 客户端：<em class="key">下课即看</em>，不用等平台审核；晚自习看录播，字幕逐句自动跟上；备考前点一下，总结、章节和练习就开始生成。公式按课堂原样渲染，数据默认留在你自己的电脑上。</p>
             <div class="actions" data-reveal style="--reveal-delay: 180ms">
               <a class="button button-primary" href="#download">下载安装包</a>
               <a class="button button-ghost" href="#privacy">先看数据与隐私</a>
@@ -726,26 +794,26 @@
           <figure class="plate plate-1">
             <div class="tilt">
               <div class="plate-frame">
-                <img src="assets/pages/subtitle-style.png" width="1440" height="900" fetchpriority="high"
-                     data-lb-title="图 一 · 录播与字幕"
-                     alt="CourseLens 播放器截图：讲座画面上叠加句级字幕，弹出的字幕样式面板可调字号、背景深浅与贴底位置">
+                <img src="assets/pages/lecture-math.png" width="1440" height="900" fetchpriority="high"
+                     data-lb-title="图 一 · 讲次页"
+                     alt="CourseLens 讲次页截图：左侧播放器正在播放并叠加句级字幕，右侧总结面板里费米分布等公式按课堂原样渲染，要点带时间戳">
               </div>
-              <!-- 缺省稿·用户可改（施工图 S5.3-②，README《录播与字幕》背书） -->
+              <!-- 缺省稿·用户可改 -->
               <aside class="note note-1" data-reveal style="--reveal-delay: 420ms">直播进来也有实时字幕</aside>
             </div>
-            <figcaption class="plate-caption"><span class="fig-no">图 一</span>录播播放器：句级字幕自动生成，经多道校对（可选 AI 校对＋自动抽检），不直接采用平台文稿。</figcaption>
+            <figcaption class="plate-caption"><span class="fig-no">图 一</span>讲次页：播放器句级字幕自动生成（多道校对，可选 AI 校对＋自动抽检），总结面板公式原样渲染。</figcaption>
           </figure>
         </div>
       </section>
 
-      <!-- S1 复习材料（主推节；v7 减法后 reveal 编排：词 0 / 图 90 / 旁注 190） -->
+      <!-- S1 复习材料（主推节；reveal 编排：词 0 / 图 90 / 旁注 190） -->
       <section class="sec-review" id="review">
         <div class="shell">
           <div class="prose" data-reveal>
-            <!-- 缺省稿·用户可改（COPY2 功能条 1；v6 场景化开头） -->
+            <!-- 缺省稿·用户可改 -->
             <div class="f-row">
               <h2 class="f-term">复习材料</h2>
-              <p>总结、章节、关键问答，归在一讲里。备考 PDF 从课件直接合成，公式原样，没有封面目录这类废页，试点讲次先行。老师更新了课件，材料自动出新版。生成后讲次卡上写<em class="key">「通过」或「N 处存疑」</em>。点时间戳跳回原话；该复习哪一讲，按 FSRS-5 记忆规律排好。</p>
+              <p>总结、章节、要点、关键问答和测验，归在一讲里。总结里的公式按课堂原样渲染，术语与符号表把概念逐条列出。备考 PDF 从课件直接合成，公式原样，没有封面目录这类废页。老师更新了课件，材料自动出新版。生成后讲次卡上写<em class="key">「通过」或「N 处存疑」</em>。点时间戳跳回原话；该复习哪一讲，按 FSRS-5 记忆规律排好。</p>
             </div>
           </div>
         </div>
@@ -754,64 +822,116 @@
             <figure class="plate plate-2" data-reveal style="--reveal-delay: 90ms">
               <div class="tilt">
                 <div class="plate-frame">
-                  <img src="assets/pages/review-multiview.png" width="1440" height="900" loading="lazy"
-                       data-lb-title="图 二 · 复习材料"
-                       alt="CourseLens 复习页截图：左侧是讲座视频与时间轴，右侧是多视图复习包，按时间列出章节要点与关键时间点">
-                  <!-- v8 读图引线：金点钉在截图真实像素上（wayfinding），hover/focus 出
+                  <img src="assets/pages/lecture-notes.png" width="1440" height="900" loading="lazy"
+                       data-lb-title="图 二 · 讲次总结"
+                       alt="CourseLens 讲次总结截图：左侧是播放器与字幕，右侧总结面板列出带时间戳的要点与分段概览">
+                  <!-- v9 读图引线：金点钉在截图真实像素上（wayfinding），hover/focus 出
                        标签，点击开灯箱定位该区域；无 JS=不渲染（lb-ready 闸）。坐标为
-                       截图内真实界面位置的百分比；讲次卡「通过/N 处存疑」不在本截图
-                       可见像素内，故不设点（诚实边界）。 -->
-                  <button class="figmark" type="button" style="--fx:63.8%; --fy:27.8%"
-                          data-lb-region="多视图复习包：时间轴、章节、关键问答、提纲、FAQ、考前简报"
-                          aria-label="放大查看：多视图复习包，含时间轴、章节、关键问答、提纲、FAQ、考前简报"><i>1</i><span class="figmark-label">多视图复习包：时间轴、章节、关键问答、提纲、FAQ、考前简报</span></button>
-                  <button class="figmark" type="button" style="--fx:67.5%; --fy:43%"
-                          data-lb-region="章节与时间戳：点时间戳，跳回原话"
-                          aria-label="放大查看：章节与时间戳，点时间戳跳回原话"><i>2</i><span class="figmark-label">点时间戳，跳回原话</span></button>
+                       截图内真实界面位置的百分比。 -->
+                  <button class="figmark" type="button" style="--fx:74.2%; --fy:29.5%"
+                          data-lb-region="要点：带时间戳锚点，点一下跳回原话"
+                          aria-label="放大查看：要点，带时间戳锚点，点一下跳回原话"><i>1</i><span class="figmark-label">要点：带时间戳锚点，点一下跳回原话</span></button>
+                  <button class="figmark" type="button" style="--fx:70%; --fy:52%"
+                          data-lb-region="概览：总结按段展开，公式原样渲染"
+                          aria-label="放大查看：概览，总结按段展开，公式原样渲染"><i>2</i><span class="figmark-label">概览：总结按段展开，公式原样渲染</span></button>
                 </div>
               </div>
             </figure>
             <div class="after-plate" data-reveal style="--reveal-delay: 190ms">
-              <!-- 缺省稿·用户可改（施工图 S5.3-③，README《AI 总结与笔记》背书） -->
+              <!-- 缺省稿·用户可改 -->
               <aside class="note">抽检结论就写在讲次卡上</aside>
             </div>
-            <p class="plate-caption bleed-caption"><span class="fig-no">图 二</span>复习页全貌。图上两处金点可点，放大看对应区域。</p>
+            <p class="plate-caption bleed-caption"><span class="fig-no">图 二</span>讲次总结。图上两处金点可点，放大看对应区域。</p>
           </div>
         </div>
       </section>
 
-      <!-- S2 课表与任务（错位叠挂；v5 reveal 编排：词 0 / 图三 90 / 图四 220） -->
+      <!-- S1.5 互动演示带（零 JS：details 折叠 + hover 对照表；形态取自真实产品） -->
+      <section class="sec-demos" id="demos" aria-label="功能演示">
+        <div class="shell">
+          <div class="demo-grid">
+            <div class="demo demo-chapters" data-reveal>
+              <h3 class="demo-title">章卡：目录加要点</h3>
+              <p class="demo-lead">总结生成后，章节自动从内容里长出来，每张卡带时间戳。</p>
+              <details class="chapter-card" open>
+                <summary>开场与路线图<span class="stamp">0:00:00</span></summary>
+                <p>这一讲从问题出发：为什么经典图像在这里失效，以及本讲的三步路线。</p>
+              </details>
+              <details class="chapter-card">
+                <summary>核心方法<span class="stamp">0:00:03</span></summary>
+                <p>分布函数与数密度条件两条线索并走，推导配合图像直觉。</p>
+              </details>
+              <details class="chapter-card">
+                <summary>收束与练习<span class="stamp">0:00:06</span></summary>
+                <p>把结论收进一张对照表，配两道按理解配比的练习。</p>
+              </details>
+            </div>
+            <div class="demo demo-terms" data-reveal style="--reveal-delay: 90ms">
+              <h3 class="demo-title">术语与符号表</h3>
+              <p class="demo-lead">这一讲的概念逐条列出，hover 逐行看，解释就地给。</p>
+              <table class="terms-table">
+                <caption class="visually-hidden">术语与符号示例</caption>
+                <tbody>
+                  <tr><td class="term">f(ε)</td><td class="mean">费米分布：占据概率随能量在 μ 附近陡降</td></tr>
+                  <tr><td class="term">μ</td><td class="mean">化学势：由数密度积分条件确定</td></tr>
+                  <tr><td class="term">k_B</td><td class="mean">玻尔兹曼常数：Sommerfeld 展开的温标</td></tr>
+                  <tr><td class="term">g(ε)</td><td class="mean">态密度：单位能量上的可用态数</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="demo demo-quiz" data-reveal style="--reveal-delay: 180ms">
+              <h3 class="demo-title">练习与闪卡</h3>
+              <p class="demo-lead">字幕就绪就能出题，错题按记忆规律安排下次复习。</p>
+              <div class="quiz-card">
+                <p class="quiz-q">费米分布 f(ε) 在能量越过 μ 时大约如何变化？</p>
+                <ul class="quiz-opts">
+                  <li>缓慢线性上升</li>
+                  <li class="is-answer">在 μ 附近从 1 陡降到 0</li>
+                  <li>始终保持在 1/2</li>
+                </ul>
+                <details class="quiz-why">
+                  <summary>查看解析</summary>
+                  <p>占据概率由费米分布给出，T→0 时在 μ 处呈阶跃；温度升高只会把陡降抹宽，不改变台阶位置。</p>
+                </details>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- S2 课表与任务（错位叠挂；reveal 编排：词 0 / 图三 90 / 图四 220） -->
       <section class="sec-timetable" id="timetable">
         <div class="shell">
           <div class="f-row" data-reveal>
             <h2 class="f-term">课表与任务</h2>
-            <p>周一早上打开，本周的课就在眼前，按学期、周次排好。任务失败了，原因用中文写在任务中心，重试从断点接着跑，不整讲重来。批量任务自动挑半价时段，省约一半。</p>
+            <p>周一早上打开，本周的课就在眼前，按学期、周次排好，也能导出 ICS 日历。任务失败了，原因用中文写在任务中心，重试从断点接着跑，不整讲重来，已经拿到的材料不会被半成品覆盖。批量任务自动挑半价时段，省约一半。</p>
           </div>
           <div class="duo-float">
             <figure class="plate plate-3" data-reveal style="--reveal-delay: 90ms">
               <div class="tilt">
                 <div class="plate-frame">
-                  <img src="assets/pages/timetable-week.png" width="1440" height="900" loading="lazy"
-                       data-lb-title="图 三 · 周课表"
-                       alt="CourseLens 周课表截图：一周七天的课程格子，标出每节课的时间、课程名与教室">
+                  <img src="assets/pages/home-light.png" width="1440" height="900" loading="lazy"
+                       data-lb-title="图 三 · 学习台"
+                       alt="CourseLens 浅色主题学习台截图：课程网格、今日与本周安排、周课表与直播入口">
                 </div>
               </div>
-              <figcaption class="plate-caption"><span class="fig-no">图 三</span>周课表</figcaption>
+              <figcaption class="plate-caption"><span class="fig-no">图 三</span>学习台：课程、本周安排与直播入口（浅色主题）。</figcaption>
             </figure>
             <figure class="plate plate-4" data-reveal style="--reveal-delay: 220ms">
               <div class="tilt">
                 <div class="plate-frame">
-                  <img src="assets/pages/tasks-drawer.png" width="1440" height="900" loading="lazy"
+                  <img src="assets/pages/tasks-center.png" width="1440" height="900" loading="lazy"
                        data-lb-title="图 四 · 任务中心"
-                       alt="CourseLens 任务中心截图：进行中与失败的任务分栏列出，失败原因用中文说明并附重试按钮">
+                       alt="CourseLens 任务中心截图：进行中与已完成的任务分栏列出，失败原因用中文说明并附重试按钮">
                 </div>
               </div>
-              <figcaption class="plate-caption"><span class="fig-no">图 四</span>任务中心</figcaption>
+              <figcaption class="plate-caption"><span class="fig-no">图 四</span>任务中心：失败原因用中文写，重试从断点接着跑。</figcaption>
             </figure>
           </div>
         </div>
       </section>
 
-      <!-- S3 还有的小事（纯文窄栏带；v5 reveal 编排：0 / 90 / 180） -->
+      <!-- S3 提问与检索（窄栏带 + 检索面板宽幅图版） -->
       <section class="sec-extras" id="extras">
         <div class="shell">
           <div class="f-row" data-reveal>
@@ -822,7 +942,21 @@
             <h2 class="f-term">解释</h2>
             <p>看不懂的地方按 <kbd>X</kbd> 插一面「没听懂」小旗，AI 把那段讲清楚。懂了删旗。</p>
           </div>
-          <p class="f-tail" data-reveal style="--reveal-delay: 180ms">还有直播字幕、校外看回放，多数情况不用设置。<kbd>Ctrl K</kbd> 全文检索，点开就到课件那一页、视频那一秒。课程记忆和学习统计标出你的弱项。资料预览里公式正常显示，Word 文档也读得出文字。</p>
+          <p class="f-tail" data-reveal style="--reveal-delay: 180ms">还有直播字幕、校外看回放，多数情况不用设置。<kbd>Ctrl K</kbd> 全文检索，点开就到课件那一页、视频那一秒。课程记忆和学习统计标出你的弱项。资料预览里公式正常显示，Word 文档也读得出文字。换电脑时，设置里的数据管理页帮你把材料打包带走。</p>
+        </div>
+        <div class="bleed">
+          <div class="shell">
+            <figure class="plate plate-wide" data-reveal style="--reveal-delay: 240ms">
+              <div class="tilt">
+                <div class="plate-frame">
+                  <img src="assets/pages/search-palette.png" width="1440" height="900" loading="lazy"
+                       data-lb-title="图 五 · 检索面板"
+                       alt="CourseLens 检索面板截图：Ctrl K 呼出，可跳转课程与讲次，或全文检索并生成带出处的证据回答">
+                </div>
+              </div>
+              <figcaption class="plate-caption bleed-caption"><span class="fig-no">图 五</span>检索面板：跳课程、跳讲次、搜全文，回答带出处。</figcaption>
+            </figure>
+          </div>
         </div>
       </section>
 
@@ -862,6 +996,7 @@
           <!-- v7 卖点升格：代理共存从 FAQ 上浮为数据节可见正文（网络段：互不干扰承诺
                +GitHub 直连提示，FAQ 原条全部事实零丢失并入本段） -->
           <p class="privacy-body" data-reveal style="--reveal-delay: 230ms">开着代理（VPN）也能正常用，互不干扰，网络设置一个都不用改。只有下载安装包、应用更新和云端学习任务需要够得着 GitHub，直连不稳时开着代理再试就行。</p>
+          <p class="privacy-body" data-reveal style="--reveal-delay: 260ms">两条工程细节，给细看的人：生成任务失败时如实报错、断点重试，已经拿到的材料原地保留，不会被半成品覆盖；应用更新的清单必须通过签名校验，验不过一律拒绝安装。想搬家或清理，设置里的数据管理页可以统计、打包和逐项删除，换电脑也带得走。</p>
           <p class="readmore" data-reveal style="--reveal-delay: 300ms">完整的数据边界与核对方法，见 <a href="https://github.com/gualtier-xu/Fudan-CourseLens#安全与隐私架构">README 的「安全与隐私架构」</a>。</p>
         </div>
       </section>
@@ -948,8 +1083,8 @@
       </div>
       <!-- 致谢名单终版由作者定稿：直接增删下面这一行即可 -->
       <p class="footer-thanks">感谢 <a href="https://github.com/LeafCreeper/Fudan_iCourse_Subscriber">LeafCreeper 的 Fudan_iCourse_Subscriber</a> 等复旦课程工具作者的思路启发，以及每一位报过问题、提过建议的同学。</p>
-      <!-- AVATAR-POLISH-1 UP-2（Pages v8 走查）：README 有合成数据声明，页面此前没有——信任素材对齐 -->
-      <p class="footer-thanks">页面里的截图都是合成课程数据，不含任何真实课程或同学的信息。</p>
+      <!-- 信任素材对齐：截图=真实客户端渲染的合成演示数据（零真实姓名） -->
+      <p class="footer-thanks">页面里的截图都来自真实客户端的演示数据（合成课程与内容），不含任何真实课程、账号或同学的信息。</p>
     </div>
   </footer>
 
@@ -962,7 +1097,7 @@
       </div>
       <figcaption class="lightbox-cap">
         <span class="lightbox-title"></span>
-        <span class="lightbox-meta"><span class="lightbox-count"></span> · <span class="lb-hint-keys">← → 切换 · 点击缩放 · Esc 关闭</span><span class="lb-hint-touch">点图缩放 · 点空白处关闭</span></span>
+        <span class="lightbox-meta"><span class="lightbox-count"></span> · <span class="lb-hint-keys">← → 切换｜点击缩放｜Esc 关闭</span><span class="lb-hint-touch">点图缩放｜点空白处关闭</span></span>
       </figcaption>
     </figure>
     <button class="lightbox-btn lightbox-close" type="button" aria-label="关闭（Esc）">×</button>
@@ -997,7 +1132,7 @@
     }
     function paint() {
       btn.textContent = LABEL[pref()];
-      btn.setAttribute("aria-label", "主题偏好：" + NAME[pref()] + "，点击切换为" + NAME[NEXT[pref()]]);
+      btn.setAttribute("aria-label", LABEL[pref()] + "（" + NAME[pref()] + "），点击切换为" + NAME[NEXT[pref()]]);
     }
     btn.addEventListener("click", function () {
       var next = NEXT[pref()];
@@ -1068,7 +1203,7 @@
         var y = a.offsetTop + (a.offsetHeight - marker.offsetHeight) / 2;
         marker.style.transform = "translateY(" + Math.round(y) + "px)";
       }
-      /* POLISH-1 F1：同锚单亮：同节多词轨项（收工/更新同锚 #download，IA-5 规格）
+      /* 同锚单亮：同节多词轨项（收工/更新同锚 #download）
          只亮一个：点击意图项优先，否则同锚首项；「更新」亮时对 data-pin 指向的
          release 行加视觉锚。双亮双 aria-current=wayfinding 失准，此处收敛为一 */
       var intent = null;
@@ -1105,7 +1240,7 @@
       links.forEach(function (a) {
         a.addEventListener("click", function () {
           intent = a;
-          /* POLISH-1 F1 守卫：点击已即时置态（零呆等）；平滑滚动期间到达的
+          /* 守卫：点击已即时置态（零呆等）；平滑滚动期间到达的
              迟到/中间 IO 条目不再覆盖点击态（scrollend 结守卫，无该事件浏览器
              由 1.6s 兜底定时结守卫），守卫后恢复随读高亮 */
           guard = true;
